@@ -1,24 +1,21 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MX App - Flask PWA</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link rel="manifest" href="/manifest.json">
+  <title>MX App with SQLite</title>
 </head>
-
 <body>
-  <h1>🚀 MX App is Running!</h1>
-  <p>This is your basic PWA served with Flask.</p>
-  <button onclick="alert('Hello from MX App!')">Click Me</button>
-  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <h1>🚀 MX App (SQLite, ready for PostgreSQL)</h1>
 
-  <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(() => console.log('Service Worker registered.'));
-  }
-</script>
+  <form action="/add" method="post">
+    <input name="name" placeholder="Enter user name">
+    <button type="submit">Add User</button>
+  </form>
+
+  <ul>
+    {% for u in users %}
+      <li>{{ u.name }}</li>
+    {% endfor %}
+  </ul>
 </body>
 </html>

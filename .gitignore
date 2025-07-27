@@ -1,12 +1,18 @@
-# Ignore Python cache
+# Python cache and compiled files
 __pycache__/
 *.pyc
 
-# Ignore virtual environment
+# Virtual environment
 venv/
 
-# Ignore VS Code settings
+# VS Code settings
 .vscode/
 
-# Ignore environment variables
+# Environment variables
 .env
+
+# SQLite database file
+mx_app.db
+
+# Logs
+*.log
