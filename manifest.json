@@ -1,0 +1,9 @@
+{
+  "name": "MX App",
+  "short_name": "MXApp",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0077cc",
+  "icons": []
+}
