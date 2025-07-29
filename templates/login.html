@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>MX Learning | Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url('{{ url_for("static", filename="bg.jpg") }}') no-repeat center center fixed;
+            background-size: cover;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', sans-serif;
+        }
+        .overlay {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+        }
+        .login-card {
+            position: relative;
+            z-index: 2;
+            background: #fdf1e8; /* Beige matching your brand */
+            border-radius: 12px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        .brand-banner {
+            width: 200px;
+            margin-bottom: 20px;
+        }
+        .form-control {
+            border: 1px solid #ccc;
+            background: #fff;
+        }
+
+        .btn-custom {
+        background: #132240;  /* Dark navy blue from logo */
+        color: white;
+        font-weight: bold;
+        border: none;
+        }
+
+        .btn-custom:hover {
+            background: #0848c3;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay"></div>
+    
+    <div class="login-card">
+        <!-- ✅ Single banner image instead of separate logo + text -->
+        <img src="{{ url_for('static', filename='name_logo.png') }}" alt="MX Learning" class="brand-banner">
+
+        <form action="/login" method="post">
+            <div class="mb-3">
+                <input type="text" name="username" class="form-control" placeholder="Username" required>
+            </div>
+            <div class="mb-3">
+                <input type="password" name="password" class="form-control" placeholder="Password" required>
+            </div>
+            <button type="submit" class="btn btn-custom w-100">Login</button>
+        </form>
+
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-warning mt-3">
+                    {% for msg in messages %}
+                        {{ msg }}<br>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
