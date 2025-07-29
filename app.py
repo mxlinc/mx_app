@@ -1,18 +1,19 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from dotenv import load_dotenv
 
-# ✅ Load environment variables (.env for local)
+# ✅ Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "devsecret")  # required for sessions
+app.secret_key = os.getenv("SECRET_KEY", "devsecret")
 
-# ✅ Read database URL
+# ✅ Database URL from .env or Render
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is not set. Configure it in .env or Render environment.")
+    raise RuntimeError("DATABASE_URL is not set.")
 
 # ✅ Force psycopg2 driver
 if DATABASE_URL.startswith("postgres://"):
@@ -25,24 +26,32 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
-# ✅ Use prod schema for now
+# ✅ Schema (currently using prod)
 CURRENT_SCHEMA = os.getenv("APP_SCHEMA", "prod")
 
-# ✅ User model
-class User(db.Model):
+# -------------------- USER MODEL --------------------
+class User(db.Model, UserMixin):
     __tablename__ = "user_table"
     __table_args__ = {"schema": CURRENT_SCHEMA}
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     enabled = db.Column(db.Boolean, nullable=False, default=True)
-    password_hash = db.Column(db.String(255), nullable=False)  # stores cleartext password
+    password_hash = db.Column(db.String(255), nullable=False)  # clear text as requested
     role = db.Column(db.String(50), nullable=False)  # student / teacher / admin
     name = db.Column(db.String(150))
     level_code = db.Column(db.String(50))
     hint = db.Column(db.String(255))
 
-# -------------------- ROUTES --------------------
+# -------------------- FLASK-LOGIN SETUP --------------------
+login_manager = LoginManager(app)
+login_manager.login_view = "login"
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+# -------------------- ROUTES --------------------
 @app.route("/")
 def index():
     return redirect(url_for("login"))
@@ -56,8 +65,7 @@ def login():
         user = User.query.filter_by(username=username, enabled=True).first()
 
         if user and user.password_hash == password:
-            session["user_id"] = user.id
-            session["role"] = user.role
+            login_user(user)
             flash("Login successful!", "success")
 
             if user.role == "student":
@@ -73,20 +81,24 @@ def login():
     return render_template("login.html")
 
 @app.route("/studenthome")
+@login_required
 def student_home():
-    return render_template("student_home.html")
+    return render_template("student_home.html", name=current_user.name)
 
 @app.route("/teacherhome")
+@login_required
 def teacher_home():
-    return render_template("teacher_home.html")
+    return render_template("teacher_home.html", name=current_user.name)
 
 @app.route("/adminhome")
+@login_required
 def admin_home():
-    return render_template("admin_home.html")
+    return render_template("admin_home.html", name=current_user.name)
 
 @app.route("/logout")
+@login_required
 def logout():
-    session.clear()
+    logout_user()
     flash("You have been logged out.", "info")
     return redirect(url_for("login"))
 

@@ -2,85 +2,95 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>MX Learning | Login</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Login - MX Learning</title>
     <style>
         body {
-            background: url('{{ url_for("static", filename="bg.jpg") }}') no-repeat center center fixed;
+            font-family: Arial, sans-serif;
+            background: url("{{ url_for('static', filename='bg.jpg') }}") no-repeat center center fixed;
             background-size: cover;
-            height: 100vh;
+            margin: 0;
+            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Segoe UI', sans-serif;
+            height: 100vh;
         }
-        .overlay {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-        }
-        .login-card {
-            position: relative;
-            z-index: 2;
-            background: #fdf1e8; /* Beige matching your brand */
-            border-radius: 12px;
-            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
-            padding: 40px;
-            width: 100%;
-            max-width: 400px;
+        .login-container {
+            width: 500px;
+            background: #fdf1e8;
+            padding: 50px;
+            border-radius: 14px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
             text-align: center;
         }
-        .brand-banner {
-            width: 200px;
+        .login-container img {
+            max-width: 336px;   /* 20% larger than previous 280px */
             margin-bottom: 20px;
         }
-        .form-control {
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 16px;
+            margin: 14px 0;
             border: 1px solid #ccc;
-            background: #fff;
+            border-radius: 6px;
+            font-size: 17px;
+            box-sizing: border-box;
         }
-
-        .btn-custom {
-        background: #132240;  /* Dark navy blue from logo */
-        color: white;
-        font-weight: bold;
-        border: none;
+        button {
+            background-color: #12213f;
+            color: white;
+            padding: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 19px;
+            width: 100%;
+            box-sizing: border-box;
         }
-
-        .btn-custom:hover {
-            background: #0848c3;
+        button:hover {
+            background-color: #0d192f;
+        }
+        .flash {
+            margin-top: 18px;
+            padding: 14px;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        .flash.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .flash.info {
+            background: #cce5ff;
+            color: #004085;
+            border: 1px solid #b8daff;
+        }
+        .flash.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
         }
     </style>
 </head>
 <body>
-    <div class="overlay"></div>
-    
-    <div class="login-card">
-        <!-- ✅ Single banner image instead of separate logo + text -->
-        <img src="{{ url_for('static', filename='name_logo.png') }}" alt="MX Learning" class="brand-banner">
+    <div class="login-container">
+        <!-- Larger Name Logo -->
+        <img src="{{ url_for('static', filename='name_logo.png') }}" alt="MX Learning Logo">
 
-        <form action="/login" method="post">
-            <div class="mb-3">
-                <input type="text" name="username" class="form-control" placeholder="Username" required>
-            </div>
-            <div class="mb-3">
-                <input type="password" name="password" class="form-control" placeholder="Password" required>
-            </div>
-            <button type="submit" class="btn btn-custom w-100">Login</button>
+        <form method="POST">
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
         </form>
 
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="alert alert-warning mt-3">
-                    {% for msg in messages %}
-                        {{ msg }}<br>
-                    {% endfor %}
-                </div>
+                {% set category, msg = messages[-1] %}
+                <div class="flash {{ category }}">{{ msg }}</div>
             {% endif %}
         {% endwith %}
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
