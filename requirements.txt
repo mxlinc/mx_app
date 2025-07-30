@@ -1,5 +1,9 @@
 Flask==3.0.3
 Flask-SQLAlchemy==3.1.1
+Flask-Login==0.6.3
 gunicorn==22.0.0
-psycopg[binary]==3.2.9
 python-dotenv==1.0.1
+sqlalchemy==2.0.42
+psycopg[binary]==3.2.9
+typing-extensions==4.14.1
+packaging==25.0
