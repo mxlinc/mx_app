@@ -6,8 +6,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: url("{{ url_for('static', filename='bg.jpg') }}") no-repeat center center fixed;
-            background-size: cover;
+            background: #faeee5;   /* ✅ Same color as top card */
             margin: 0;
             padding: 0;
             display: flex;
@@ -16,16 +15,35 @@
             height: 100vh;
         }
         .login-container {
-            width: 500px;
             background: #fdf1e8;
             padding: 50px;
             border-radius: 14px;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
             text-align: center;
+            width: 60%;  /* ✅ Desktop width */
+            max-width: 500px;
+            transition: width 0.3s ease;
         }
+
+        /* ✅ Responsive Width */
+        @media (max-width: 992px) {
+            .login-container {
+                width: 90%;
+            }
+        }
+        @media (max-width: 576px) {
+            .login-container {
+                width: 100%;
+                border-radius: 0;
+                box-shadow: none;
+            }
+        }
+
         .login-container img {
-            max-width: 336px;   /* 20% larger than previous 280px */
+            max-width: 336px;
             margin-bottom: 20px;
+            width: 100%;
+            height: auto;
         }
         input[type="text"], input[type="password"] {
             width: 100%;
@@ -76,7 +94,6 @@
 </head>
 <body>
     <div class="login-container">
-        <!-- Larger Name Logo -->
         <img src="{{ url_for('static', filename='name_logo.png') }}" alt="MX Learning Logo">
 
         <form method="POST">
