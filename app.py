@@ -26,7 +26,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
-# ✅ Schema (currently using prod)
+# ✅ Schema
 CURRENT_SCHEMA = os.getenv("APP_SCHEMA", "prod")
 
 # -------------------- USER MODEL --------------------
@@ -35,13 +35,16 @@ class User(db.Model, UserMixin):
     __table_args__ = {"schema": CURRENT_SCHEMA}
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True, nullable=False)
-    enabled = db.Column(db.Boolean, nullable=False, default=True)
-    password_hash = db.Column(db.String(255), nullable=False)  # clear text as requested
-    role = db.Column(db.String(50), nullable=False)  # student / teacher / admin
-    name = db.Column(db.String(150))
-    level_code = db.Column(db.String(50))
+    username = db.Column(db.String(20), unique=True, nullable=False)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    user_role = db.Column(db.String(50), nullable=False)   # student / teacher / admin
+    full_name = db.Column(db.String(150))
+    student_level = db.Column(db.String(50))               # updated column name
     hint = db.Column(db.String(255))
+
+    def get_id(self):
+        return str(self.id)
 
 # -------------------- FLASK-LOGIN SETUP --------------------
 login_manager = LoginManager(app)
@@ -62,17 +65,17 @@ def login():
         username = request.form.get("username")
         password = request.form.get("password")
 
-        user = User.query.filter_by(username=username, enabled=True).first()
+        user = User.query.filter_by(username=username, is_active=True).first()
 
         if user and user.password_hash == password:
             login_user(user)
             flash("Login successful!", "success")
 
-            if user.role == "student":
+            if user.user_role == "student":
                 return redirect(url_for("student_home"))
-            elif user.role == "teacher":
+            elif user.user_role == "teacher":
                 return redirect(url_for("teacher_home"))
-            elif user.role == "admin":
+            elif user.user_role == "admin":
                 return redirect(url_for("admin_home"))
             else:
                 flash("Unknown role. Contact admin.", "danger")
@@ -83,17 +86,17 @@ def login():
 @app.route("/studenthome")
 @login_required
 def student_home():
-    return render_template("student_home.html", name=current_user.name)
+    return render_template("student_home.html", name=current_user.full_name)
 
 @app.route("/teacherhome")
 @login_required
 def teacher_home():
-    return render_template("teacher_home.html", name=current_user.name)
+    return render_template("teacher_home.html", name=current_user.full_name)
 
 @app.route("/adminhome")
 @login_required
 def admin_home():
-    return render_template("admin_home.html", name=current_user.name)
+    return render_template("admin_home.html", name=current_user.full_name)
 
 @app.route("/logout")
 @login_required
