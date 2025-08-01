@@ -16,3 +16,6 @@ mx_app.db
 
 # Logs
 *.log
+
+# Ignore environment files
+.env

@@ -29,32 +29,41 @@ db = SQLAlchemy(app)
 # ✅ Schema
 CURRENT_SCHEMA = os.getenv("APP_SCHEMA", "prod")
 
-# -------------------- USER MODEL --------------------
-class User(db.Model, UserMixin):
-    __tablename__ = "user_table"
-    __table_args__ = {"schema": CURRENT_SCHEMA}
-
+# ------------------- MODELS ------------------- #
+class UserTable(db.Model, UserMixin):
+    __tablename__ = 'user_table'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
-    is_active = db.Column(db.Boolean, nullable=False, default=True)
-    password_hash = db.Column(db.String(255), nullable=False)
-    user_role = db.Column(db.String(50), nullable=False)   # student / teacher / admin
-    full_name = db.Column(db.String(150))
-    student_level = db.Column(db.String(50))               # updated column name
-    hint = db.Column(db.String(255))
+    username = db.Column(db.String, unique=True)
+    full_name = db.Column(db.String)
+    user_role = db.Column(db.String)   # admin / teacher / student
+    password_hash = db.Column(db.String)  # for demo only, use hashing in prod
+    is_active = db.Column(db.Boolean, default=True)
 
     def get_id(self):
         return str(self.id)
 
-# -------------------- FLASK-LOGIN SETUP --------------------
+class UserWorks(db.Model):
+    __tablename__ = 'user_works'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    username = db.Column(db.String, primary_key=True)
+    pack_id = db.Column(db.Integer, primary_key=True)
+    work_id = db.Column(db.Integer, primary_key=True)
+    pack_desc = db.Column(db.String)
+    work_name = db.Column(db.String)
+    work_link = db.Column(db.String)
+    work_status = db.Column(db.String)
+    work_rank = db.Column(db.Integer)
+
+# -------------------- FLASK-LOGIN SETUP -------------------- #
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return UserTable.query.get(int(user_id))
 
-# -------------------- ROUTES --------------------
+# -------------------- ROUTES -------------------- #
 @app.route("/")
 def index():
     return redirect(url_for("login"))
@@ -64,8 +73,7 @@ def login():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-
-        user = User.query.filter_by(username=username, is_active=True).first()
+        user = UserTable.query.filter_by(username=username, is_active=True).first()
 
         if user and user.password_hash == password:
             login_user(user)
@@ -83,21 +91,58 @@ def login():
             flash("Invalid credentials", "danger")
     return render_template("login.html")
 
-@app.route("/studenthome")
+# ------------------- STUDENT HOME ------------------- #
+@app.route('/studenthome')
 @login_required
 def student_home():
-    return render_template("student_home.html", name=current_user.full_name)
+    results = db.session.query(
+        UserWorks.pack_id,
+        UserWorks.pack_desc,
+        UserWorks.work_name,
+        UserWorks.work_link,
+        UserWorks.username,
+        UserWorks.work_id
+    ).filter(
+        UserWorks.username == current_user.username,
+        UserWorks.work_status == 'assigned'
+    ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
 
+    data = []
+    pack_map = {}
+    for pack_id, pack_desc, work_name, work_link, username, work_id in results:
+        if pack_id not in pack_map:
+            pack_entry = {"pack_desc": pack_desc, "works": []}
+            pack_map[pack_id] = pack_entry
+            data.append(pack_entry)
+
+        # ✅ include username and work_id in works list
+        pack_map[pack_id]["works"].append({
+            "work_name": work_name,
+            "work_link": work_link,
+            "username": username,
+            "work_id": work_id
+        })
+
+    return render_template(
+        'student_home.html',
+        full_name=current_user.full_name,
+        grouped=data
+    )
+
+
+# ------------------- TEACHER HOME ------------------- #
 @app.route("/teacherhome")
 @login_required
 def teacher_home():
     return render_template("teacher_home.html", name=current_user.full_name)
 
+# ------------------- ADMIN HOME ------------------- #
 @app.route("/adminhome")
 @login_required
 def admin_home():
     return render_template("admin_home.html", name=current_user.full_name)
 
+# ------------------- LOG OUT ------------------- #
 @app.route("/logout")
 @login_required
 def logout():
@@ -105,6 +150,6 @@ def logout():
     flash("You have been logged out.", "info")
     return redirect(url_for("login"))
 
-# -------------------- RUN --------------------
+# -------------------- RUN -------------------- #
 if __name__ == "__main__":
     app.run(debug=True)
