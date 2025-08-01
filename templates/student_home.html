@@ -99,9 +99,26 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: pointer;
     }
 
-    .card-body { padding: 15px 20px; }
+    .card-header i.chevron {
+      transition: transform 0.3s;
+    }
+    .card-header.open i.chevron {
+      transform: rotate(180deg);
+    }
+
+    .card-body {
+      max-height: 0;
+      overflow: hidden;
+      padding: 0 20px;
+      transition: max-height 0.4s ease, padding 0.3s;
+    }
+    .card-body.open {
+      max-height: 500px;
+      padding: 15px 20px;
+    }
 
     .work-item {
       padding: 8px 0;
@@ -144,8 +161,8 @@
 
   <div class="container">
     <div class="card">
-      <div class="card-header topic-one">Number Patterns - One Step Patterns</div>
-      <div class="card-body">
+      <div class="card-header open topic-one">Number Patterns - One Step Patterns <i class="fas fa-chevron-down chevron"></i></div>
+      <div class="card-body open">
         <div class="work-item"><i class="fa fa-play-circle"></i><a class="work-link" href="#">V-2120 - Number Patterns - Introduction</a></div>
         <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7132 - Number Pattern - BI</a></div>
         <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7134 - Number Pattern - BD</a></div>
@@ -154,13 +171,24 @@
     </div>
 
     <div class="card">
-      <div class="card-header topic-two">Number Patterns - Two Step Patterns</div>
-      <div class="card-body">
+      <div class="card-header open topic-two">Number Patterns - Two Step Patterns <i class="fas fa-chevron-down chevron"></i></div>
+      <div class="card-body open">
         <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7137 - Number Pattern - II</a></div>
         <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7140 - Number Pattern - ALT</a></div>
       </div>
     </div>
   </div>
+
+  <script>
+    document.querySelectorAll('.card-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const body = header.nextElementSibling;
+        const isOpen = body.classList.contains('open');
+        body.classList.toggle('open');
+        header.classList.toggle('open', !isOpen);
+      });
+    });
+  </script>
 
 </body>
 </html>
