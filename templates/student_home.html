@@ -1,194 +1,283 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Student Home - MX Learning</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: #faf7f5;
-      margin: 0;
-      padding: 0;
-      color: #333;
-    }
+    <meta charset="UTF-8">
+    <title>Student Home - MX Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #faf7f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
 
-    /* Banner */
-    .banner {
-      max-width: 900px;
-      height: 140px;
-      margin: 30px auto 0;
-      border-radius: 12px;
-      background: url("static/banner-with-logo.png") center/cover no-repeat;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-    }
+        /* Banner */
+        .banner {
+            max-width: 900px;
+            height: 140px;
+            margin: 30px auto 0;
+            border-radius: 12px;
+            background: url("{{ url_for('static', filename='banner-with-logo.png') }}") center/cover no-repeat;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
 
-    .banner-separator {
-      max-width: 900px;
-      margin: 12px auto 0;
-      border-bottom: 1px solid #ccc;
-    }
+        .banner-separator {
+            max-width: 900px;
+            margin: 12px auto 0;
+            border-bottom: 1px solid #ccc;
+        }
 
-    /* Student Info Card */
-    .student-card {
-      max-width: 900px;
-      margin: 0 auto 5px;
-      background: #faf7f5;
-      border-radius: 12px;
-      padding: 12px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+        /* Student Info */
+        .student-card {
+            max-width: 900px;
+            margin: 0 auto 5px;
+            background: #faf7f5;
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-    .student-label {
-      font-size: 1.1em;
-      font-weight: 600;
-      color: #000;
-    }
+        .student-label {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #000;
+        }
 
-    .student-name {
-      font-size: 1.1em;
-      font-weight: 600;
-      color: #800000;
-      margin-left: 5px;
-    }
+        .student-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #800000;
+            margin-left: 5px;
+        }
 
-    /* Links on right */
-    .links-right {
-      display: flex;
-      gap: 30px;
-      align-items: center;
-      padding-right: 10px;
-    }
+        .links-right {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            padding-right: 10px;
+        }
 
-    .nav-link {
-      color: #1b3a6f;
-      text-decoration: none;
-      font-weight: 500;
-      font-size: 1em;
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .nav-link i { color: #1b3a6f; font-size: 1em; }
-    .nav-link:hover { text-decoration: underline; }
+        .nav-link {
+            color: #1b3a6f;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
 
-    /* Separator after name */
-    .name-separator {
-      max-width: 900px;
-      margin: 5px auto 20px;
-      border-bottom: 1px solid #ccc;
-    }
+        .nav-link i {
+            color: #1b3a6f;
+        }
 
-    /* Topic Cards */
-    .container { max-width: 900px; margin: 0 auto; padding: 0 15px; }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-      overflow: hidden;
-    }
+        .nav-link:hover {
+            text-decoration: underline;
+        }
 
-    .card-header {
-      padding: 15px 20px;
-      font-size: 1.2em;
-      font-weight: 600;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      cursor: pointer;
-    }
+        .name-separator {
+            max-width: 900px;
+            margin: 5px auto 20px;
+            border-bottom: 1px solid #ccc;
+        }
 
-    .card-header i.chevron {
-      transition: transform 0.3s;
-    }
-    .card-header.open i.chevron {
-      transform: rotate(180deg);
-    }
+        /* Cards */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 15px;
+            transition: opacity 0.3s ease;
+        }
 
-    .card-body {
-      max-height: 0;
-      overflow: hidden;
-      padding: 0 20px;
-      transition: max-height 0.4s ease, padding 0.3s;
-    }
-    .card-body.open {
-      max-height: 500px;
-      padding: 15px 20px;
-    }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
 
-    .work-item {
-      padding: 8px 0;
-      border-bottom: 1px solid #f0f0f0;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .work-item:last-child { border-bottom: none; }
+        .card-header {
+            background: #eef0f4;
+            padding: 15px 20px;
+            font-size: 1.2em;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
 
-    .work-item i { color: #1b3a6f; font-size: 0.9em; }
-    .work-link { text-decoration: none; color: inherit; font-weight: 500; transition: color 0.2s; }
-    .work-link:hover { color: #a01919; }
+        .card-header i.chevron {
+            transition: transform 0.3s;
+        }
 
-    .topic-one { background: #fff5f5; }
-    .topic-two { background: #f5fff8; }
+        .card-header.open i.chevron {
+            transform: rotate(180deg);
+        }
 
-    @media (max-width: 600px) {
-      .banner { height: 110px; }
-      .student-label, .student-name { font-size: 1em; }
-      .nav-link { font-size: 0.9em; }
-      .card-header { font-size: 1em; }
-    }
-  </style>
+        .card-body {
+            overflow: hidden;
+            padding: 0 20px;
+            transition: max-height 0.4s ease, padding 0.3s;
+            max-height: 0;
+        }
+
+        .card-body.open {
+            max-height: 500px;
+            /* enough space for content */
+            padding: 15px 20px;
+        }
+
+        .work-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .work-item:last-child {
+            border-bottom: none;
+        }
+
+        .work-item i {
+            color: #1b3a6f;
+            font-size: 0.9em;
+        }
+
+        .work-link {
+            text-decoration: none;
+            color: inherit;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .work-link:hover {
+            color: #a01919;
+        }
+
+        .refresh-btn {
+            margin-right: 12px;
+            cursor: pointer;
+            color: #1b3a6f;
+            transition: transform 0.3s;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(90deg);
+            color: #003366;
+        }
+
+        @media (max-width: 600px) {
+            .banner {
+                height: 110px;
+            }
+
+            .student-label,
+            .student-name {
+                font-size: 1em;
+            }
+
+            .nav-link {
+                font-size: 0.9em;
+            }
+
+            .card-header {
+                font-size: 1em;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-  <div class="banner"></div>
-  <div class="banner-separator"></div>
+    <!-- Banner -->
+    <div class="banner"></div>
+    <div class="banner-separator"></div>
 
-  <div class="student-card">
-    <div><span class="student-label">Student:</span><span class="student-name"> Alice Du</span></div>
-    <div class="links-right">
-      <a href="#" class="nav-link"><i class="fa fa-file-alt"></i> Recent Submissions</a>
-      <a href="#" class="nav-link"><i class="fa fa-sign-out-alt"></i> Logout</a>
-    </div>
-  </div>
-
-  <div class="name-separator"></div>
-
-  <div class="container">
-    <div class="card">
-      <div class="card-header open topic-one">Number Patterns - One Step Patterns <i class="fas fa-chevron-down chevron"></i></div>
-      <div class="card-body open">
-        <div class="work-item"><i class="fa fa-play-circle"></i><a class="work-link" href="#">V-2120 - Number Patterns - Introduction</a></div>
-        <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7132 - Number Pattern - BI</a></div>
-        <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7134 - Number Pattern - BD</a></div>
-        <div class="work-item"><i class="fa fa-file-alt"></i><a class="work-link" href="#">T-5128 - Number Pattern - BI</a></div>
-      </div>
+    <!-- Student Info -->
+    <div class="student-card">
+        <div><span class="student-label">Student:</span><span class="student-name"> {{ full_name }} </span></div>
+        <div class="links-right">
+            <a href="{{ url_for('recent_submissions') }}" class="nav-link"><i class="fa fa-file-alt"></i> Recent
+                Submissions</a>
+            <a href="{{ url_for('logout') }}" class="nav-link"><i class="fa fa-sign-out-alt"></i> Logout</a>
+        </div>
     </div>
 
-    <div class="card">
-      <div class="card-header open topic-two">Number Patterns - Two Step Patterns <i class="fas fa-chevron-down chevron"></i></div>
-      <div class="card-body open">
-        <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7137 - Number Pattern - II</a></div>
-        <div class="work-item"><i class="fa fa-question-circle"></i><a class="work-link" href="#">Q-7140 - Number Pattern - ALT</a></div>
-      </div>
-    </div>
-  </div>
+    <div class="name-separator"></div>
 
-  <script>
-    document.querySelectorAll('.card-header').forEach(header => {
-      header.addEventListener('click', () => {
-        const body = header.nextElementSibling;
-        const isOpen = body.classList.contains('open');
-        body.classList.toggle('open');
-        header.classList.toggle('open', !isOpen);
-      });
-    });
-  </script>
+    <!-- Cards -->
+    <div class="container" id="cards-container">
+        {% include "_cards.html" %}
+    </div>
+
+    <!-- Refresh All Cards via Any Button -->
+    <script>
+        function attachCardHeaderToggle() {
+            document.querySelectorAll('.card-header').forEach(header => {
+                header.onclick = (e) => {
+                    if (e.target.classList.contains('refresh-btn') || e.target.closest('.refresh-btn')) return;
+
+                    const body = header.nextElementSibling;
+                    const isOpen = body.classList.contains('open');
+
+                    if (isOpen) {
+                        body.style.maxHeight = "0px";
+                        body.classList.remove('open');
+                        header.classList.remove('open');
+                    } else {
+                        body.classList.add('open');
+                        body.style.maxHeight = body.scrollHeight + "px"; // dynamically expand
+                        header.classList.add('open');
+                    }
+                };
+            });
+        }
+
+
+        function attachRefreshHandlers() {
+            document.querySelectorAll('.refresh-btn').forEach(btn => {
+                btn.onclick = async (e) => {
+                    e.stopPropagation(); // ✅ don't toggle collapse
+                    btn.classList.add('fa-spin');
+
+                    try {
+                        const response = await fetch('/refresh_all');
+                        const html = await response.text();
+
+                        const container = document.getElementById('cards-container');
+                        container.style.opacity = 0;
+                        setTimeout(() => {
+                            container.innerHTML = html;
+                            container.style.opacity = 1;
+
+                            // ✅ Rebind both refresh and collapse after replacing HTML
+                            attachRefreshHandlers();
+                            attachCardHeaderToggle();
+                        }, 200);
+                    } catch (err) {
+                        alert('Error refreshing cards');
+                    } finally {
+                        btn.classList.remove('fa-spin');
+                    }
+                };
+            });
+        }
+
+        // ✅ Initial bindings
+        attachRefreshHandlers();
+        attachCardHeaderToggle();
+    </script>
+
 
 </body>
+
 </html>
