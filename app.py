@@ -55,7 +55,7 @@ class UserWorks(db.Model):
     __table_args__ = {'schema': CURRENT_SCHEMA}
     username = db.Column(db.String, primary_key=True)
     pack_id = db.Column(db.Integer, primary_key=True)
-    work_id = db.Column(db.Integer, primary_key=True)
+    work_id = db.Column(db.String, primary_key=True)
     pack_desc = db.Column(db.String)
     work_name = db.Column(db.String)
     work_link = db.Column(db.String)
