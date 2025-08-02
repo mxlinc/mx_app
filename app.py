@@ -4,6 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from dotenv import load_dotenv
 from flask import jsonify
+import html2text
+
 
 # ✅ Load environment variables
 load_dotenv()

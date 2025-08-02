@@ -7,3 +7,4 @@ sqlalchemy==2.0.42
 psycopg[binary]==3.2.9
 typing-extensions==4.14.1
 packaging==25.0
+html2text
