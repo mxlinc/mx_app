@@ -5,6 +5,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from dotenv import load_dotenv
 from flask import jsonify
 import html2text
+from sqlalchemy.dialects.postgresql import JSON
 
 
 # ✅ Load environment variables
@@ -61,6 +62,7 @@ class UserWorks(db.Model):
     work_status = db.Column(db.String)
     work_rank = db.Column(db.Integer)
 
+
 class EmailMessage(db.Model):
     __tablename__ = 'emails'
     __table_args__ = {'schema': CURRENT_SCHEMA}
@@ -68,6 +70,7 @@ class EmailMessage(db.Model):
     sender = db.Column(db.String)
     subject = db.Column(db.String)
     body = db.Column(db.Text)
+    parsed = db.Column(JSON) 
 
 
 # -------------------- FLASK-LOGIN SETUP -------------------- #
