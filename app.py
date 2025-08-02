@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from flask import jsonify
 import html2text
 from sqlalchemy.dialects.postgresql import JSON
+from datetime import datetime
 
 
 # ✅ Load environment variables
@@ -53,14 +54,25 @@ class UserTable(db.Model, UserMixin):
 class UserWorks(db.Model):
     __tablename__ = 'user_works'
     __table_args__ = {'schema': CURRENT_SCHEMA}
+
     username = db.Column(db.String, primary_key=True)
     pack_id = db.Column(db.Integer, primary_key=True)
     work_id = db.Column(db.String, primary_key=True)
-    pack_desc = db.Column(db.String)
-    work_name = db.Column(db.String)
-    work_link = db.Column(db.String)
-    work_status = db.Column(db.String)
+
+    work_level = db.Column(db.Text)
+    work_name = db.Column(db.Text)
+    work_link = db.Column(db.Text)
     work_rank = db.Column(db.Integer)
+    pack_desc = db.Column(db.Text)
+
+    submitted_at = db.Column(db.DateTime)             # ✅ new column
+    work_score = db.Column(db.String(20))             # ✅ new column
+    incorrect = db.Column(db.String(100))             # ✅ new column
+    work_views = db.Column(db.Integer)
+
+    work_status = db.Column(db.String(10), default='future')
+    last_updated = db.Column(db.DateTime)
+
 
 
 class EmailMessage(db.Model):
@@ -273,17 +285,15 @@ def parse_email_content(subject, html_body):
 
 
 # -------------------- UPDATE WORKS WITH RESULTS -------------------- #
-
 def update_work_with_result(result):
     """
-    Updates user_works table for the matching username and work_id
-    using the parsed result object.
+    Updates user_works with status 'done' and fills submitted_at, work_score, incorrect
+    from the parsed result object.
     """
     if "user" not in result or "id" not in result or result["id"] == "INVALID":
         print("Invalid result, cannot update work.")
         return
 
-    # ✅ ensure work_id stays as string
     work_id_value = str(result["id"])
 
     updated_rows = UserWorks.query.filter(
@@ -297,13 +307,13 @@ def update_work_with_result(result):
 
     for row in updated_rows:
         row.work_status = "done"
+        row.submitted_at = datetime.utcnow()  # ✅ store current timestamp
+        row.work_score = result.get("score")  # ✅ update score
+        row.incorrect = result.get("incorrect")  # ✅ update incorrect questions
+        row.last_updated = datetime.utcnow()  # ✅ update last_updated timestamp
+
     db.session.commit()
-
-    print(f"Updated {len(updated_rows)} user_works rows for user={result['user']} id={work_id_value}")
-
-
-
-
+    print(f"Updated {len(updated_rows)} rows with result={result}")
 
 
 # -------------------- RUN -------------------- #
