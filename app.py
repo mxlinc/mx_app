@@ -273,25 +273,36 @@ def parse_email_content(subject, html_body):
 
 
 # -------------------- UPDATE WORKS WITH RESULTS -------------------- #
+
 def update_work_with_result(result):
+    """
+    Updates user_works table for the matching username and work_id
+    using the parsed result object.
+    """
     if "user" not in result or "id" not in result or result["id"] == "INVALID":
         print("Invalid result, cannot update work.")
         return
 
-    updated_rows = UserWorks.query.filter_by(
-        username=result["user"],
-        work_id=result["id"]
+    # ✅ ensure work_id stays as string
+    work_id_value = str(result["id"])
+
+    updated_rows = UserWorks.query.filter(
+        UserWorks.username == result["user"],
+        UserWorks.work_id == work_id_value
     ).all()
 
     if not updated_rows:
-        print(f"No matching work found for user={result['user']} id={result['id']}")
+        print(f"No matching work found for user={result['user']} id={work_id_value}")
         return
 
     for row in updated_rows:
         row.work_status = "done"
     db.session.commit()
 
-    print(f"Updated {len(updated_rows)} user_works rows for user={result['user']} id={result['id']}")
+    print(f"Updated {len(updated_rows)} user_works rows for user={result['user']} id={work_id_value}")
+
+
+
 
 
 
