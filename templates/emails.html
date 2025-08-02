@@ -12,6 +12,22 @@
   </style>
 </head>
 <body>
+
+<h2>Latest Parsed Result</h2>
+{% if last_result %}
+  <div class="email-card">
+    <pre>{{ last_result | tojson(indent=2) }}</pre>
+  </div>
+{% else %}
+  <p>No email processed recently.</p>
+{% endif %}
+
+<hr>
+<h2>Logged Emails</h2>
+
+
+
+
   <h2>Received Emails</h2>
   {% if messages|length == 0 %}
     <p>No emails received yet.</p>

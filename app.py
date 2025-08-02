@@ -30,6 +30,9 @@ db = SQLAlchemy(app)
 # ✅ Schema
 CURRENT_SCHEMA = os.getenv("APP_SCHEMA", "prod")
 
+last_result = None  # stores last parsed email result for display
+
+
 # ------------------- MODELS ------------------- #
 class UserTable(db.Model, UserMixin):
     __tablename__ = 'user_table'
@@ -205,23 +208,86 @@ def refresh_all():
 # ------------------- Mailgun Webhook ------------------- #
 @app.route('/mailgun_webhook', methods=['POST'])
 def mailgun_webhook():
+    global last_result
+
     sender = request.form.get('sender', 'Unknown Sender')
     subject = request.form.get('subject', '(No Subject)')
-    body = request.form.get('body-plain', '(No Body)')
+    html_body = request.form.get('body-html', '')
+    plain_body = request.form.get('body-plain', '(No Body)')
 
-    # ✅ Store in DB (for persistence)
-    email = EmailMessage(sender=sender, subject=subject, body=body)
-    db.session.add(email)
-    db.session.commit()
+    # ✅ Parse email to build result
+    result = parse_email_content(subject, html_body or plain_body)
+    last_result = result  # ✅ store latest parsed object for display
 
-    return "Email received", 200
+    # ✅ Option to log email
+    LOG_EMAILS = True  # set to False to disable logging
+    if LOG_EMAILS:
+        email = EmailMessage(sender=sender, subject=subject, body=plain_body, parsed=result)
+        db.session.add(email)
+        db.session.commit()
+
+    # ✅ Update user_works table
+    update_work_with_result(result)
+
+    return "Email processed", 200
+
 
 # ------------------- Email page (temp) ------------------- #
 @app.route('/emails')
 @login_required
 def emails():
     messages = EmailMessage.query.order_by(EmailMessage.id.desc()).limit(20).all()
-    return render_template('emails.html', messages=messages)
+    global last_result
+    return render_template('emails.html', messages=messages, last_result=last_result)
+
+
+# -------------------- PARSE EMAIL -------------------- #
+def parse_email_content(subject, html_body):
+    txt = html2text.html2text(html_body)
+    result = {}
+
+    parts = subject.split("\"")
+    if len(parts) > 3:
+        result["id"] = parts[1]
+        result["user"] = parts[3]
+    else:
+        result["id"] = "INVALID"
+        return result
+
+    incorrect_questions = []
+    for line in txt.splitlines():
+        if line.startswith("Date/Time:"):
+            result["time"] = line.replace("Date/Time:", "").strip()
+        if line.startswith("Answered:"):
+            result["score"] = line.replace("Answered:", "").strip()
+        if "Incorrect" in line:
+            incorrect_questions.append(line.strip())
+
+    result["incorrect"] = "All correct!" if not incorrect_questions else ", ".join(incorrect_questions)
+    return result
+
+
+# -------------------- UPDATE WORKS WITH RESULTS -------------------- #
+def update_work_with_result(result):
+    if "user" not in result or "id" not in result or result["id"] == "INVALID":
+        print("Invalid result, cannot update work.")
+        return
+
+    updated_rows = UserWorks.query.filter_by(
+        username=result["user"],
+        work_id=result["id"]
+    ).all()
+
+    if not updated_rows:
+        print(f"No matching work found for user={result['user']} id={result['id']}")
+        return
+
+    for row in updated_rows:
+        row.work_status = "done"
+    db.session.commit()
+
+    print(f"Updated {len(updated_rows)} user_works rows for user={result['user']} id={result['id']}")
+
 
 
 # -------------------- RUN -------------------- #
