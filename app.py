@@ -7,6 +7,7 @@ from flask import jsonify
 import html2text
 from sqlalchemy.dialects.postgresql import JSON
 from datetime import datetime
+import re
 
 
 # ✅ Load environment variables
@@ -263,6 +264,7 @@ def parse_email_content(subject, html_body):
     txt = html2text.html2text(html_body)
     result = {}
 
+    # Extract ID and User from subject
     parts = subject.split("\"")
     if len(parts) > 3:
         result["id"] = parts[1]
@@ -271,17 +273,33 @@ def parse_email_content(subject, html_body):
         result["id"] = "INVALID"
         return result
 
-    incorrect_questions = []
+    incorrect_numbers = []
+
     for line in txt.splitlines():
         if line.startswith("Date/Time:"):
             result["time"] = line.replace("Date/Time:", "").strip()
-        if line.startswith("Answered:"):
-            result["score"] = line.replace("Answered:", "").strip()
-        if "Incorrect" in line:
-            incorrect_questions.append(line.strip())
 
-    result["incorrect"] = "All correct!" if not incorrect_questions else ", ".join(incorrect_questions)
+        if line.startswith("Answered:"):
+            raw_score = line.replace("Answered:", "").strip()
+            # ✅ Normalize "0 / 5" → "0 out of 5"
+            match = re.match(r'(\d+)\s*/\s*(\d+)', raw_score)
+            result["score"] = f"{match.group(1)} out of {match.group(2)}" if match else raw_score
+
+        if "Incorrect" in line:
+            match = re.search(r'Question\s*(\d+)', line, re.IGNORECASE)
+            if match:
+                incorrect_numbers.append(match.group(1))
+
+    result["incorrect"] = "All correct!" if not incorrect_numbers else "Q: " + ", ".join(incorrect_numbers)
     return result
+
+
+
+
+
+
+
+
 
 
 # -------------------- UPDATE WORKS WITH RESULTS -------------------- #
