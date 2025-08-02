@@ -179,7 +179,22 @@ def admin_home():
 @app.route('/recent')
 @login_required
 def recent_submissions():
-    return render_template('recent_submissions.html', full_name=current_user.full_name)
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+
+    query = UserWorks.query.filter_by(
+        username=current_user.username,
+        work_status='done'
+    ).order_by(UserWorks.submitted_at.desc())
+
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    return render_template(
+        'recent_submissions.html',
+        full_name=current_user.full_name,
+        submissions=pagination.items,
+        pagination=pagination
+    )
 
 # ------------------- LOG OUT ------------------- #
 @app.route("/logout")
@@ -264,7 +279,7 @@ def parse_email_content(subject, html_body):
     txt = html2text.html2text(html_body)
     result = {}
 
-    # Extract ID and User from subject
+    # Extract ID & user
     parts = subject.split("\"")
     if len(parts) > 3:
         result["id"] = parts[1]
@@ -281,39 +296,26 @@ def parse_email_content(subject, html_body):
 
         if line.startswith("Answered:"):
             raw_score = line.replace("Answered:", "").strip()
-            # ✅ Normalize "0 / 5" → "0 out of 5"
-            match = re.match(r'(\d+)\s*/\s*(\d+)', raw_score)
-            result["score"] = f"{match.group(1)} out of {match.group(2)}" if match else raw_score
+            clean_score = raw_score.replace("**", "").replace("|", "").strip()
+            match = re.match(r'(\d+)\s*/\s*(\d+)', clean_score)
+            result["score"] = f"{match.group(1)} out of {match.group(2)}" if match else clean_score
 
         if "Incorrect" in line:
-            match = re.search(r'Question\s*(\d+)', line, re.IGNORECASE)
-            if match:
-                incorrect_numbers.append(match.group(1))
+            m = re.search(r'Question\s*(\d+)', line, re.IGNORECASE)
+            if m:
+                incorrect_numbers.append(m.group(1))
 
     result["incorrect"] = "All correct!" if not incorrect_numbers else "Q: " + ", ".join(incorrect_numbers)
     return result
 
 
-
-
-
-
-
-
-
-
 # -------------------- UPDATE WORKS WITH RESULTS -------------------- #
 def update_work_with_result(result):
-    """
-    Updates user_works with status 'done' and fills submitted_at, work_score, incorrect
-    from the parsed result object.
-    """
     if "user" not in result or "id" not in result or result["id"] == "INVALID":
         print("Invalid result, cannot update work.")
         return
 
     work_id_value = str(result["id"])
-
     updated_rows = UserWorks.query.filter(
         UserWorks.username == result["user"],
         UserWorks.work_id == work_id_value
@@ -325,13 +327,19 @@ def update_work_with_result(result):
 
     for row in updated_rows:
         row.work_status = "done"
-        row.submitted_at = datetime.utcnow()  # ✅ store current timestamp
-        row.work_score = result.get("score")  # ✅ update score
-        row.incorrect = result.get("incorrect")  # ✅ update incorrect questions
-        row.last_updated = datetime.utcnow()  # ✅ update last_updated timestamp
+        row.submitted_at = datetime.utcnow()
+        row.work_score = result.get("score")
+
+        incorrect_value = result.get("incorrect", "")
+        if incorrect_value and len(incorrect_value) > 100:
+            incorrect_value = incorrect_value[:97] + "..."
+        row.incorrect = incorrect_value
+
+        row.last_updated = datetime.utcnow()
 
     db.session.commit()
     print(f"Updated {len(updated_rows)} rows with result={result}")
+
 
 
 # -------------------- RUN -------------------- #
