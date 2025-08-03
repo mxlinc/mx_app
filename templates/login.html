@@ -15,8 +15,8 @@
         }
 
         .banner {
-            width: 900px; 
-            max-width: 900px; 
+            width: 900px;
+            max-width: 900px;
             height: 140px;
             margin: 30px auto 0;
             border-radius: 12px;
@@ -30,22 +30,14 @@
             border-bottom: 1px solid #ccc;
         }
 
-        .info-card {
-            width: 900px; 
+        .login-card {
+            width: 450px; 
+            max-width: 90%;
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
             padding: 20px 25px;
             margin: 0 auto 30px;
-        }
-
-        .login-card {
-            width: 450px;  /* fixed half of the banner width */
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-            padding: 20px 25px;
-            margin: 0 auto 30px; /* center horizontally */
         }
 
         .login-card h4 {
@@ -75,7 +67,7 @@
         }
 
         .form-group input {
-            width: 100%;
+            width: 80%;
             padding: 8px 10px;
             border: 1px solid #ccc;
             border-radius: 8px;
@@ -112,27 +104,40 @@
             color: #a00000;
             text-align: center;
         }
+
+        .info-card {
+            width: 900px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px 25px;
+            margin: 0 auto 30px;
+        }
+
+        /* ✅ Mobile Adjustments */
+        @media (max-width: 600px) {
+            .banner, .banner-separator, .info-card {
+                width: 95%; 
+            }
+            .login-card {
+                width: 95%; 
+                max-width: 95%; 
+                padding: 15px;
+            }
+            .form-container {
+                width: 95%;
+            }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Banner -->
     <div class="banner"></div>
     <div class="banner-separator"></div>
 
-    <!-- About Program -->
-    <div class="info-card">
-        <p>At MX Learning, we are committed to delivering <strong>personalized math learning</strong> to students across
-            North America. Every weekend, we curate <strong>customized work packages</strong> based on each student’s
-            progress. These packages include concise video lessons introducing new concepts, interactive online quizzes
-            and practice tests and optional worksheets for extra practice.</p>
-        <p>Our human-in-the-loop approach ensures <strong>students have direct access to the teacher preparing
-            their work.</strong> They can review submissions with the teacher and ask questions during live office hours on <strong>Sundays 4:00 to 5:00 PM ET</strong> & <strong>Thursdays: 8:00 to 9:00 PM ET.</strong></p>
-    </div>
-
-    <!-- Login Card -->
+    <!-- ✅ Login Card First -->
     <div class="login-card">
-        <h4>Existing Student Log In</h4>
+        <h4 align="center">Student Log In</h4>
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, msg in messages %}
@@ -154,6 +159,16 @@
             </div>
             <button type="submit" class="login-btn">Log In</button>
         </form>
+    </div>
+
+    <!-- Info Card Comes After -->
+    <div class="info-card">
+        <p>At MX Learning, we are committed to delivering <strong>personalized math learning</strong> to students across
+            North America. Every weekend, we curate <strong>customized work packages</strong> based on each student’s
+            progress. These packages include concise video lessons introducing new concepts, interactive online quizzes
+            and practice tests and optional worksheets for extra practice.</p>
+        <p>Our human-in-the-loop approach ensures <strong>students have direct access to the teacher preparing
+            their work.</strong> They can review submissions with the teacher and ask questions during live office hours on <strong>Sundays 4:00 to 5:00 PM ET</strong> & <strong>Thursdays: 8:00 to 9:00 PM ET.</strong></p>
     </div>
 
 </body>
