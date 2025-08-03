@@ -341,6 +341,25 @@ def update_work_with_result(result):
     print(f"Updated {len(updated_rows)} rows with result={result}")
 
 
+# ------------------- REQUEST ASSESSMENT ------------------- #
+@app.route('/request_assessment', methods=['POST'])
+def request_assessment():
+    student_name = request.form.get('student_name')
+    grade = request.form.get('grade')
+    phone = request.form.get('phone')
+    note = request.form.get('note')
+
+    # ✅ For now, just log to console (or handle storage as needed)
+    print(f"New assessment request: Name={student_name}, Grade={grade}, Phone={phone}, Note={note}")
+
+    # Optionally, save to DB if you have a table for assessments
+    # new_request = Assessment(student_name=student_name, grade=grade, phone=phone, note=note)
+    # db.session.add(new_request)
+    # db.session.commit()
+
+    flash("Your assessment request has been submitted successfully!", "info")
+    return redirect(url_for('login'))
+
 
 # -------------------- RUN -------------------- #
 if __name__ == "__main__":

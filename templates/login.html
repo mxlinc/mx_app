@@ -1,113 +1,179 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Login - MX Learning</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #faeee5;   /* ✅ Same color as top card */
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-        .login-container {
-            background: #fdf1e8;
-            padding: 50px;
-            border-radius: 14px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-            text-align: center;
-            width: 60%;  /* ✅ Desktop width */
-            max-width: 500px;
-            transition: width 0.3s ease;
-        }
+  <meta charset="UTF-8">
+  <title>Login - MX Learning</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #faf7f5;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
 
-        /* ✅ Responsive Width */
-        @media (max-width: 992px) {
-            .login-container {
-                width: 90%;
-            }
-        }
-        @media (max-width: 576px) {
-            .login-container {
-                width: 100%;
-                border-radius: 0;
-                box-shadow: none;
-            }
-        }
+    /* Banner */
+    .banner {
+      max-width: 900px;
+      height: 140px;
+      margin: 30px auto 0;
+      border-radius: 12px;
+      background: url("{{ url_for('static', filename='banner-with-logo.png') }}") center/cover no-repeat;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
 
-        .login-container img {
-            max-width: 336px;
-            margin-bottom: 20px;
-            width: 100%;
-            height: auto;
-        }
-        input[type="text"], input[type="password"] {
-            width: 100%;
-            padding: 16px;
-            margin: 14px 0;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 17px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: #12213f;
-            color: white;
-            padding: 16px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 19px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        button:hover {
-            background-color: #0d192f;
-        }
-        .flash {
-            margin-top: 18px;
-            padding: 14px;
-            border-radius: 6px;
-            font-size: 16px;
-        }
-        .flash.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        .flash.info {
-            background: #cce5ff;
-            color: #004085;
-            border: 1px solid #b8daff;
-        }
-        .flash.danger {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-    </style>
+    .banner-separator {
+      max-width: 900px;
+      margin: 12px auto 20px;
+      border-bottom: 1px solid #ccc;
+    }
+
+    /* Unified Card */
+    .login-card {
+      max-width: 900px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+      padding: 20px 25px;
+      margin: 0 auto 30px;
+    }
+
+    .login-card h3 {
+      margin-top: 0;
+      color: #1b3a6f;
+      font-weight: 600;
+      font-size: 1.2em;
+    }
+
+    .login-card p {
+      font-size: 0.95em;
+      line-height: 1.5;
+    }
+
+    .login-card ul {
+      padding-left: 18px;
+      margin: 5px 0 10px;
+    }
+
+    /* Login Form Styles */
+    .form-section {
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid #eee;
+    }
+
+    .form-section h4 {
+      color: #1b3a6f;
+      font-weight: 600;
+      font-size: 1.1em;
+      margin-bottom: 10px;
+    }
+
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.9em;
+      font-weight: 500;
+      color: #444;
+      margin-bottom: 4px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 0.95em;
+      transition: border 0.2s;
+    }
+
+    .form-group input:focus {
+      border: 1px solid #1b3a6f;
+      outline: none;
+    }
+
+    .login-btn {
+      padding: 8px 18px;
+      background: #1b3a6f;
+      color: white;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95em;
+      cursor: pointer;
+      transition: background 0.3s;
+      display: inline-block;
+    }
+
+    .login-btn:hover {
+      background: #003366;
+    }
+
+    .message {
+      margin-bottom: 8px;
+      font-size: 0.9em;
+      color: #a00000;
+      text-align: center;
+    }
+  </style>
 </head>
+
 <body>
-    <div class="login-container">
-        <img src="{{ url_for('static', filename='name_logo.png') }}" alt="MX Learning Logo">
 
-        <form method="POST">
-            <input type="text" name="username" placeholder="Username" required>
-            <input type="password" name="password" placeholder="Password" required>
-            <button type="submit">Login</button>
-        </form>
+  <!-- Banner -->
+  <div class="banner"></div>
+  <div class="banner-separator"></div>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% set category, msg = messages[-1] %}
-                <div class="flash {{ category }}">{{ msg }}</div>
+  <!-- Unified Card -->
+  <div class="login-card">
+
+    <h3>About the Program</h3>
+    <p>At MX Learning, we are committed to delivering <strong>personalized math learning</strong> to students across North America.</p>
+    <p>Every weekend, we curate <strong>customized work packages</strong> based on each student’s progress. These packages include:</p>
+    <ul>
+      <li>🎥 Concise video lessons introducing new concepts</li>
+      <li>🧩 Interactive online quizzes and practice tests</li>
+      <li>📄 Optional PDF worksheets for extra practice</li>
+    </ul>
+    <p>Our <strong>human-in-the-loop approach</strong> ensures students have direct access to the teacher preparing their work. They can review submissions and ask questions during live office hours:</p>
+    <ul>
+      <li>🕓 Sundays: 4–5 PM ET</li>
+      <li>🕗 Thursdays: 8–9 PM ET</li>
+    </ul>
+    <p>🔗 Zoom links will be shared with enrolled students. New students may request an <strong>initial assessment</strong> before starting the program.</p>
+
+    <!-- Login Form -->
+    <div class="form-section">
+      <h4>Existing Student Log In</h4>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            {% if "Invalid" in msg or "logged out" in msg %}
+              <div class="message">{{ msg }}</div>
             {% endif %}
-        {% endwith %}
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <form method="post">
+        <div class="form-group">
+          <label for="username">Username:</label>
+          <input type="text" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="login-btn">Log In</button>
+      </form>
     </div>
+
+  </div>
+
 </body>
 </html>
