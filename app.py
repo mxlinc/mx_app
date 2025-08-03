@@ -156,13 +156,19 @@ def student_home():
             "work_id": work_id
         })
 
+    # filter out packs where all work_names start with 'V'
+    filtered_data = []
+    for pack in data:
+        work_names = [w["work_name"] for w in pack["works"]]
+        if not all(name.startswith("V") for name in work_names):
+            filtered_data.append(pack)
+
     return render_template(
         'student_home.html',
         full_name=current_user.full_name,
-        grouped=data
+        grouped=filtered_data
     )
-
-
+    
 # ------------------- TEACHER HOME ------------------- #
 @app.route("/teacherhome")
 @login_required
@@ -209,7 +215,7 @@ def logout():
 @app.route('/refresh_all')
 @login_required
 def refresh_all():
-    results = db.session.query(
+    item_list = db.session.query(
         UserWorks.pack_id,
         UserWorks.pack_desc,
         UserWorks.work_name,
@@ -223,11 +229,11 @@ def refresh_all():
 
     data = []
     pack_map = {}
-    for pack_id, pack_desc, work_name, work_link, username, work_id in results:
+
+    for pack_id, pack_desc, work_name, work_link, username, work_id in item_list:
         if pack_id not in pack_map:
-            pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
-            pack_map[pack_id] = pack_entry
-            data.append(pack_entry)
+            pack_map[pack_id] = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
+            data.append(pack_map[pack_id])
         pack_map[pack_id]["works"].append({
             "work_name": work_name,
             "work_link": work_link,
@@ -235,7 +241,13 @@ def refresh_all():
             "work_id": work_id
         })
 
-    return render_template('_cards.html', grouped=data)
+    # filter out packs where all work_names start with 'V'
+    filtered_data = []
+    for pack in data:
+        work_names = [w["work_name"] for w in pack["works"]]
+        if not all(name.startswith("V") for name in work_names):
+            filtered_data.append(pack)
+    return render_template('_cards.html', grouped=filtered_data)
 
 
 # ------------------- Mailgun Webhook ------------------- #
@@ -340,25 +352,6 @@ def update_work_with_result(result):
     db.session.commit()
     print(f"Updated {len(updated_rows)} rows with result={result}")
 
-
-# ------------------- REQUEST ASSESSMENT ------------------- #
-@app.route('/request_assessment', methods=['POST'])
-def request_assessment():
-    student_name = request.form.get('student_name')
-    grade = request.form.get('grade')
-    phone = request.form.get('phone')
-    note = request.form.get('note')
-
-    # ✅ For now, just log to console (or handle storage as needed)
-    print(f"New assessment request: Name={student_name}, Grade={grade}, Phone={phone}, Note={note}")
-
-    # Optionally, save to DB if you have a table for assessments
-    # new_request = Assessment(student_name=student_name, grade=grade, phone=phone, note=note)
-    # db.session.add(new_request)
-    # db.session.commit()
-
-    flash("Your assessment request has been submitted successfully!", "info")
-    return redirect(url_for('login'))
 
 
 # -------------------- RUN -------------------- #
