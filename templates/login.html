@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <title>Login - MX Learning</title>
@@ -15,9 +14,9 @@
             color: #333;
         }
 
-        /* Banner */
         .banner {
-            max-width: 900px;
+            width: 900px; 
+            max-width: 900px; 
             height: 140px;
             margin: 30px auto 0;
             border-radius: 12px;
@@ -26,14 +25,13 @@
         }
 
         .banner-separator {
-            max-width: 900px;
+            width: 900px;
             margin: 12px auto 20px;
             border-bottom: 1px solid #ccc;
         }
 
-        /* Unified Card */
-        .login-card {
-            max-width: 900px;
+        .info-card {
+            width: 900px; 
             background: #fff;
             border-radius: 16px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
@@ -41,43 +39,27 @@
             margin: 0 auto 30px;
         }
 
-        .login-card h3 {
-            margin-top: 0;
-            color: #1b3a6f;
-            font-weight: 600;
-            font-size: 1.2em;
+        .login-card {
+            width: 450px;  /* fixed half of the banner width */
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px 25px;
+            margin: 0 auto 30px; /* center horizontally */
         }
 
-        .login-card p {
-            font-size: 0.95em;
-            line-height: 1.5;
-        }
-
-        .login-card ul {
-            padding-left: 18px;
-            margin: 5px 0 10px;
-        }
-
-        /* Login Form */
-        .form-section {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
-            text-align: center;
-        }
-
-        .form-section h4 {
+        .login-card h4 {
             color: #1b3a6f;
             font-weight: 600;
             font-size: 1.1em;
             margin-bottom: 10px;
+            text-align: center;
         }
 
         .form-container {
-            width: 50%;
+            width: 80%;
             min-width: 250px;
             margin: 0 auto;
-            text-align: left;
         }
 
         .form-group {
@@ -116,7 +98,8 @@
             font-size: 0.9em;
             cursor: pointer;
             transition: background 0.3s;
-            margin-top: 10px;
+            display: block;
+            margin: 10px auto 0;
         }
 
         .login-btn:hover {
@@ -131,53 +114,47 @@
         }
     </style>
 </head>
-
 <body>
 
     <!-- Banner -->
     <div class="banner"></div>
     <div class="banner-separator"></div>
 
-    <!-- Unified Card -->
-    <div class="login-card">
-
+    <!-- About Program -->
+    <div class="info-card">
         <p>At MX Learning, we are committed to delivering <strong>personalized math learning</strong> to students across
             North America. Every weekend, we curate <strong>customized work packages</strong> based on each student’s
             progress. These packages include concise video lessons introducing new concepts, interactive online quizzes
             and practice tests and optional worksheets for extra practice.</p>
         <p>Our human-in-the-loop approach ensures <strong>students have direct access to the teacher preparing
             their work.</strong> They can review submissions with the teacher and ask questions during live office hours on <strong>Sundays 4:00 to 5:00 PM ET</strong> & <strong>Thursdays: 8:00 to 9:00 PM ET.</strong></p>
+    </div>
 
-        <!-- Login Form -->
-        <div class="form-section">
-            <h4>Existing Student Log In</h4>
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, msg in messages %}
-            {% if "Invalid" in msg or "logged out" in msg %}
-            <div class="message">{{ msg }}</div>
-            {% endif %}
-            {% endfor %}
-            {% endif %}
-            {% endwith %}
-            <form method="post" class="form-container">
-                <div class="form-group">
-                    <label for="username">Username:</label>
-                    <input type="text" id="username" name="username" maxlength="20" minlength="3"
-                        pattern="[A-Za-z0-9_]+" title="Only letters, numbers, and underscores allowed" required>
-                </div>
-                <div class="form-group">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" maxlength="20" required>
-                </div>
-                <div style="text-align:center;">
-                    <button type="submit" class="login-btn">Log In</button>
-                </div>
-            </form>
-        </div>
-
+    <!-- Login Card -->
+    <div class="login-card">
+        <h4>Existing Student Log In</h4>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, msg in messages %}
+        {% if "Invalid" in msg or "logged out" in msg %}
+        <div class="message">{{ msg }}</div>
+        {% endif %}
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+        <form method="post" class="form-container">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" maxlength="20" minlength="3"
+                       pattern="[A-Za-z0-9_]+" title="Only letters, numbers, and underscores allowed" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" maxlength="20" required>
+            </div>
+            <button type="submit" class="login-btn">Log In</button>
+        </form>
     </div>
 
 </body>
-
 </html>
