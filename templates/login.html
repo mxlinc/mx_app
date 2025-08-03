@@ -43,7 +43,7 @@
         .login-card h4 {
             color: #1b3a6f;
             font-weight: 600;
-            font-size: 1.1em;
+            font-size: 1.5em;
             margin-bottom: 10px;
             text-align: center;
         }
@@ -60,7 +60,6 @@
 
         .form-group label {
             display: block;
-            font-size: 0.9em;
             font-weight: 500;
             color: #444;
             margin-bottom: 4px;
@@ -71,7 +70,7 @@
             padding: 8px 10px;
             border: 1px solid #ccc;
             border-radius: 8px;
-            font-size: 0.95em;
+            font-size: 1.5em;
             transition: border 0.2s;
         }
 
@@ -87,7 +86,7 @@
             font-weight: 500;
             border: none;
             border-radius: 8px;
-            font-size: 0.9em;
+            font-size: 1.2em;
             cursor: pointer;
             transition: background 0.3s;
             display: block;
@@ -120,12 +119,16 @@
                 width: 95%; 
             }
             .login-card {
-                width: 95%; 
-                max-width: 95%; 
+                width: 100%;       /* now full width on mobile */
+                max-width: 100%;
+                border-radius: 0;  /* optional: makes it flush with screen edges */
                 padding: 15px;
             }
             .form-container {
                 width: 95%;
+            }
+            .form-group input {
+                width: 100%;       /* inputs also expand fully */
             }
         }
     </style>
@@ -168,7 +171,7 @@
             progress. These packages include concise video lessons introducing new concepts, interactive online quizzes
             and practice tests and optional worksheets for extra practice.</p>
         <p>Our human-in-the-loop approach ensures <strong>students have direct access to the teacher preparing
-            their work.</strong> They can review submissions with the teacher and ask questions during live office hours on <strong>Sundays 4:00 to 5:00 PM ET</strong> & <strong>Thursdays: 8:00 to 9:00 PM ET.</strong></p>
+            their work.</strong> They can review submissions with the teacher and ask questions during live office hours - <strong>Sundays 4:00 to 5:00 PM ET</strong> & <strong>Thursdays: 8:00 to 9:00 PM ET.</strong></p>
     </div>
 
 </body>
