@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Recent Submissions - MX Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #faf7f5;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        /* Banner */
+        .banner {
+            max-width: 900px;
+            height: 140px;
+            margin: 30px auto 0;
+            border-radius: 12px;
+            background: url("{{ url_for('static', filename='banner-with-logo.png') }}") center/cover no-repeat;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .banner-separator {
+            max-width: 900px;
+            margin: 12px auto 0;
+            border-bottom: 1px solid #ccc;
+        }
+
+        /* Student Info Bar */
+        .student-card {
+            max-width: 900px;
+            margin: 0 auto 5px;
+            background: #faf7f5;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .student-label {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #000;
+        }
+
+        .student-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #800000;
+            margin-left: 5px;
+        }
+
+        .links-right {
+            display: flex;
+            gap: 30px;
+            align-items: center;
+            padding-right: 10px;
+        }
+
+        .nav-link {
+            color: #1b3a6f;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .nav-link i {
+            color: #1b3a6f;
+            font-size: 1em;
+        }
+
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+
+        .name-separator {
+            max-width: 900px;
+            margin: 5px auto 20px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        /* Table Container */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+            padding: 20px;
+        }
+
+        h2 {
+            color: #1b3a6f;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.3em;
+            /* ✅ smaller than default (was ~1.5-1.6em) */
+            font-weight: 600;
+        }
+
+
+        h2 i {
+            color: #1b3a6f;
+            font-size: 1em;
+        }
+
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th,
+        td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #eef0f4;
+            font-weight: 600;
+            color: #333;
+        }
+
+        tr:hover {
+            background: #f9f9f9;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 15px;
+            padding: 8px 14px;
+            border-radius: 6px;
+            background: #1b3a6f;
+            color: #fff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .back-btn:hover {
+            background: #003366;
+        }
+
+        .back-btn i {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Banner -->
+    <div class="banner"></div>
+    <div class="banner-separator"></div>
+
+    <!-- Student Info -->
+    <div class="student-card">
+        <div><span class="student-label">Student:</span><span class="student-name">{{ full_name }}</span></div>
+        <div class="links-right">
+            <a href="{{ url_for('student_home') }}" class="nav-link"><i class="fa fa-home"></i> Home</a>
+            <a href="{{ url_for('logout') }}" class="nav-link"><i class="fa fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </div>
+
+    <div class="name-separator"></div>
+
+    <!-- Submissions Table -->
+    <div class="container">
+        <h2><i class="fa fa-clipboard-list"></i> Recent Submissions</h2>
+        {% if submissions|length == 0 %}
+        <p>No recent submissions found.</p>
+        {% else %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Submitted Work</th>
+                    <th>Submitted On</th>
+                    <th>Score</th>
+                    <th>Incorrect?</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in submissions %}
+                <tr>
+                    <td><a href="{{ s.work_link }}" target="_blank">{{ s.work_name }}</a></td>
+                    <td>{{ s.submitted_at.strftime('%b %d, %Y') if s.submitted_at else '' }}</td>
+                    <td>{{ s.work_score }}</td>
+                    <td>{{ s.incorrect }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+
+</body>
+
+</html>

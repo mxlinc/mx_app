@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Packages - MX Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Use same .top-bar and .container styles as admin_home.html */
+        body { font-family: 'Poppins', sans-serif; background: #f7f7f7; margin: 0; }
+        .top-bar { background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.04); padding: 0 32px; display: flex; align-items: center; height: 56px; }
+        .top-bar .nav-link { color: #333; text-decoration: none; font-weight: 500; margin-right: 32px; font-size: 16px; transition: color 0.2s; }
+        .top-bar .nav-link:last-child { margin-right: 0; }
+        .top-bar .nav-link:hover { color: #007bff; }
+        .container { margin: 40px auto; max-width: 900px; }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <a href="{{ url_for('works') }}" class="nav-link">Works</a>
+        <a href="{{ url_for('pack') }}" class="nav-link">Packages</a>
+        <a href="{{ url_for('studentwork') }}" class="nav-link">Student Works</a>
+    </div>
+    <div class="container">
+        <!-- Move your create/display package code here -->
+        <h2>Manage Packages</h2>
+        <!-- Add your package creation/display form and logic here -->
+    </div>
+</body>
+</html>

@@ -8,6 +8,8 @@ import html2text
 from sqlalchemy.dialects.postgresql import JSON
 from datetime import datetime
 import re
+from sqlalchemy import text
+import logging
 
 
 # ✅ Load environment variables
@@ -51,30 +53,48 @@ class UserTable(db.Model, UserMixin):
 
     def get_id(self):
         return str(self.id)
+    
+class MXWorks(db.Model):
+    __tablename__ = 'mx_works'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    work_id = db.Column(db.Integer, primary_key=True)
+    work_name = db.Column(db.Text, nullable=False)
+    old_work_id = db.Column(db.String(20))
+    work_level = db.Column(db.String(20))
+    work_filename = db.Column(db.String(120))
+    work_link = db.Column(db.Text, nullable=False)
+    topic = db.Column(db.String(100))
+    subtopic = db.Column(db.String(200))
+    work_comments = db.Column(db.Text)
+
+class MXWorkPacks(db.Model):
+    __tablename__ = 'mx_work_packs'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    pack_id = db.Column(db.Integer, primary_key=True)
+    pack_desc = db.Column(db.Text)
+    pack_contents = db.Column(db.Text)
+    broad_area = db.Column(db.String(200))
+    is_deleted = db.Column(db.Boolean, default=False)
+    last_updated = db.Column(db.DateTime)
 
 class UserWorks(db.Model):
     __tablename__ = 'user_works'
     __table_args__ = {'schema': CURRENT_SCHEMA}
 
-    username = db.Column(db.String, primary_key=True)
+    username = db.Column(db.String(20), primary_key=True)
     pack_id = db.Column(db.Integer, primary_key=True)
-    work_id = db.Column(db.String, primary_key=True)
+    work_id = db.Column(db.Integer, primary_key=True)
 
     work_level = db.Column(db.Text)
     work_name = db.Column(db.Text)
     work_link = db.Column(db.Text)
     work_rank = db.Column(db.Integer)
     pack_desc = db.Column(db.Text)
-
-    submitted_at = db.Column(db.DateTime)             # ✅ new column
-    work_score = db.Column(db.String(20))             # ✅ new column
-    incorrect = db.Column(db.String(100))             # ✅ new column
+    work_score = db.Column(db.String(20))
+    incorrect = db.Column(db.String(100))
     work_views = db.Column(db.Integer)
-
-    work_status = db.Column(db.String(10), default='future')
+    work_status = db.Column(db.String(100), default='future', nullable=False)
     last_updated = db.Column(db.DateTime)
-
-
 
 class EmailMessage(db.Model):
     __tablename__ = 'emails'
@@ -84,7 +104,6 @@ class EmailMessage(db.Model):
     subject = db.Column(db.String)
     body = db.Column(db.Text)
     parsed = db.Column(JSON) 
-
 
 # -------------------- FLASK-LOGIN SETUP -------------------- #
 login_manager = LoginManager(app)
@@ -103,7 +122,7 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username")
+        username = request.form['username'].strip().lower()
         password = request.form.get("password")
         user = UserTable.query.filter_by(username=username, is_active=True).first()
 
@@ -147,8 +166,6 @@ def student_home():
             pack_map[pack_id] = pack_entry
             data.append(pack_entry)
 
-
-        # ✅ include username and work_id in works list
         pack_map[pack_id]["works"].append({
             "work_name": work_name,
             "work_link": work_link,
@@ -156,7 +173,7 @@ def student_home():
             "work_id": work_id
         })
 
-    # filter out packs where all work_names start with 'V'
+    # filter out packs where all work_names start with 'V' to avoid empty packs
     filtered_data = []
     for pack in data:
         work_names = [w["work_name"] for w in pack["works"]]
@@ -168,30 +185,48 @@ def student_home():
         full_name=current_user.full_name,
         grouped=filtered_data
     )
-    
+
+
+# ------------------- STUDENT HOME - Click Counts ------------------- #
+@app.route('/log_click', methods=['POST'])
+def log_click():
+    data = request.json
+    username = data['username']
+    pack_id = data['pack_id']
+    work_id = data['work_id']
+
+    db.session.execute(text("""
+        UPDATE prod.user_works
+        SET work_views = COALESCE(work_views, 0) + 1,
+            last_updated = CURRENT_TIMESTAMP
+        WHERE username = :u
+          AND pack_id = :p
+          AND work_id = :w
+    """), {'u': username, 'p': pack_id, 'w': work_id})
+
+    db.session.commit()
+    return jsonify(success=True)
+
+
+   
 # ------------------- TEACHER HOME ------------------- #
 @app.route("/teacherhome")
 @login_required
 def teacher_home():
     return render_template("teacher_home.html", name=current_user.full_name)
 
-# ------------------- ADMIN HOME ------------------- #
-@app.route("/adminhome")
-@login_required
-def admin_home():
-    return render_template("admin_home.html", name=current_user.full_name)
 
 # ------------------- RECENT SUBMISSIONS ------------------- #
 @app.route('/recent')
 @login_required
 def recent_submissions():
     page = request.args.get('page', 1, type=int)
-    per_page = 50
+    per_page = 20  # <-- set page size to 20
 
     query = UserWorks.query.filter_by(
         username=current_user.username,
-        work_status='done'
-    ).order_by(UserWorks.submitted_at.desc())
+        work_status='Done'
+    ).order_by(UserWorks.last_updated.desc())
 
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
 
@@ -294,7 +329,11 @@ def parse_email_content(subject, html_body):
     # Extract ID & user
     parts = subject.split("\"")
     if len(parts) > 3:
-        result["id"] = parts[1]
+        extracted_id = parts[1]
+        if extracted_id == "%TITLE%":
+            result["id"] = "INVALID"
+            return result
+        result["id"] = extracted_id
         result["user"] = parts[3]
     else:
         result["id"] = "INVALID"
@@ -338,8 +377,7 @@ def update_work_with_result(result):
         return
 
     for row in updated_rows:
-        row.work_status = "done"
-        row.submitted_at = datetime.utcnow()
+        row.work_status = "Done"
         row.work_score = result.get("score")
 
         incorrect_value = result.get("incorrect", "")
@@ -352,8 +390,252 @@ def update_work_with_result(result):
     db.session.commit()
     print(f"Updated {len(updated_rows)} rows with result={result}")
 
+# -------------------- ADMIN HOME -------------------- #
+@app.route('/adminhome')
+@login_required
+def admin_home():
+    broad_areas = db.session.execute(
+        text("SELECT DISTINCT broad_area FROM prod.mx_work_packs WHERE broad_area IS NOT NULL AND broad_area <> ''")
+    ).scalars().all()
+    students = UserTable.query.filter_by(user_role='student').all()
+    recent_packs = db.session.execute(text("""
+        SELECT pack_id, pack_desc, broad_area 
+        FROM prod.mx_work_packs 
+        WHERE is_deleted = false 
+        ORDER BY last_updated DESC
+    """)).mappings().all()
+    return render_template(
+        "admin_home.html",
+        students=students,
+        broad_areas=broad_areas,
+        recent_packs=recent_packs
+    )
+
+
+@app.route("/packdetails/<int:pack_id>")
+def pack_details(pack_id):
+    sql = text("""
+        SELECT p.pack_id, p.pack_desc, w.work_id, w.work_name, w.work_link
+        FROM prod.mx_work_packs p
+        JOIN LATERAL unnest(string_to_array(p.pack_contents, '|')) WITH ORDINALITY AS wid(work_id_text, ord) ON true
+        JOIN prod.mx_works w ON w.work_id = wid.work_id_text::int
+        WHERE p.pack_id = :pid
+        ORDER BY wid.ord
+    """)
+    rows = db.session.execute(sql, {"pid": pack_id}).mappings().all()
+
+    if not rows:
+        return jsonify({"error": "Pack not found"}), 404
+
+    return jsonify({
+        "pack_id": rows[0]["pack_id"],
+        "pack_desc": rows[0]["pack_desc"],
+        "works": [
+            {
+                "work_id": r["work_id"],
+                "work_name": r["work_name"],
+                "work_link": r["work_link"]
+            } for r in rows
+        ]
+    })
+
+
+
+
+# -------------------- ADMIN - CREATE PACK -------------------- #
+@app.route("/createpack", methods=["POST"])
+def create_pack():
+    pack_id = int(request.form["pack_id"])
+    pack_desc = request.form["pack_desc"]
+    broad_area = request.form.get("broad_area") or request.form.get("broad_area_select")
+    raw_ids = request.form["work_ids"]
+
+    lines = [line.strip() for line in raw_ids.splitlines() if line.strip()]
+    numeric_ids = []
+    old_ids = []
+
+    for item in lines:
+        if item.isdigit():
+            numeric_ids.append(int(item))
+        else:
+            old_ids.append(item)
+
+    with db.engine.begin() as conn:
+        # Fetch mapping from old_work_id to work_id
+        result = conn.execute(
+            text("SELECT old_work_id, work_id FROM prod.mx_works WHERE old_work_id = ANY(:oids)"),
+            {"oids": old_ids}
+        ).mappings().all()
+        mapping = {row["old_work_id"]: row["work_id"] for row in result}
+
+        # Validate missing
+        missing = [oid for oid in old_ids if oid not in mapping]
+        if missing:
+            return f"❌ Missing old_work_ids: {', '.join(missing)}", 400
+
+        # Maintain order
+        ordered_work_ids = [
+            int(item) if item.isdigit() else mapping[item]
+            for item in lines
+        ]
+        pack_contents = "|".join(str(wid) for wid in ordered_work_ids)
+
+        # Upsert (insert or update)
+        result = conn.execute(
+            text("""
+                INSERT INTO prod.mx_work_packs (pack_id, pack_desc, broad_area, pack_contents, last_updated)
+                VALUES (:id, :desc, :area, :contents, CURRENT_TIMESTAMP)
+                ON CONFLICT (pack_id) DO UPDATE SET
+                    pack_desc = EXCLUDED.pack_desc,
+                    broad_area = EXCLUDED.broad_area,
+                    pack_contents = EXCLUDED.pack_contents,
+                    last_updated = CURRENT_TIMESTAMP
+                RETURNING xmax = 0 AS inserted, pack_id, pack_desc
+            """),
+            {"id": pack_id, "desc": pack_desc, "area": broad_area, "contents": pack_contents}
+        ).mappings().first()
+
+        action = "INSERTED" if result["inserted"] else "UPDATED"
+        print(f"✅ {action} pack_id={result['pack_id']} | {result['pack_desc']}")
+
+    return redirect(url_for("admin_home"))
+
+
+
+
+
+# -------------------- ADMIN - WORK MANAGEMENT -------------------- #
+@app.route('/assignwork', methods=['POST'])
+@login_required
+def assign_work():
+    student = request.form['student']
+    pack_id = int(request.form['package_id'])
+    force = request.form.get('force') == 'true'
+
+    logger.info(f"Assigning pack_id={pack_id} to student={student}")
+
+    fetch_ids_sql = text("""
+        SELECT unnest(string_to_array(pack_contents, '|')) AS work_id
+        FROM prod.mx_work_packs
+        WHERE pack_id = :pack_id
+    """)
+    work_ids = [str(row['work_id']) for row in db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()]
+    logger.info(f"Fetched work_ids for pack_id={pack_id}: {work_ids}")
+
+    conflict_sql = text("""
+        SELECT work_id, pack_id, work_name
+        FROM prod.user_works
+        WHERE username = :username
+          AND work_id IN :work_ids
+          AND pack_id != :pack_id
+          AND NOT work_name LIKE 'V%%'
+    """)
+    conflicts = db.session.execute(conflict_sql, {
+        "username": student,
+        "work_ids": tuple(work_ids),
+        "pack_id": pack_id
+    }).mappings().all()
+
+    if conflicts and not force:
+        conflict_items = [{"id": str(row['work_id']), "name": row['work_name']} for row in conflicts]
+        return jsonify({
+            "conflict": True,
+            "conflict_items": conflict_items,
+            "student": student,
+            "pack_id": pack_id
+        })
+
+
+
+    fetch_sql = text("""
+        SELECT 
+            m.pack_id,
+            m.pack_desc,
+            r.work_id,
+            r.work_level,
+            r.work_name,
+            r.work_link,
+            ROW_NUMBER() OVER () AS work_rank
+        FROM prod.mx_works r
+        JOIN (
+            SELECT pack_id, pack_desc, unnest(string_to_array(pack_contents, '|')) AS work_id
+            FROM prod.mx_work_packs
+            WHERE pack_id = :pack_id
+        ) m ON r.work_id = m.work_id::int;
+    """)
+    works = db.session.execute(fetch_sql, {"pack_id": pack_id}).mappings().all()
+
+    if not works:
+        return jsonify({"success": False, "message": f"❌ No works found for package {pack_id}"})
+
+    insert_sql = text("""
+        INSERT INTO prod.user_works (
+            username, pack_id, work_id,
+            work_level, work_name, work_link,
+            work_rank, pack_desc,
+            work_score, incorrect, work_views, work_status, last_updated
+        ) VALUES (
+            :username, :pack_id, :work_id,
+            :work_level, :work_name, :work_link,
+            :work_rank, :pack_desc,
+            NULL, NULL, NULL, 'Future', CURRENT_TIMESTAMP
+        )
+        ON CONFLICT (username, pack_id, work_id) DO NOTHING;
+    """)
+
+    for w in works:
+        db.session.execute(insert_sql, {
+            "username": student,
+            "pack_id": w["pack_id"],
+            "work_id": w["work_id"],
+            "work_level": w["work_level"],
+            "work_name": w["work_name"],
+            "work_link": w["work_link"],
+            "work_rank": w["work_rank"],
+            "pack_desc": w["pack_desc"]
+        })
+
+    db.session.commit()
+    return jsonify({"success": True, "message": f"✅ Assigned package {pack_id} to {student} ({len(works)} works added)"})
+
+
+@app.route('/filterwork', methods=['GET'])
+@login_required
+def filter_work():
+    student = request.args.get('student')
+    statuses = request.args.getlist('status')  # multiple statuses
+    
+    if not student or not statuses:
+        flash("⚠️ Please select a student and at least one status.", "warning")
+        return redirect(url_for('admin_home'))
+    
+    # ✅ Dynamic IN clause
+    status_list = tuple(statuses)
+    query = text(f"""
+        SELECT work_name, work_link, work_status, pack_id
+        FROM prod.user_works
+        WHERE username = :student AND work_status IN :statuses
+        ORDER BY pack_id, work_rank
+    """)
+    
+    works = db.session.execute(query, {"student": student, "statuses": status_list}).mappings().all()
+    
+    # ✅ Fetch students again for dropdown
+    students = UserTable.query.filter_by(user_role='student').all()
+    
+    return render_template('admin_home.html', students=students, works=works)
+
+
+
+
+
 
 
 # -------------------- RUN -------------------- #
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+    )
+    logger = logging.getLogger(__name__)
     app.run(debug=True)

@@ -277,7 +277,15 @@
         attachCardHeaderToggle();
     </script>
 
-
+    <script>
+        function logClick(user, packId, workId) {
+            fetch('/log_click', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, pack_id: packId, work_id: workId })
+            });
+        }
+    </script>
 </body>
 
 </html>

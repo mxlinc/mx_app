@@ -4,31 +4,34 @@
   <h2 style="color:#1b3a6f;">All assignments complete!</h2>
 </div>
 {% else %}
-  {% for pack in grouped %}
-  <div class="card" id="card-{{ pack.pack_id }}">
-    <div class="card-header open">
-      {{ pack.pack_desc }}
-      <div>
-        <i class="fas fa-sync-alt refresh-btn" title="Refresh"></i>
-        <i class="fas fa-chevron-down chevron"></i>
-      </div>
-    </div>
-    <div class="card-body open">
-      {% for w in pack.works %}
-      <div class="work-item">
-        {% set icon_class = 'fa-question-circle' %}
-        {% if w.work_name.startswith('V') %}
-          {% set icon_class = 'fa-video' %}
-        {% elif w.work_name.startswith('W') %}
-          {% set icon_class = 'fa-file-alt' %}
-        {% endif %}
-        <i class="fa {{ icon_class }}"></i>
-        <a class="work-link" href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}" target="_blank">
-          {{ w.work_name }}
-        </a>
-      </div>
-      {% endfor %}
+{% for pack in grouped %}
+<div class="card" id="card-{{ pack.pack_id }}">
+  <div class="card-header open">
+    {{ pack.pack_desc }}
+    <div>
+      <i class="fas fa-sync-alt refresh-btn" title="Refresh"></i>
+      <i class="fas fa-chevron-down chevron"></i>
     </div>
   </div>
-  {% endfor %}
+  <div class="card-body open">
+    {% for w in pack.works %}
+    <div class="work-item">
+      {% set icon_class = 'fa-regular fa-circle-check' %}
+      {% if w.work_name.startswith('V') %}
+      {% set icon_class = 'fa-video' %}
+      {% elif w.work_name.startswith('W') %}
+      {% set icon_class = 'fa-regular fa-pen-to-square' %}
+      {% endif %}
+      <i class="fa {{ icon_class }}"></i>
+      <a class="work-link" href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}" target="_blank"
+        onclick="logClick('{{ w.username }}', '{{ pack.pack_id }}', '{{ w.work_id }}')">
+        {{ w.work_name }}
+      </a>
+
+
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
 {% endif %}

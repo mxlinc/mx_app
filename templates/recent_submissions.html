@@ -15,7 +15,6 @@
             color: #333;
         }
 
-        /* Banner */
         .banner {
             max-width: 900px;
             height: 140px;
@@ -25,17 +24,18 @@
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
         }
 
-        .banner-separator {
+        .banner-separator,
+        .name-separator {
             max-width: 900px;
             margin: 12px auto 0;
             border-bottom: 1px solid #ccc;
         }
 
-        /* Student Info Bar */
         .student-card {
             max-width: 900px;
             margin: 0 auto 5px;
             background: #faf7f5;
+            border-radius: 12px;
             padding: 12px 20px;
             display: flex;
             justify-content: space-between;
@@ -74,100 +74,122 @@
 
         .nav-link i {
             color: #1b3a6f;
-            font-size: 1em;
         }
 
         .nav-link:hover {
             text-decoration: underline;
         }
 
-        .name-separator {
-            max-width: 900px;
-            margin: 5px auto 20px;
-            border-bottom: 1px solid #ccc;
-        }
-
-        /* Table Container */
         .container {
             max-width: 900px;
             margin: 0 auto;
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
-            overflow-x: auto;
-            padding: 20px;
+            padding: 0 15px;
         }
 
-        h2 {
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            padding: 15px 20px;
+        }
+
+        .card-header {
+            background: #eef0f4;
+            padding: 10px 15px;
+            font-size: 1.2em;
+            font-weight: 600;
+            border-radius: 8px 8px 0 0;
             color: #1b3a6f;
-            margin-top: 0;
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 1.3em;
-            /* ✅ smaller than default (was ~1.5-1.6em) */
-            font-weight: 600;
         }
 
-
-        h2 i {
-            color: #1b3a6f;
-            font-size: 1em;
-        }
-
-
-        table {
+        .submissions-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            font-size: 0.95em;
         }
 
-        th,
-        td {
-            padding: 10px 12px;
+        .submissions-table th,
+        .submissions-table td {
+            border: 1px solid #eee;
+            padding: 6px 8px;
             text-align: left;
-            border-bottom: 1px solid #eee;
         }
 
-        th {
-            background: #eef0f4;
+        .submissions-table th {
+            background: #f5f5f5;
             font-weight: 600;
-            color: #333;
         }
 
-        tr:hover {
-            background: #f9f9f9;
+        .submissions-table td {
+            font-size: 0.92em;
         }
 
-        .back-btn {
-            display: inline-flex;
-            align-items: center;
-            margin-top: 15px;
-            padding: 8px 14px;
-            border-radius: 6px;
+        .pagination {
+            margin: 18px 0 0 0;
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .pagination .page-link {
+            background: #eef0f4;
+            border: none;
+            color: #1b3a6f;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-size: 0.95em;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .pagination .page-link.active,
+        .pagination .page-link:hover {
             background: #1b3a6f;
             color: #fff;
+        }
+
+        .pagination .disabled {
+            color: #ccc;
+            pointer-events: none;
+        }
+
+        .pagination-page-label {
+            font-size: 0.78em;
+            color: #1b3a6f;
+            font-weight: 500;
+            margin: 0 8px;
+            background: none;
+            border: none;
+            padding: 0;
+            letter-spacing: 0.5px;
+            vertical-align: middle;
+            position: relative;
+            top: 3px;
+        }
+
+        .work-link {
+            color: #1b3a6f;
             text-decoration: none;
             font-weight: 500;
+            transition: font-weight 0.2s;
         }
 
-        .back-btn:hover {
-            background: #003366;
-        }
-
-        .back-btn i {
-            margin-right: 5px;
+        .work-link:hover {
+            font-weight: 700;
+            text-decoration: none;
         }
     </style>
 </head>
 
 <body>
 
-    <!-- Banner -->
     <div class="banner"></div>
     <div class="banner-separator"></div>
 
-    <!-- Student Info -->
     <div class="student-card">
         <div><span class="student-label">Student:</span><span class="student-name">{{ full_name }}</span></div>
         <div class="links-right">
@@ -178,33 +200,59 @@
 
     <div class="name-separator"></div>
 
-    <!-- Submissions Table -->
     <div class="container">
-        <h2><i class="fa fa-clipboard-list"></i> Recent Submissions</h2>
-        {% if submissions|length == 0 %}
-        <p>No recent submissions found.</p>
-        {% else %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Submitted Work</th>
-                    <th>Submitted On</th>
-                    <th>Score</th>
-                    <th>Incorrect?</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for s in submissions %}
-                <tr>
-                    <td>{{ s.work_name }}</td>
-                    <td>{{ s.submitted_at.strftime('%b %d, %Y') if s.submitted_at else '' }}</td>
-                    <td>{{ s.work_score }}</td>
-                    <td>{{ s.incorrect }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% endif %}
+        <div class="card">
+            <div class="card-header d-flex" style="display: flex; justify-content: space-between; align-items: center;">
+                <span><i class="fa fa-clipboard-list"></i> Recent Submissions</span>
+                <div class="pagination" style="margin: 0;">
+                    {% if pagination.page > 1 %}
+                    <a class="page-link" href="{{ url_for('recent_submissions', page=1) }}">&laquo;&laquo;</a>
+                    <a class="page-link" href="{{ url_for('recent_submissions', page=pagination.prev_num) }}">&laquo;</a>
+                    {% else %}
+                    <span class="page-link disabled">&laquo;&laquo;</span>
+                    <span class="page-link disabled">&laquo;</span>
+                    {% endif %}
+
+                    <span class="pagination-page-label">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+
+                    {% if pagination.has_next %}
+                    <a class="page-link" href="{{ url_for('recent_submissions', page=pagination.next_num) }}">&raquo;</a>
+                    <a class="page-link" href="{{ url_for('recent_submissions', page=pagination.pages) }}">&raquo;&raquo;</a>
+                    {% else %}
+                    <span class="page-link disabled">&raquo;</span>
+                    <span class="page-link disabled">&raquo;&raquo;</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% if submissions|length == 0 %}
+            <p style="font-size:0.95em;">No recent submissions found.</p>
+            {% else %}
+            <table class="submissions-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Work</th>
+                        <th>Score</th>
+                        <th>Incorrect</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in submissions %}
+                    <tr>
+                        <td>
+                            {{ s.last_updated.strftime('%b %d, %Y') if s.last_updated else '' }}
+                        </td>
+                        <td>
+                            <a href="{{ s.work_link }}" target="_blank" class="work-link">{{ s.work_name }}</a>
+                        </td>
+                        <td>{{ s.work_score }}</td>
+                        <td>{{ s.incorrect }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
     </div>
 
 </body>
