@@ -625,8 +625,14 @@ def filter_work():
     
     return render_template('admin_home.html', students=students, works=works)
 
-
-
+# ------------------- FINE TUNE ------------------- #
+@app.route('/fine_tune')
+@login_required
+def fine_tune():
+    student = request.args.get('student')
+    student_obj = UserTable.query.filter_by(username=student).first()
+    student_name = student_obj.full_name if student_obj else student
+    return render_template('fine_tune.html', student_name=student_name)
 
 
 

@@ -21,9 +21,24 @@
 
         /* Set card width to 90% and center */
         .card {
-            width: 90%;
+            width: 100%;
             margin-left: auto;
             margin-right: auto;
+            max-width: none;
+        }
+
+        .container {
+            max-width: none !important;
+            width: 100% !important;
+            padding-left: 32px;
+            padding-right: 32px;
+        }
+
+        #recent-packs {
+            width: 100% !important;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: none;
         }
     </style>
 
@@ -32,38 +47,119 @@
 
 <body class="bg-light">
 
-    <!-- ✅ Create Work Package  -->
-    <div class="card shadow p-3 mb-4">
-        <h5 class="card-title mb-3">Create Work Package</h5>
-        <form method="POST" action="{{ url_for('create_pack') }}">
-            <div class="row mb-2">
-                <div class="col-md-3">
-                    <input type="number" name="pack_id" class="form-control" placeholder="Enter Pack ID" required>
+    <div class="container mt-4">
+        <!-- Create Work Package Card (all inputs in one line) -->
+        <div class="card shadow p-3 mb-4">
+            <h5 class="card-title mb-3">Create Work Package</h5>
+            <form method="POST" action="{{ url_for('create_pack') }}">
+                <div class="row align-items-center g-2">
+                    <div class="col-md-2">
+                        <input type="number" name="pack_id" class="form-control" placeholder="Pack ID" required>
+                    </div>
+                    <div class="col-md-2">
+                        <input type="text" name="pack_desc" class="form-control" placeholder="Description" required>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="broad_area_select" name="broad_area_select" class="form-select" required
+                            onchange="toggleBroadAreaInput(this.value)">
+                            <option value="" disabled selected>Broad Area</option>
+                            {% for area in broad_areas %}
+                            <option value="{{ area }}">{{ area }}</option>
+                            {% endfor %}
+                            <option value="__new__">Enter New?</option>
+                        </select>
+                        <input type="text" id="broad_area_input" name="broad_area" class="form-control mt-2 d-none"
+                            placeholder="New Broad Area">
+                    </div>
+                    <div class="col-md-4">
+                        <textarea name="work_ids" rows="1" class="form-control"
+                            placeholder="Paste work IDs, one per line" required></textarea>
+                    </div>
+                    <div class="col-md-2">
+                        <!-- Create Work Package Button -->
+                        <button type="submit" class="btn btn-sm btn-outline-primary">Create Package</button>
+                    </div>
                 </div>
-                <div class="col-md-4">
-                    <input type="text" name="pack_desc" class="form-control" placeholder="Package Description" required>
+            </form>
+        </div>
+
+        <!-- Assign Work Package Card (assign button in same row as inputs) -->
+        <div class="card shadow p-3 mb-4">
+            <h5 class="card-title mb-3">Assign Work Package</h5>
+            <form id="assignForm" class="row align-items-center g-2" onsubmit="submitAssign(event)">
+                <div class="col-md-5">
+                    <select name="student" class="form-select" id="assign-student" required>
+                        <option value="" disabled selected>Select Student</option>
+                        {% for student in students %}
+                        <option value="{{ student.username }}">{{ student.full_name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
+                <div class="col-md-5">
+                    <input type="text" name="package_id" id="assign-pack" class="form-control"
+                        placeholder="Package ID" required>
+                </div>
+                <div class="col-md-2">
+                    <!-- Assign Button in Assign Work Package Card -->
+                    <button type="submit" class="btn btn-sm btn-outline-primary">Assign</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- ✅ Recent Packages Section with filters -->
+        <div id="recent-packs" class="card shadow p-3 mb-4">
+            <h5 class="card-title">Recent Packages</h5>
+            <div class="row mb-3">
                 <div class="col-md-4">
-                    <select id="broad_area_select" name="broad_area_select" class="form-select" required
-                        onchange="toggleBroadAreaInput(this.value)">
-                        <option value="" disabled selected>Select Broad Area</option>
+                    <select id="filter-area" class="form-select" onchange="filterPackages()">
+                        <option value="__all__">All Broad Areas</option>
                         {% for area in broad_areas %}
                         <option value="{{ area }}">{{ area }}</option>
                         {% endfor %}
-                        <option value="__new__">Enter New?</option>
                     </select>
-                    <input type="text" id="broad_area_input" name="broad_area" class="form-control mt-2 d-none"
-                        placeholder="Enter New Broad Area">
+                </div>
+                <div class="col-md-4 d-flex">
+                    <select id="filter-student" class="form-select me-2">
+                        <option value="" disabled selected>Select Student</option>
+                        {% for student in students %}
+                        <option value="{{ student.username }}">{{ student.full_name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
             </div>
-            <div class="mb-3">
-                <textarea name="work_ids" rows="5" class="form-control"
-                    placeholder="Paste work IDs (old or numeric, one per line)" required></textarea>
-            </div>
-            <button type="submit" class="btn btn-success">Create Package</button>
-        </form>
+            <table class="table table-sm table-hover" id="recent-packs-table">
+                <thead>
+                    <tr>
+                        <th>Pack ID</th>
+                        <th>Broad Area</th>
+                        <th>Description</th>
+                        <th>Assign</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in recent_packs %}
+                    <tr data-area="{{ p.broad_area }}">
+                        <td>
+                            <a href="javascript:void(0);" onclick="showPackDetails({{ p.pack_id }})">
+                                {{ p.pack_id }}
+                            </a>
+                        </td>
+                        <td>{{ p.broad_area }}</td>
+                        <td>{{ p.pack_desc }}</td>
+                        <td>
+                            <a href="#" class="btn btn-sm btn-outline-primary"
+                               onclick="assignPackToStudent('{{ p.pack_id }}', '{{ p.broad_area }}')">
+                                Assign to Student
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-    <!--  Broad Area Input -->
+
+    <!-- Broad Area Input Script -->
     <script>
         function toggleBroadAreaInput(val) {
             const input = document.getElementById("broad_area_input");
@@ -77,29 +173,64 @@
         }
     </script>
 
+    <script>
+        // Filter packages by broad area
+        function filterPackages() {
+            const selectedArea = document.getElementById("filter-area").value;
+            const rows = document.querySelectorAll("#recent-packs-table tbody tr");
+            rows.forEach(row => {
+                if (selectedArea === "__all__" || row.getAttribute("data-area") === selectedArea) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
 
-    <!-- ✅ Recent Packages Section -->
-    <div id="recent-packs" class="card shadow p-3">
-        <h5 class="card-title">Recent Packages</h5>
-        <table class="table table-sm table-hover">
-            <thead>
-                <tr>
-                    <th>Pack ID</th>
-                    <th>Broad Area</th>
-                    <th>Description</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for p in recent_packs %}
-                <tr>
-                    <td><a href="#" onclick="showPackDetails({{ p.pack_id }})">{{ p.pack_id }}</a></td>
-                    <td>{{ p.broad_area }}</td>
-                    <td>{{ p.pack_desc }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+        // Assign pack to selected student
+        function assignPackToStudent(packId, broadArea) {
+            const studentSelect = document.getElementById("filter-student");
+            const student = studentSelect.value;
+            if (!student) {
+                alert("Please select a student first.");
+                return;
+            }
+            // Disable button to prevent double submit
+            event.target.disabled = true;
+
+            fetch("/assignwork", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ student, package_id: packId })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.conflict) {
+                    showConflictModal(data.student, data.pack_id, data.conflict_items);
+                } else {
+                    alert(data.message);
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                alert("Something went wrong: " + err.message);
+                console.error(err);
+            })
+            .finally(() => {
+                event.target.disabled = false;
+            });
+        }
+
+        function goFineTune() {
+            const student = document.getElementById("filter-student").value;
+            if (!student) {
+                alert("Please select a student first.");
+                return;
+            }
+            window.location.href = `/fine_tune?student=${encodeURIComponent(student)}`;
+        }
+    </script>
+
     <!-- Modal for Pack Details -->
     <div class="modal fade" id="packDetailsModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -136,7 +267,7 @@
         function showPackDetails(packId) {
             fetch(`/packdetails/${packId}`)
                 .then(res => res.json())
-                .then(data => {
+                .then(data => { // <-- FIXED HERE
                     document.getElementById("modalTitle").innerText = `Pack ${data.pack_id}: ${data.pack_desc}`;
                     let rows = "";
                     currentWorkIds = [];
@@ -155,114 +286,88 @@
         }
     </script>
 
+    <script>
+        function submitAssign(event) {
+            event.preventDefault();
 
-    <!-- ✅ Work Assignment Card -->
+            const form = event.target;
+            const student = document.getElementById("assign-student").value;
+            const packId = document.getElementById("assign-pack").value;
+            const submitBtn = form.querySelector("button[type='submit']");
 
-    <div class="container mt-4">
+            submitBtn.disabled = true;
 
-        <div class="card shadow p-3 mb-4">
-            <h5 class="card-title mb-3">Assign Work Package</h5>
-            <form id="assignForm" class="row g-2" onsubmit="submitAssign(event)">
-                <div class="col-md-4">
-                    <select name="student" class="form-select" id="assign-student" required>
-                        <option value="" disabled selected>Select Student</option>
-                        {% for student in students %}
-                        <option value="{{ student.username }}">{{ student.full_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <input type="text" name="package_id" id="assign-pack" class="form-control"
-                        placeholder="Enter Package ID" required>
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Assign</button>
-                </div>
-            </form>
-        </div>
+            fetch("/assignwork", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ student, package_id: packId })
+            })
+                .then(res => res.json())
+                .then data => {
+                    if (data.conflict) {
+                        showConflictModal(data.student, data.pack_id, data.conflict_items);
 
-        <script>
-            function submitAssign(event) {
-                event.preventDefault();
-
-                const form = event.target;
-                const student = document.getElementById("assign-student").value;
-                const packId = document.getElementById("assign-pack").value;
-                const submitBtn = form.querySelector("button[type='submit']");
-
-                submitBtn.disabled = true;
-
-                fetch("/assignwork", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ student, package_id: packId })
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.conflict) {
-                            showConflictModal(data.student, data.pack_id, data.conflict_items);
-
-                        } else {
-                            alert(data.message);
-                            location.reload();
-                        }
-                    })
-                    .catch(err => {
-                        alert("Something went wrong: " + err.message);
-                        console.error(err);
-                    })
-                    .finally(() => {
-                        submitBtn.disabled = false;
-                    });
-            }
-
-
-            function forceAssign(student, packId) {
-                fetch("/assignwork", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({ student, package_id: packId, force: "true" })
-                })
-                    .then(res => res.json())
-                    .then(data => {
+                    } else {
                         alert(data.message);
                         location.reload();
-                    });
-            }
+                    }
+                })
+                .catch(err => {
+                    alert("Something went wrong: " + err.message);
+                    console.error(err);
+                })
+                .finally(() => {
+                    submitBtn.disabled = false;
+                });
+        }
 
-            function showConflictModal(student, packId, conflictIds) {
-                document.getElementById("conflict-student").textContent = student;
-                document.getElementById("conflict-pack").textContent = packId;
-                document.getElementById("conflict-list").innerHTML = conflictIds
-                    .map(item => `<li><strong>${item.id}</strong> - ${item.name}</li>`)
-                    .join("");
 
-                document.getElementById("modal-yes-btn").onclick = () => forceAssign(student, packId);
-                new bootstrap.Modal(document.getElementById("conflictModal")).show();
-            }
-        </script>
+        function forceAssign(student, packId) {
+            fetch("/assignwork", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ student, package_id: packId, force: "true" })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    location.reload();
+                });
+        }
 
-        <div class="modal fade" id="conflictModal" tabindex="-1">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">⚠️ Conflict Detected</h5>
-                    </div>
-                    <div class="modal-body">
-                        <p>The following work IDs already exist for <strong><span id="conflict-student"></span></strong>
-                            in
-                            other packages:</p>
-                        <ul id="conflict-list"></ul>
-                        <p>Do you still want to assign <strong>pack <span id="conflict-pack"></span></strong> to them?
-                        </p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">❌ No, Cancel</button>
-                        <button id="modal-yes-btn" type="button" class="btn btn-primary">✅ Yes, Assign Anyway</button>
-                    </div>
+        function showConflictModal(student, packId, conflictIds) {
+            document.getElementById("conflict-student").textContent = student;
+            document.getElementById("conflict-pack").textContent = packId;
+            document.getElementById("conflict-list").innerHTML = conflictIds
+                .map(item => `<li><strong>${item.id}</strong> - ${item.name}</li>`)
+                .join("");
+
+            document.getElementById("modal-yes-btn").onclick = () => forceAssign(student, packId);
+            new bootstrap.Modal(document.getElementById("conflictModal")).show();
+        }
+    </script>
+
+    <div class="modal fade" id="conflictModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">⚠️ Conflict Detected</h5>
+                </div>
+                <div class="modal-body">
+                    <p>The following work IDs already exist for <strong><span id="conflict-student"></span></strong>
+                        in
+                        other packages:</p>
+                    <ul id="conflict-list"></ul>
+                    <p>Do you still want to assign <strong>pack <span id="conflict-pack"></span></strong> to them?
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">❌ No, Cancel</button>
+                    <button id="modal-yes-btn" type="button" class="btn btn-primary">✅ Yes, Assign Anyway</button>
                 </div>
             </div>
         </div>
+    </div>
 
 
 </body>
