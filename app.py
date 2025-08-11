@@ -11,6 +11,11 @@ import re
 from sqlalchemy import text
 import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # ✅ Load environment variables
 load_dotenv()
@@ -142,7 +147,7 @@ def login():
             flash("Invalid credentials", "danger")
     return render_template("login.html")
 
-# ------------------- STUDENT HOME ------------------- #
+# ******************** STUDENT HOME **** ****************************** #
 @app.route('/studenthome')
 @login_required
 def student_home():
@@ -185,7 +190,6 @@ def student_home():
         full_name=current_user.full_name,
         grouped=filtered_data
     )
-
 
 # ------------------- STUDENT HOME - Click Counts ------------------- #
 @app.route('/log_click', methods=['POST'])
@@ -363,17 +367,28 @@ def parse_email_content(subject, html_body):
 # -------------------- UPDATE WORKS WITH RESULTS -------------------- #
 def update_work_with_result(result):
     if "user" not in result or "id" not in result or result["id"] == "INVALID":
-        print("Invalid result, cannot update work.")
+        logger.warning("Invalid result, cannot update work.")
         return
 
-    work_id_value = str(result["id"])
+    work_id_value = result["id"]
+
+    # UserWorks.work_id is int in database, so always use int for query
+    if str(work_id_value).isdigit():
+        work_id_int = int(work_id_value)
+    else:
+        mx_work = MXWorks.query.filter_by(old_work_id=work_id_value).first()
+        if not mx_work:
+            logger.warning(f"No matching work_id found for old_work_id={work_id_value}")
+            return
+        work_id_int = mx_work.work_id
+
     updated_rows = UserWorks.query.filter(
         UserWorks.username == result["user"],
-        UserWorks.work_id == work_id_value
+        UserWorks.work_id == work_id_int
     ).all()
 
     if not updated_rows:
-        print(f"No matching work found for user={result['user']} id={work_id_value}")
+        logger.info(f"No matching work found for user={result['user']} id={work_id_int}")
         return
 
     for row in updated_rows:
@@ -388,7 +403,7 @@ def update_work_with_result(result):
         row.last_updated = datetime.utcnow()
 
     db.session.commit()
-    print(f"Updated {len(updated_rows)} rows with result={result}")
+    logger.info(f"Updated {len(updated_rows)} rows with result={result}")
 
 # -------------------- ADMIN HOME -------------------- #
 @app.route('/adminhome')
@@ -496,7 +511,7 @@ def create_pack():
         ).mappings().first()
 
         action = "INSERTED" if result["inserted"] else "UPDATED"
-        print(f"✅ {action} pack_id={result['pack_id']} | {result['pack_desc']}")
+        logger.info(f"✅ {action} pack_id={result['pack_id']} | {result['pack_desc']}")
 
     return redirect(url_for("admin_home"))
 
@@ -514,14 +529,16 @@ def assign_work():
 
     logger.info(f"Assigning pack_id={pack_id} to student={student}")
 
+    # Get all work_ids in the package
     fetch_ids_sql = text("""
         SELECT unnest(string_to_array(pack_contents, '|')) AS work_id
         FROM prod.mx_work_packs
         WHERE pack_id = :pack_id
     """)
-    work_ids = [str(row['work_id']) for row in db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()]
+    work_ids = [str(r['work_id']) for r in db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()]
     logger.info(f"Fetched work_ids for pack_id={pack_id}: {work_ids}")
 
+    # Find conflicts (same work_id already assigned to this student in other packs, excluding videos)
     conflict_sql = text("""
         SELECT work_id, pack_id, work_name
         FROM prod.user_works
@@ -530,11 +547,10 @@ def assign_work():
           AND pack_id != :pack_id
           AND NOT work_name LIKE 'V%%'
     """)
-    conflicts = db.session.execute(conflict_sql, {
-        "username": student,
-        "work_ids": tuple(work_ids),
-        "pack_id": pack_id
-    }).mappings().all()
+    conflicts = db.session.execute(
+        conflict_sql,
+        {"username": student, "work_ids": tuple(work_ids), "pack_id": pack_id}
+    ).mappings().all()
 
     if conflicts and not force:
         conflict_items = [{"id": str(row['work_id']), "name": row['work_name']} for row in conflicts]
@@ -545,8 +561,7 @@ def assign_work():
             "pack_id": pack_id
         })
 
-
-
+    # Fetch full work details for the pack
     fetch_sql = text("""
         SELECT 
             m.pack_id,
@@ -561,12 +576,14 @@ def assign_work():
             SELECT pack_id, pack_desc, unnest(string_to_array(pack_contents, '|')) AS work_id
             FROM prod.mx_work_packs
             WHERE pack_id = :pack_id
-        ) m ON r.work_id = m.work_id::int;
+        ) m ON r.work_id = m.work_id::int
     """)
     works = db.session.execute(fetch_sql, {"pack_id": pack_id}).mappings().all()
-
     if not works:
         return jsonify({"success": False, "message": f"❌ No works found for package {pack_id}"})
+
+    # Build fast lookup for conflicting IDs (ensure int for safe compare)
+    conflict_ids = {int(c['work_id']) for c in conflicts} if conflicts else set()
 
     insert_sql = text("""
         INSERT INTO prod.user_works (
@@ -578,12 +595,14 @@ def assign_work():
             :username, :pack_id, :work_id,
             :work_level, :work_name, :work_link,
             :work_rank, :pack_desc,
-            NULL, NULL, NULL, 'Future', CURRENT_TIMESTAMP
+            NULL, NULL, NULL, :work_status, CURRENT_TIMESTAMP
         )
         ON CONFLICT (username, pack_id, work_id) DO NOTHING;
     """)
 
+    # Insert with per-row status based on conflict
     for w in works:
+        status = 'Past' if int(w["work_id"]) in conflict_ids else 'Future'
         db.session.execute(insert_sql, {
             "username": student,
             "pack_id": w["pack_id"],
@@ -592,12 +611,16 @@ def assign_work():
             "work_name": w["work_name"],
             "work_link": w["work_link"],
             "work_rank": w["work_rank"],
-            "pack_desc": w["pack_desc"]
+            "pack_desc": w["pack_desc"],
+            "work_status": status
         })
 
     db.session.commit()
-    return jsonify({"success": True, "message": f"✅ Assigned package {pack_id} to {student} ({len(works)} works added)"})
-
+    return jsonify({
+        "success": True,
+        "message": f"✅ Assigned package {pack_id} to {student} ({len(works)} works added; "
+                   f"{len(conflict_ids)} as Past, {len(works) - len(conflict_ids)} as Future)"
+    })
 
 @app.route('/filterwork', methods=['GET'])
 @login_required
@@ -639,9 +662,6 @@ def fine_tune():
 
 # -------------------- RUN -------------------- #
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
-    )
-    logger = logging.getLogger(__name__)
     app.run(debug=True)
+
+
