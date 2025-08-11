@@ -161,7 +161,7 @@ def student_home():
         UserWorks.work_views
     ).filter(
         UserWorks.username == current_user.username,
-        UserWorks.work_status == 'assigned'
+        UserWorks.work_status == 'Assigned'  # <-- Fix here
     ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
 
     data = []
@@ -208,7 +208,7 @@ def log_click():
         WHERE username = :u
           AND pack_id = :p
           AND work_id = :w
-    """), {'u': username, 'p': pack_id, 'w': work_id})
+    """), {'u': username, 'p': int(pack_id), 'w': int(work_id)})
 
     db.session.commit()
     return jsonify(success=True)
@@ -655,7 +655,7 @@ def mark_complete():
     data = request.get_json()
     username = data.get('username')
     work_id = data.get('work_id')
-    row = UserWorks.query.filter_by(username=username, work_id=work_id).first()
+    row = UserWorks.query.filter_by(username=username, work_id=int(work_id)).first()
     if row:
         row.work_status = "Done"
         row.work_score = "Complete"
@@ -701,7 +701,9 @@ def fine_tune():
                 "work_name": w.work_name,
                 "work_status": w.work_status,
                 "username": w.username,
-                "pack_id": w.pack_id
+                "pack_id": w.pack_id,
+                "work_link": w.work_link,      # <-- add this
+                "work_views": w.work_views     # <-- add this
             })
         packs = list(pack_map.values())
 
@@ -721,8 +723,8 @@ def fine_tune():
 def update_work_status():
     data = request.get_json()
     username = data.get('username')
-    pack_id = data.get('pack_id')
-    work_id = data.get('work_id')
+    pack_id = int(data.get('pack_id'))      # <-- cast to int
+    work_id = int(data.get('work_id'))      # <-- cast to int
     status = data.get('status')
     row = UserWorks.query.filter_by(username=username, pack_id=pack_id, work_id=work_id).first()
     if row:

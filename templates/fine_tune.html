@@ -7,6 +7,9 @@
 </head>
 <body class="bg-light">
     <div class="container mt-4">
+        <div class="d-flex justify-content-end mb-2">
+            <a href="{{ url_for('admin_home') }}" class="btn btn-outline-primary fw-bold px-4">Home</a>
+        </div>
         <div class="card shadow p-3 mb-4">
             <h4 class="card-title mb-3">Fine tune work for student</h4>
             <form id="filterForm" method="get">
@@ -23,7 +26,7 @@
                     <div class="col-md-3">
                         <label class="form-label">Status</label>
                         <select name="status" class="form-select" multiple>
-                            <option value="ALL" {% if 'ALL' in selected_status %}selected{% endif %}>ALL</option>
+                            <option value="ALL" selected>ALL</option>
                             {% for s in ['Future','Next','Assigned','Done','Past','Defer','X-Delete'] %}
                             <option value="{{ s }}" {% if s in selected_status %}selected{% endif %}>{{ s }}</option>
                             {% endfor %}
@@ -32,7 +35,7 @@
                     <div class="col-md-3">
                         <label class="form-label">Type</label>
                         <select name="type" class="form-select" multiple>
-                            <option value="ALL" {% if 'ALL' in selected_type %}selected{% endif %}>ALL</option>
+                            <option value="ALL" selected>ALL</option>
                             {% for t in ['Q','T','V','W','I'] %}
                             <option value="{{ t }}" {% if t in selected_type %}selected{% endif %}>{{ t }}</option>
                             {% endfor %}
@@ -56,23 +59,48 @@
                 <h5>Pack {{ pack.pack_id }}: {{ pack.pack_desc }}</h5>
                 <ul class="list-group">
                     {% for w in pack.works %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center" id="work-row-{{ w.work_id }}">
-                        <span>
+                    <li class="list-group-item d-flex align-items-center" id="work-row-{{ w.work_id }}">
+                        <!-- "A" column -->
+                        <div style="width:48px; text-align:center;">
+                            {% if w.work_status != 'Assigned' %}
+                            <a href="#" class="btn btn-sm btn-primary fw-bold"
+                               title="Assigned"
+                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Assigned', this); return false;">
+                                A
+                            </a>
+                            {% endif %}
+                        </div>
+                        <!-- Work details column -->
+                        <div class="flex-grow-1 d-flex align-items-center">
+                            <a href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}" target="_blank" class="me-2 text-decoration-underline">{{ w.work_id }}</a>
                             {{ w.work_name }}
                             <span class="badge bg-secondary ms-2">{{ w.work_status }}</span>
-                        </span>
-                        <span>
-                            {% for code, tip in [('F','Future'),('N','Next'),('A','Assigned'),('D','Done'),('T','Past'),('R','Defer'),('X','X-Delete')] %}
-                                {% if code == 'D' %}
-                                    <span style="display:inline-block; width:24px;"></span> <!-- Add gap before D -->
-                                {% endif %}
+                            {% if w.work_views is not none %}
+                                <span class="badge bg-info ms-2">{{ w.work_views }}</span>
+                            {% endif %}
+                        </div>
+                        <!-- Status buttons column -->
+                        <div>
+                            <span style="display:inline-block; width:24px;"></span>
+                            <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                               title="Future"
+                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Future', this); return false;">
+                                F
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                               title="Next"
+                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Next', this); return false;">
+                                N
+                            </a>
+                            <span style="display:inline-block; width:24px;"></span>
+                            {% for code, tip in [('D','Done'),('T','Past'),('R','Defer'),('X','X-Delete')] %}
                                 <a href="#" class="btn btn-sm btn-outline-primary ms-1"
                                    title="{{ tip }}"
                                    onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', '{{ tip }}', this); return false;">
                                     {{ code }}
                                 </a>
                             {% endfor %}
-                        </span>
+                        </div>
                     </li>
                     {% endfor %}
                 </ul>
