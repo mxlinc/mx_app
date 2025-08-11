@@ -8,9 +8,95 @@
 <body class="bg-light">
     <div class="container mt-4">
         <div class="card shadow p-3 mb-4">
-            <h4 class="card-title mb-3">Fine tune work for student: <span class="text-primary">{{ student_name }}</span></h4>
-            <!-- Add your fine-tuning controls here -->
+            <h4 class="card-title mb-3">Fine tune work for student</h4>
+            <form id="filterForm" method="get">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Student</label>
+                        <select name="student" class="form-select" required>
+                            <option value="" disabled selected>Select Student</option>
+                            {% for student in students %}
+                            <option value="{{ student.username }}" {% if student.username == selected_student %}selected{% endif %}>{{ student.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select" multiple>
+                            <option value="ALL" {% if 'ALL' in selected_status %}selected{% endif %}>ALL</option>
+                            {% for s in ['Future','Next','Assigned','Done','Past','Defer','X-Delete'] %}
+                            <option value="{{ s }}" {% if s in selected_status %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Type</label>
+                        <select name="type" class="form-select" multiple>
+                            <option value="ALL" {% if 'ALL' in selected_type %}selected{% endif %}>ALL</option>
+                            {% for t in ['Q','T','V','W','I'] %}
+                            <option value="{{ t }}" {% if t in selected_type %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Pack IDs (comma separated)</label>
+                        <input type="text" name="pack_ids" class="form-control" value="{{ pack_ids or '' }}" placeholder="e.g. 1,2,3">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary fw-bold px-4 py-2">Filter</button>
+                </div>
+            </form>
         </div>
+
+        {% if packs %}
+        <div class="card shadow p-3">
+            {% for pack in packs %}
+            <div class="mb-4">
+                <h5>Pack {{ pack.pack_id }}: {{ pack.pack_desc }}</h5>
+                <ul class="list-group">
+                    {% for w in pack.works %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center" id="work-row-{{ w.work_id }}">
+                        <span>
+                            {{ w.work_name }}
+                            <span class="badge bg-secondary ms-2">{{ w.work_status }}</span>
+                        </span>
+                        <span>
+                            {% for code, tip in [('F','Future'),('N','Next'),('A','Assigned'),('D','Done'),('T','Past'),('R','Defer'),('X','X-Delete')] %}
+                                {% if code == 'D' %}
+                                    <span style="display:inline-block; width:24px;"></span> <!-- Add gap before D -->
+                                {% endif %}
+                                <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                                   title="{{ tip }}"
+                                   onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', '{{ tip }}', this); return false;">
+                                    {{ code }}
+                                </a>
+                            {% endfor %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
+
+    <script>
+    function updateWorkStatus(username, pack_id, work_id, status, btn) {
+        fetch('/update_work_status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, pack_id, work_id, status })
+        }).then(res => res.json())
+          .then(data => {
+              if(data.success) {
+                  location.reload();
+              } else {
+                  alert(data.message || "Error updating status");
+              }
+          });
+    }
+    </script>
 </body>
 </html>

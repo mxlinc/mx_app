@@ -215,7 +215,7 @@
     <div class="name-separator"></div>
 
     <!-- Cards -->
-    <div class="container" id="cards-container">
+    <div class="container" id="card-container">
         {% include "_cards.html" %}
     </div>
 
@@ -253,7 +253,7 @@
                         const response = await fetch('/refresh_all');
                         const html = await response.text();
 
-                        const container = document.getElementById('cards-container');
+                        const container = document.getElementById('card-container');
                         container.style.opacity = 0;
                         setTimeout(() => {
                             container.innerHTML = html;

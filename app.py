@@ -157,7 +157,8 @@ def student_home():
         UserWorks.work_name,
         UserWorks.work_link,
         UserWorks.username,
-        UserWorks.work_id
+        UserWorks.work_id,
+        UserWorks.work_views
     ).filter(
         UserWorks.username == current_user.username,
         UserWorks.work_status == 'assigned'
@@ -165,7 +166,7 @@ def student_home():
 
     data = []
     pack_map = {}
-    for pack_id, pack_desc, work_name, work_link, username, work_id in results:
+    for pack_id, pack_desc, work_name, work_link, username, work_id, work_views in results:
         if pack_id not in pack_map:
             pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
             pack_map[pack_id] = pack_entry
@@ -175,7 +176,8 @@ def student_home():
             "work_name": work_name,
             "work_link": work_link,
             "username": username,
-            "work_id": work_id
+            "work_id": work_id,
+            "work_views": work_views
         })
 
     # filter out packs where all work_names start with 'V' to avoid empty packs
@@ -260,16 +262,17 @@ def refresh_all():
         UserWorks.work_name,
         UserWorks.work_link,
         UserWorks.username,
-        UserWorks.work_id
+        UserWorks.work_id,
+        UserWorks.work_views  # <-- Add this line
     ).filter(
         UserWorks.username == current_user.username,
-        UserWorks.work_status == 'assigned'
+        UserWorks.work_status == 'Assigned'
     ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
 
     data = []
     pack_map = {}
 
-    for pack_id, pack_desc, work_name, work_link, username, work_id in item_list:
+    for pack_id, pack_desc, work_name, work_link, username, work_id, work_views in item_list:  # <-- Add work_views here
         if pack_id not in pack_map:
             pack_map[pack_id] = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
             data.append(pack_map[pack_id])
@@ -277,7 +280,8 @@ def refresh_all():
             "work_name": work_name,
             "work_link": work_link,
             "username": username,
-            "work_id": work_id
+            "work_id": work_id,
+            "work_views": work_views  # <-- Add this line
         })
 
     # filter out packs where all work_names start with 'V'
@@ -644,47 +648,93 @@ def assign_work():
 
 
 
-
-@app.route('/filterwork', methods=['GET'])
+# ------------------- MARK COMPLETE ------------------- #
+@app.route('/mark_complete', methods=['POST'])
 @login_required
-def filter_work():
-    student = request.args.get('student')
-    statuses = request.args.getlist('status')  # multiple statuses
-    
-    if not student or not statuses:
-        flash("⚠️ Please select a student and at least one status.", "warning")
-        return redirect(url_for('admin_home'))
-    
-    # ✅ Dynamic IN clause
-    status_list = tuple(statuses)
-    query = text(f"""
-        SELECT work_name, work_link, work_status, pack_id
-        FROM prod.user_works
-        WHERE username = :student AND work_status IN :statuses
-        ORDER BY pack_id, work_rank
-    """)
-    
-    works = db.session.execute(query, {"student": student, "statuses": status_list}).mappings().all()
-    
-    # ✅ Fetch students again for dropdown
-    students = UserTable.query.filter_by(user_role='student').all()
-    
-    return render_template('admin_home.html', students=students, works=works)
+def mark_complete():
+    data = request.get_json()
+    username = data.get('username')
+    work_id = data.get('work_id')
+    row = UserWorks.query.filter_by(username=username, work_id=work_id).first()
+    if row:
+        row.work_status = "Done"
+        row.work_score = "Complete"
+        row.incorrect = "-" # <-- update Incorrect to '-'
+        row.last_updated = datetime.utcnow()
+        db.session.commit()
+        return "OK"
+    return "Not found", 404
 
-# ------------------- FINE TUNE ------------------- #
-@app.route('/fine_tune')
+# ------------------- FINE TUNE PAGE ------------------- #
+@app.route('/fine_tune', methods=['GET'])
 @login_required
 def fine_tune():
-    student = request.args.get('student')
-    student_obj = UserTable.query.filter_by(username=student).first()
-    student_name = student_obj.full_name if student_obj else student
-    return render_template('fine_tune.html', student_name=student_name)
+    students = UserTable.query.filter_by(user_role='student').all()
+    selected_student = request.args.get('student')
+    selected_status = request.args.getlist('status')
+    selected_type = request.args.getlist('type')
+    pack_ids = request.args.get('pack_ids', '').replace(' ', '')
+    packs = []
 
+    if selected_student:
+        query = UserWorks.query.filter_by(username=selected_student)
+        if selected_status and "ALL" not in selected_status:
+            query = query.filter(UserWorks.work_status.in_(selected_status))
+        if selected_type and "ALL" not in selected_type:
+            query = query.filter(db.or_(*[UserWorks.work_name.startswith(t) for t in selected_type]))
+        if pack_ids:
+            id_list = [int(pid) for pid in pack_ids.split(',') if pid]
+            query = query.filter(UserWorks.pack_id.in_(id_list))
+        works = query.order_by(UserWorks.pack_id, UserWorks.work_rank).all()
 
+        # Group by pack_id
+        pack_map = {}
+        for w in works:
+            if w.pack_id not in pack_map:
+                pack_map[w.pack_id] = {
+                    "pack_id": w.pack_id,
+                    "pack_desc": w.pack_desc,
+                    "works": []
+                }
+            pack_map[w.pack_id]["works"].append({
+                "work_id": w.work_id,
+                "work_name": w.work_name,
+                "work_status": w.work_status,
+                "username": w.username,
+                "pack_id": w.pack_id
+            })
+        packs = list(pack_map.values())
 
+    return render_template(
+        'fine_tune.html',
+        students=students,
+        selected_student=selected_student,
+        selected_status=selected_status,
+        selected_type=selected_type,
+        pack_ids=pack_ids,
+        packs=packs
+    )
+
+# ------------------- UPDATE WORK STATUS ------------------- #
+@app.route('/update_work_status', methods=['POST'])
+@login_required
+def update_work_status():
+    data = request.get_json()
+    username = data.get('username')
+    pack_id = data.get('pack_id')
+    work_id = data.get('work_id')
+    status = data.get('status')
+    row = UserWorks.query.filter_by(username=username, pack_id=pack_id, work_id=work_id).first()
+    if row:
+        row.work_status = status
+        db.session.commit()
+        return jsonify(success=True)
+    return jsonify(success=False, message="Work not found"), 404
 
 # -------------------- RUN -------------------- #
 if __name__ == "__main__":
     app.run(debug=True)
+
+
 
 

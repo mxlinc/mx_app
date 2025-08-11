@@ -1,3 +1,20 @@
+<style>
+.work-item.new {
+  font-weight: 600;
+  background-color: rgba(255, 223, 0, 0.08);
+  border-radius: 4px;
+  color: #222;
+  position: relative;
+}
+.work-item.new:hover {
+  background-color: rgba(255, 223, 0, 0.15);
+}
+.work-item.read {
+  color: #555;
+  font-weight: 400;
+}
+</style>
+
 {% if grouped|length == 0 %}
 <div style="text-align:center; padding:40px;">
   <i class="fas fa-umbrella-beach" style="font-size:60px; color:#1b3a6f; margin-bottom:15px;"></i>
@@ -15,23 +32,66 @@
   </div>
   <div class="card-body open">
     {% for w in pack.works %}
-    <div class="work-item">
       {% set icon_class = 'fa-regular fa-circle-check' %}
       {% if w.work_name.startswith('V') %}
-      {% set icon_class = 'fa-video' %}
+        {% set icon_class = 'fa-video' %}
       {% elif w.work_name.startswith('W') %}
-      {% set icon_class = 'fa-regular fa-pen-to-square' %}
+        {% set icon_class = 'fa-regular fa-pen-to-square' %}
       {% endif %}
-      <i class="fa {{ icon_class }}"></i>
-      <a class="work-link" href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}" target="_blank"
-        onclick="logClick('{{ w.username }}', '{{ pack.pack_id }}', '{{ w.work_id }}')">
-        {{ w.work_name }}
-      </a>
-
-
-    </div>
+      {% set item_class = 'read' if w.work_views else 'new' %}
+      <div class="work-item {{ item_class }}">
+        <i class="fa {{ icon_class }}"></i>
+        <a class="work-link"
+           href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}"
+           target="_blank"
+           onclick="logClickAndRefresh('{{ w.username }}', '{{ pack.pack_id }}', '{{ w.work_id }}', this); return false;">
+           {{ w.work_name }}
+        </a>
+        {% if w.work_name.startswith('W') %}
+          <a href="#" class="ms-2" title="Mark as Complete"
+             onclick="markAsComplete('{{ w.username }}', '{{ w.work_id }}'); return false;">
+            <i class="fa fa-check-circle text-success" style="font-size: 1.2em; cursor: pointer;"></i>
+          </a>
+        {% endif %}
+      </div>
     {% endfor %}
   </div>
 </div>
 {% endfor %}
 {% endif %}
+
+<script>
+function logClickAndRefresh(username, pack_id, work_id, linkElem) {
+    // Open the work in a new tab
+    window.open(linkElem.href, '_blank');
+
+    // Log the click
+    fetch('/log_click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, pack_id, work_id })
+    }).then(() => {
+        // Refresh only the cards
+        fetch('/refresh_all')
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById('card-container').innerHTML = html;
+            });
+    });
+}
+
+// Mark as Complete handler
+function markAsComplete(username, work_id) {
+    fetch('/mark_complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, work_id })
+    }).then(() => {
+        fetch('/refresh_all')
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById('card-container').innerHTML = html;
+            });
+    });
+}
+</script>
