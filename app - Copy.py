@@ -520,50 +520,37 @@ def create_pack():
 
 
 # -------------------- ADMIN - WORK MANAGEMENT -------------------- #
-from sqlalchemy import text, bindparam
-
 @app.route('/assignwork', methods=['POST'])
 @login_required
 def assign_work():
-    student = request.form['student'].strip().lower()   # normalize like your DB
+    student = request.form['student']
     pack_id = int(request.form['package_id'])
-    force = (request.form.get('force') == 'true')
+    force = request.form.get('force') == 'true'
 
     logger.info(f"Assigning pack_id={pack_id} to student={student}")
 
-    # --- Fetch ordered work_ids from the pack (preserve sequence) ---
+    # Get all work_ids in the package
     fetch_ids_sql = text("""
-        SELECT wid::int AS work_id
-        FROM prod.mx_work_packs p,
-             LATERAL unnest(string_to_array(p.pack_contents, '|')) WITH ORDINALITY u(wid, ord)
-        WHERE p.pack_id = :pack_id
-          AND btrim(wid) <> ''
-        ORDER BY u.ord
+        SELECT unnest(string_to_array(pack_contents, '|')) AS work_id
+        FROM prod.mx_work_packs
+        WHERE pack_id = :pack_id
     """)
-    work_ids = db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).scalars().all()
-    # de-dupe but keep order
-    work_ids = list(dict.fromkeys(work_ids))
-    if not work_ids:
-        return jsonify({"success": False, "message": f"❌ No work_ids found in pack {pack_id}."})
-
+    work_ids = [str(r['work_id']) for r in db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()]
     logger.info(f"Fetched work_ids for pack_id={pack_id}: {work_ids}")
 
-    # --- Conflicts (same work already assigned to this student in other packs, exclude videos) ---
+    # Find conflicts (same work_id already assigned to this student in other packs, excluding videos)
     conflict_sql = text("""
-        SELECT DISTINCT work_id, pack_id, work_name
+        SELECT work_id, pack_id, work_name
         FROM prod.user_works
         WHERE username = :username
           AND work_id IN :work_ids
           AND pack_id != :pack_id
-          AND COALESCE(work_name,'') NOT LIKE 'V%%'
-    """).bindparams(bindparam("work_ids", expanding=True))
-
-    conflicts = []
-    if work_ids:  # guard empty list
-        conflicts = db.session.execute(
-            conflict_sql,
-            {"username": student, "work_ids": work_ids, "pack_id": pack_id}
-        ).mappings().all()
+          AND NOT work_name LIKE 'V%%'
+    """)
+    conflicts = db.session.execute(
+        conflict_sql,
+        {"username": student, "work_ids": tuple(work_ids), "pack_id": pack_id}
+    ).mappings().all()
 
     if conflicts and not force:
         conflict_items = [{"id": str(row['work_id']), "name": row['work_name']} for row in conflicts]
@@ -574,70 +561,65 @@ def assign_work():
             "pack_id": pack_id
         })
 
-    # --- Fetch full work details in the same order as pack_contents ---
+    # Fetch full work details for the pack
     fetch_sql = text("""
-        SELECT p.pack_id,
-               p.pack_desc,
-               w.work_id,
-               w.work_level,
-               w.work_name,
-               w.work_link,
-               u.ord AS work_rank
-        FROM prod.mx_work_packs p
-        JOIN LATERAL unnest(string_to_array(p.pack_contents, '|')) WITH ORDINALITY u(wid, ord) ON TRUE
-        JOIN prod.mx_works w ON w.work_id = wid::int
-        WHERE p.pack_id = :pack_id
-        ORDER BY u.ord
+        SELECT 
+            m.pack_id,
+            m.pack_desc,
+            r.work_id,
+            r.work_level,
+            r.work_name,
+            r.work_link,
+            ROW_NUMBER() OVER () AS work_rank
+        FROM prod.mx_works r
+        JOIN (
+            SELECT pack_id, pack_desc, unnest(string_to_array(pack_contents, '|')) AS work_id
+            FROM prod.mx_work_packs
+            WHERE pack_id = :pack_id
+        ) m ON r.work_id = m.work_id::int
     """)
     works = db.session.execute(fetch_sql, {"pack_id": pack_id}).mappings().all()
     if not works:
-        return jsonify({"success": False, "message": f"❌ No works found for package {pack_id}."})
+        return jsonify({"success": False, "message": f"❌ No works found for package {pack_id}"})
 
+    # Build fast lookup for conflicting IDs (ensure int for safe compare)
     conflict_ids = {int(c['work_id']) for c in conflicts} if conflicts else set()
 
-    # Let table default set last_updated (Toronto). Keep idempotent.
     insert_sql = text("""
         INSERT INTO prod.user_works (
             username, pack_id, work_id,
             work_level, work_name, work_link,
             work_rank, pack_desc,
-            work_score, incorrect, work_views, work_status
+            work_score, incorrect, work_views, work_status, last_updated
         ) VALUES (
             :username, :pack_id, :work_id,
             :work_level, :work_name, :work_link,
             :work_rank, :pack_desc,
-            NULL, NULL, NULL, :work_status
+            NULL, NULL, NULL, :work_status, CURRENT_TIMESTAMP
         )
         ON CONFLICT (username, pack_id, work_id) DO NOTHING;
     """)
 
-    try:
-        with db.session.begin():
-            for w in works:
-                status = 'Past' if int(w["work_id"]) in conflict_ids else 'Future'
-                db.session.execute(insert_sql, {
-                    "username": student,
-                    "pack_id": w["pack_id"],
-                    "work_id": int(w["work_id"]),
-                    "work_level": w["work_level"],
-                    "work_name": w["work_name"],
-                    "work_link": w["work_link"],
-                    "work_rank": int(w["work_rank"]),
-                    "pack_desc": w["pack_desc"],
-                    "work_status": status
-                })
-    except Exception as e:
-        logger.exception("Assign failed")
-        db.session.rollback()
-        return jsonify({"success": False, "message": f"❌ Assign failed: {e}"}), 500
+    # Insert with per-row status based on conflict
+    for w in works:
+        status = 'Past' if int(w["work_id"]) in conflict_ids else 'Future'
+        db.session.execute(insert_sql, {
+            "username": student,
+            "pack_id": w["pack_id"],
+            "work_id": w["work_id"],
+            "work_level": w["work_level"],
+            "work_name": w["work_name"],
+            "work_link": w["work_link"],
+            "work_rank": w["work_rank"],
+            "pack_desc": w["pack_desc"],
+            "work_status": status
+        })
 
+    db.session.commit()
     return jsonify({
         "success": True,
-        "message": (
-            f"✅ Assigned package {pack_id} to {student} "
-            f"({len(works)} works processed; {len(conflict_ids)} marked Past, "
-            f"{len(works) - len(conflict_ids)} marked Future)"
-        )
+        "message": f"✅ Assigned package {pack_id} to {student} ({len(works)} works added; "
+                   f"{len(conflict_ids)} as Past, {len(works) - len(conflict_ids)} as Future)"
     })
 
 @app.route('/filterwork', methods=['GET'])
