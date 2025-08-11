@@ -523,7 +523,7 @@ def create_pack():
 @app.route('/assignwork', methods=['POST'])
 @login_required
 def assign_work():
-    from sqlalchemy import bindparam  # local import so you don't have to touch globals
+    from sqlalchemy import text, bindparam
 
     student = request.form['student']
     pack_id = int(request.form['package_id'])
@@ -531,17 +531,15 @@ def assign_work():
 
     logger.info(f"Assigning pack_id={pack_id} to student={student}")
 
-    # Get all work_ids in the package
+    # 1) Get all work_ids in the package
     fetch_ids_sql = text("""
         SELECT unnest(string_to_array(pack_contents, '|')) AS work_id
         FROM prod.mx_work_packs
         WHERE pack_id = :pack_id
     """)
-    raw_ids = db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()
-
-    # Normalize -> ints; drop blanks
+    work_ids_raw = db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()
     work_ids = []
-    for r in raw_ids:
+    for r in work_ids_raw:
         s = (r['work_id'] or '').strip()
         if not s:
             continue
@@ -549,14 +547,13 @@ def assign_work():
             work_ids.append(int(s))
         except ValueError:
             logger.warning(f"Non-integer work_id in pack {pack_id}: {s} (skipped)")
-    # de-dupe, preserve order
-    work_ids = list(dict.fromkeys(work_ids))
+    work_ids = list(dict.fromkeys(work_ids))  # de-dupe preserve order
 
     logger.info(f"Fetched work_ids for pack_id={pack_id}: {work_ids}")
     if not work_ids:
         return jsonify({"success": False, "message": f"❌ No valid work_ids found for package {pack_id}."})
 
-    # Find conflicts (same work_id already assigned to this student in other packs, excluding videos)
+    # 2) Find conflicts (same work already assigned to this student in other packs, exclude videos)
     conflict_sql = text("""
         SELECT work_id, pack_id, work_name
         FROM prod.user_works
@@ -567,8 +564,7 @@ def assign_work():
     """).bindparams(bindparam("work_ids", expanding=True))
 
     conflicts = db.session.execute(
-        conflict_sql,
-        {"username": student, "work_ids": work_ids, "pack_id": pack_id}
+        conflict_sql, {"username": student, "work_ids": work_ids, "pack_id": pack_id}
     ).mappings().all()
 
     if conflicts and not force:
@@ -580,7 +576,7 @@ def assign_work():
             "pack_id": pack_id
         })
 
-    # Fetch full work details for the pack
+    # 3) Fetch full work details for the pack
     fetch_sql = text("""
         SELECT 
             m.pack_id,
@@ -599,11 +595,11 @@ def assign_work():
     """)
     works = db.session.execute(fetch_sql, {"pack_id": pack_id}).mappings().all()
     if not works:
-        return jsonify({"success": False, "message": f"❌ No works found for package {pack_id}"})
+        return jsonify({"success": False, "message": f"❌ No works found for package {pack_id}."})
 
-    # Build fast lookup for conflicting IDs
     conflict_ids = {int(c['work_id']) for c in conflicts} if conflicts else set()
 
+    # 4) Insert rows (do writes on a fresh connection-level txn to avoid nested Session txn errors)
     insert_sql = text("""
         INSERT INTO prod.user_works (
             username, pack_id, work_id,
@@ -619,26 +615,33 @@ def assign_work():
         ON CONFLICT (username, pack_id, work_id) DO NOTHING;
     """)
 
-    for w in works:
-        status = 'Past' if int(w["work_id"]) in conflict_ids else 'Future'
-        db.session.execute(insert_sql, {
-            "username": student,
-            "pack_id": w["pack_id"],
-            "work_id": int(w["work_id"]),
-            "work_level": w["work_level"],
-            "work_name": w["work_name"],
-            "work_link": w["work_link"],
-            "work_rank": int(w["work_rank"]),
-            "pack_desc": w["pack_desc"],
-            "work_status": status
-        })
+    try:
+        # fresh transaction independent of the request-scoped Session state (Render-safe)
+        with db.engine.begin() as conn:
+            for w in works:
+                status = 'Past' if int(w["work_id"]) in conflict_ids else 'Future'
+                conn.execute(insert_sql, {
+                    "username": student,
+                    "pack_id": int(w["pack_id"]),
+                    "work_id": int(w["work_id"]),
+                    "work_level": w["work_level"],
+                    "work_name": w["work_name"],
+                    "work_link": w["work_link"],
+                    "work_rank": int(w["work_rank"]),
+                    "pack_desc": w["pack_desc"],
+                    "work_status": status
+                })
+    except Exception as e:
+        logger.exception("Assign failed")
+        return jsonify({"success": False, "message": f"❌ Assign failed: {e}"}), 500
 
-    db.session.commit()
     return jsonify({
         "success": True,
-        "message": f"✅ Assigned package {pack_id} to {student} ({len(works)} works added; "
-                   f"{len(conflict_ids)} as Past, {len(works) - len(conflict_ids)} as Future)"
+        "message": f"✅ Assigned package {pack_id} to {student} "
+                   f"({len(works)} works added; {len(conflict_ids)} Past, "
+                   f"{len(works) - len(conflict_ids)} Future)"
     })
+
 
 
 
