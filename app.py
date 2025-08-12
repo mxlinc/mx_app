@@ -370,9 +370,18 @@ def parse_email_content(subject, html_body):
 
 # -------------------- UPDATE WORKS WITH RESULTS -------------------- #
 def update_work_with_result(result):
-    if "user" not in result or "id" not in result or result["id"] == "INVALID":
-        logger.warning("Invalid result, cannot update work.")
+    if "user" not in result:
+        logger.warning(f"Missing 'user' in result: {result}")
         return
+
+    if "id" not in result:
+        logger.warning(f"Missing 'id' in result: {result}")
+        return
+
+    if result["id"] == "INVALID":
+        logger.warning(f"Result 'id' is INVALID: {result}")
+        return
+
 
     work_id_value = result["id"]
 
@@ -392,7 +401,7 @@ def update_work_with_result(result):
     ).all()
 
     if not updated_rows:
-        logger.info(f"No matching work found for user={result['user']} id={work_id_int}")
+        logger.warning(f"No matching work found for user={result['user']} id={work_id_int}")
         return
 
     for row in updated_rows:
@@ -404,10 +413,8 @@ def update_work_with_result(result):
             incorrect_value = incorrect_value[:97] + "..."
         row.incorrect = incorrect_value
 
-        row.last_updated = datetime.utcnow()
-
     db.session.commit()
-    logger.info(f"Updated {len(updated_rows)} rows with result={result}")
+    logger.warning(f"Updated {len(updated_rows)} rows with result={result}")
 
 # -------------------- ADMIN HOME -------------------- #
 @app.route('/adminhome')
