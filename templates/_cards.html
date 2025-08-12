@@ -62,25 +62,23 @@
 
 <script>
 function logClickAndRefresh(username, pack_id, work_id, linkElem) {
-    // Open the work in a new tab
     window.open(linkElem.href, '_blank');
-
-    // Log the click
     fetch('/log_click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, pack_id, work_id })
     }).then(() => {
-        // Refresh only the cards
         fetch('/refresh_all')
             .then(res => res.text())
             .then(html => {
                 document.getElementById('card-container').innerHTML = html;
+                // Re-attach handlers after HTML replacement
+                if (typeof attachRefreshHandlers === 'function') attachRefreshHandlers();
+                if (typeof attachCardHeaderToggle === 'function') attachCardHeaderToggle();
             });
     });
 }
 
-// Mark as Complete handler
 function markAsComplete(username, work_id) {
     fetch('/mark_complete', {
         method: 'POST',
@@ -91,6 +89,9 @@ function markAsComplete(username, work_id) {
             .then(res => res.text())
             .then(html => {
                 document.getElementById('card-container').innerHTML = html;
+                // Re-attach handlers after HTML replacement
+                if (typeof attachRefreshHandlers === 'function') attachRefreshHandlers();
+                if (typeof attachCardHeaderToggle === 'function') attachCardHeaderToggle();
             });
     });
 }

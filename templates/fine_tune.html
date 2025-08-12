@@ -8,7 +8,10 @@
 <body class="bg-light">
     <div class="container mt-4">
         <div class="d-flex justify-content-end mb-2">
-            <a href="{{ url_for('admin_home') }}" class="btn btn-outline-primary fw-bold px-4">Home</a>
+            <a href="{{ url_for('admin_home') }}" class="btn btn-outline-primary fw-bold px-4 me-2">Home</a>
+            <button type="button" class="btn btn-outline-success fw-bold px-4" data-bs-toggle="modal" data-bs-target="#studentPageModal">
+                Student's Page
+            </button>
         </div>
         <div class="card shadow p-3 mb-4">
             <h4 class="card-title mb-3">Fine tune work for student</h4>
@@ -110,6 +113,25 @@
         {% endif %}
     </div>
 
+    <!-- Modal for Student's Page -->
+    <div class="modal fade" id="studentPageModal" tabindex="-1" aria-labelledby="studentPageModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="studentPageModalLabel">Student's Assigned Work</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="student-modal-body">
+            <!-- Cards will be loaded here -->
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     function updateWorkStatus(username, pack_id, work_id, status, btn) {
         fetch('/update_work_status', {
@@ -125,6 +147,18 @@
               }
           });
     }
+
+    document.querySelector('[data-bs-target="#studentPageModal"]').addEventListener('click', function() {
+        // Get selected student from the filter form
+        var student = document.querySelector('select[name="student"]').value;
+        if (!student) return;
+        // Fetch the student's assigned work cards
+        fetch('/student_cards?student=' + encodeURIComponent(student))
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById('student-modal-body').innerHTML = html;
+            });
+    });
     </script>
 </body>
 </html>

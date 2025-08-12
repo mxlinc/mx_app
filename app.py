@@ -740,6 +740,45 @@ def update_work_status():
         return jsonify(success=True)
     return jsonify(success=False, message="Work not found"), 404
 
+
+@app.route('/student_cards')
+@login_required
+def student_cards():
+    student = request.args.get('student')
+    results = db.session.query(
+        UserWorks.pack_id,
+        UserWorks.pack_desc,
+        UserWorks.work_name,
+        UserWorks.work_link,
+        UserWorks.username,
+        UserWorks.work_id,
+        UserWorks.work_views
+    ).filter(
+        UserWorks.username == student,
+        UserWorks.work_status == 'Assigned'
+    ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
+
+    # Group by pack_id for cards
+    data = []
+    pack_map = {}
+    for pack_id, pack_desc, work_name, work_link, username, work_id, work_views in results:
+        if pack_id not in pack_map:
+            pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
+            pack_map[pack_id] = pack_entry
+            data.append(pack_entry)
+        pack_map[pack_id]["works"].append({
+            "work_name": work_name,
+            "work_link": work_link,
+            "username": username,
+            "work_id": work_id,
+            "work_views": work_views
+        })
+    return render_template('_cards.html', grouped=data)
+
+
+
+
+
 # -------------------- RUN -------------------- #
 if __name__ == "__main__":
     app.run(debug=True)
