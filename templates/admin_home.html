@@ -45,7 +45,7 @@
     <!-- Create Work Package -->
     <div class="card shadow p-3 mb-4">
       <h5 class="card-title mb-3">Create Work Package</h5>
-      <form method="POST" action="{{ url_for('create_pack') }}">
+      <form id="create-pack-form" method="POST" action="{{ url_for('create_pack') }}">
         <div class="row align-items-center g-2">
           <div class="col-md-2">
             <input type="number" name="pack_id" class="form-control" placeholder="Pack ID" required />
@@ -70,7 +70,7 @@
               required></textarea>
           </div>
           <div class="col-md-2">
-            <button type="submit" class="btn btn-sm btn-outline-primary">Create Package</button>
+            <button type="submit" class="btn btn-primary">Create/Update Package</button>
           </div>
         </div>
       </form>
@@ -179,6 +179,28 @@
       if (!student) { alert("Please select a student first."); return; }
       window.location.href = `/fine_tune?student=${encodeURIComponent(student)}`;
     }
+
+    document.getElementById('create-pack-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const form = this;
+      const packId = form.pack_id.value;
+      fetch(`/check_pack_id/${packId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.exists) {
+            // Show modal
+            document.getElementById('modal-pack-id').textContent = packId;
+            const modal = new bootstrap.Modal(document.getElementById('confirmUpdateModal'));
+            modal.show();
+            document.getElementById('modal-update-btn').onclick = function() {
+              modal.hide();
+              form.submit();
+            };
+          } else {
+            form.submit();
+          }
+        });
+    });
   </script>
 
   <!-- Pack details modal -->
@@ -270,6 +292,25 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">❌ No, Cancel</button>
           <button id="modal-yes-btn" type="button" class="btn btn-primary">✅ Yes, Assign Anyway</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal for confirming update of existing package -->
+  <div class="modal fade" id="confirmUpdateModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Update Existing Package?</h5>
+        </div>
+        <div class="modal-body">
+          <p>Pack ID <strong id="modal-pack-id"></strong> already exists.<br>
+          Do you want to update this package?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button id="modal-update-btn" type="button" class="btn btn-primary">Update Package</button>
         </div>
       </div>
     </div>

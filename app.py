@@ -777,6 +777,14 @@ def student_cards():
 
 
 
+# ------------------- CHECK PACK ID ------------------- #
+@app.route('/check_pack_id/<int:pack_id>')
+@login_required
+def check_pack_id(pack_id):
+    exists = db.session.query(MXWorkPacks.pack_id).filter_by(pack_id=pack_id).first() is not None
+    return jsonify({'exists': exists})
+
+
 
 
 # -------------------- RUN -------------------- #
