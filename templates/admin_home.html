@@ -42,6 +42,13 @@
 
 <body class="bg-light">
   <div class="container mt-4">
+    <!-- Navigation buttons -->
+    <div class="d-flex justify-content-start mb-4">
+      <a href="{{ url_for('admin_home') }}" class="btn btn-outline-primary fw-bold px-4 me-2">Admin Home</a>
+      <a href="{{ url_for('pack_report') }}" class="btn btn-outline-secondary fw-bold px-4 me-2">Packages</a>
+      <a href="{{ url_for('fine_tune') }}" class="btn btn-outline-success fw-bold px-4">Fine Tune</a>
+    </div>
+
     <!-- Create Work Package -->
     <div class="card shadow p-3 mb-4">
       <h5 class="card-title mb-3">Create Work Package</h5>
@@ -89,9 +96,8 @@
           </select>
         </div>
         <div class="col-md-4 d-flex">
-          <select id="filter-student" class="form-select me-2">
-            <option value="" disabled selected>Select Student</option>
-            {% for student in students %}
+          <select id="filter-student" class="form-select me-2" multiple size="6">
+            {% for student in students|sort(attribute='full_name') %}
             <option value="{{ student.username }}">{{ student.full_name }}</option>
             {% endfor %}
           </select>
@@ -151,21 +157,36 @@
 
     function assignPackToStudent(packId) {
       const studentSelect = document.getElementById("filter-student");
-      const student = studentSelect.value;
-      if (!student) { alert("Please select a student first."); return; }
+      const selectedStudents = Array.from(studentSelect.selectedOptions).map(opt => opt.value);
+      if (selectedStudents.length === 0) { alert("Please select at least one student."); return; }
+
+      const params = new URLSearchParams();
+      selectedStudents.forEach(s => params.append("student", s));
+      params.append("package_id", packId);
 
       fetch("/assignwork", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ student, package_id: packId })
+        body: params
       })
         .then(res => res.json())
         .then(data => {
-          if (data.conflict) {
-            showConflictModal(data.student, data.pack_id, data.conflict_items);
-          } else {
-            alert(data.message);
-            location.reload();
+          if (data.results && data.results.length > 0) {
+            let pending = [];
+            data.results.forEach(res => {
+              if (res.conflict && !res.can_assign) {
+                // Show conflict modal for this student
+                pending.push(res);
+              } else {
+                alert(res.message);
+              }
+            });
+            // If there are pending confirmations, show them one by one
+            if (pending.length > 0) {
+              handleNextConfirmation(pending, packId);
+            } else {
+              location.reload();
+            }
           }
         })
         .catch(err => {
@@ -201,6 +222,57 @@
           }
         });
     });
+
+    function handleNextConfirmation(pendingList, packId) {
+  if (pendingList.length === 0) {
+    location.reload();
+    return;
+  }
+  const res = pendingList.shift();
+  showConflictModal(res.student, packId, res.conflict_items, function(confirmed) {
+    if (confirmed) {
+      // Assign with force for this student
+      const params = new URLSearchParams();
+      params.append("student", res.student);
+      params.append("package_id", packId);
+      params.append("force", "true");
+      fetch("/assignwork", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params
+      })
+      .then(r => r.json())
+      .then(data => {
+        alert(data.results[0].message);
+        handleNextConfirmation(pendingList, packId);
+      });
+    } else {
+      handleNextConfirmation(pendingList, packId);
+    }
+  });
+}
+
+function showConflictModal(student, packId, conflictItems, callback) {
+  document.getElementById("conflict-student").textContent = student;
+  document.getElementById("conflict-pack").textContent = packId;
+  const list = document.getElementById("conflict-list");
+  list.innerHTML = "";
+  conflictItems.forEach(item => {
+    const li = document.createElement("li");
+    li.textContent = `${item.id}: ${item.name}`;
+    list.appendChild(li);
+  });
+  const modal = new bootstrap.Modal(document.getElementById("conflictModal"));
+  modal.show();
+  document.getElementById("modal-yes-btn").onclick = function() {
+    modal.hide();
+    callback(true);
+  };
+  document.querySelector("#conflictModal .btn-secondary").onclick = function() {
+    modal.hide();
+    callback(false);
+  };
+}
   </script>
 
   <!-- Pack details modal -->
@@ -225,55 +297,70 @@
             <tbody id="modalWorkRows"></tbody>
           </table>
           <div class="mb-3 mt-3">
-            <label for="workIdsTextarea" class="form-label">Pastable Work IDs:</label>
-            <textarea id="workIdsTextarea" class="form-control" rows="4" readonly></textarea>
+            <label for="workIdsTextarea" class="form-label">Edit Work IDs (one per line):</label>
+            <textarea id="workIdsTextarea" class="form-control" rows="4"></textarea>
           </div>
+        </div>
+        <div class="modal-footer">
+          <button id="updatePackBtn" type="button" class="btn btn-success">Update</button>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    let currentWorkIds = [];
-    function showPackDetails(packId) {
-      fetch(`/packdetails/${packId}`)
-        .then(res => res.json())
-        .then(data => {
-          document.getElementById("modalTitle").innerText = `Pack ${data.pack_id}: ${data.pack_desc}`;
-          let rows = "";
-          currentWorkIds = [];
-          data.works.forEach(w => {
-            currentWorkIds.push(w.work_id);
-            rows += `
-              <tr>
-                <td style="user-select: text; white-space: nowrap;">${w.work_id}</td>
-                <td><a href="${w.work_link}" target="_blank">${w.work_name}</a></td>
-              </tr>`;
-          });
-          document.getElementById("modalWorkRows").innerHTML = rows;
-          document.getElementById("workIdsTextarea").value = currentWorkIds.join('\n');
-          new bootstrap.Modal(document.getElementById("packDetailsModal")).show();
-        });
-    }
+let currentPackId = null;
+let currentWorkIds = [];
 
-    function forceAssign(student, packId) {
-      fetch("/assignwork", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({ student, package_id: packId, force: "true" })
-      })
-        .then(res => res.json())
-        .then(data => { alert(data.message); location.reload(); });
-    }
+function showPackDetails(packId) {
+  fetch(`/packdetails/${packId}`)
+    .then(res => res.json())
+    .then(data => {
+      currentPackId = data.pack_id;
+      document.getElementById("modalTitle").innerText = `Pack ${data.pack_id}: ${data.pack_desc}`;
+      let rows = "";
+      currentWorkIds = [];
+      data.works.forEach(w => {
+        currentWorkIds.push(w.work_id);
+        rows += `
+          <tr>
+            <td style="user-select: text; white-space: nowrap;">${w.work_id}</td>
+            <td><a href="${w.work_link}" target="_blank">${w.work_name}</a></td>
+          </tr>`;
+      });
+      document.getElementById("modalWorkRows").innerHTML = rows;
+      document.getElementById("workIdsTextarea").value = currentWorkIds.join('\n');
+      new bootstrap.Modal(document.getElementById("packDetailsModal")).show();
+    });
+}
 
-    function showConflictModal(student, packId, conflictIds) {
-      document.getElementById("conflict-student").textContent = student;
-      document.getElementById("conflict-pack").textContent = packId;
-      document.getElementById("conflict-list").innerHTML =
-        conflictIds.map(item => `<li><strong>${item.id}</strong> - ${item.name}</li>`).join("");
-      document.getElementById("modal-yes-btn").onclick = () => forceAssign(student, packId);
-      new bootstrap.Modal(document.getElementById("conflictModal")).show();
+// Handle update button click
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById("updatePackBtn").onclick = function() {
+    const newWorkIds = document.getElementById("workIdsTextarea").value
+      .split('\n')
+      .map(x => x.trim())
+      .filter(x => x.length > 0);
+    if (!currentPackId || newWorkIds.length === 0) {
+      alert("Pack ID or work IDs missing.");
+      return;
     }
+    fetch('/update_pack_works/' + currentPackId, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ work_ids: newWorkIds })
+    })
+    .then(res => {
+      if (res.ok) {
+        // Hide modal and reload admin page
+        bootstrap.Modal.getInstance(document.getElementById("packDetailsModal")).hide();
+        window.location.reload();
+      } else {
+        res.text().then(msg => alert(msg));
+      }
+    });
+  };
+});
   </script>
 
   <!-- Conflict modal -->

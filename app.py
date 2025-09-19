@@ -10,6 +10,7 @@ from datetime import datetime
 import re
 from sqlalchemy import text
 import logging
+from sqlalchemy.sql import bindparam
 
 logging.basicConfig(
     level=logging.INFO,
@@ -526,132 +527,198 @@ def create_pack():
 
     return redirect(url_for("admin_home"))
 
+# -------------------- ADMIN - UPDATES FROM PACK DETAILS PAGE -------------------- #
+@app.route('/update_pack_works/<int:pack_id>', methods=['POST'])
+@login_required
+def update_pack_works(pack_id):
+    data = request.get_json()
+    work_ids = data.get('work_ids', [])
+    if not work_ids:
+        return "No work IDs provided.", 400
 
+    # Validate all work_ids exist (as int or old_work_id)
+    with db.engine.begin() as conn:
+        # Map old_work_id to work_id if needed
+        old_ids = [wid for wid in work_ids if not str(wid).isdigit()]
+        mapping = {}
+        if old_ids:
+            result = conn.execute(
+                text("SELECT old_work_id, work_id FROM prod.mx_works WHERE old_work_id = ANY(:oids)"),
+                {"oids": old_ids}
+            ).mappings().all()
+            mapping = {row["old_work_id"]: row["work_id"] for row in result}
+            missing = [oid for oid in old_ids if oid not in mapping]
+            if missing:
+                return f"❌ Missing old_work_ids: {', '.join(missing)}", 400
 
+        # Build ordered list of work_ids (as int)
+        ordered_work_ids = [
+            int(wid) if str(wid).isdigit() else mapping[wid]
+            for wid in work_ids
+        ]
+        pack_contents = "|".join(str(wid) for wid in ordered_work_ids)
+
+        # Update the pack
+        conn.execute(
+            text("""
+                UPDATE prod.mx_work_packs
+                SET pack_contents = :contents, last_updated = CURRENT_TIMESTAMP
+                WHERE pack_id = :pack_id
+            """),
+            {"contents": pack_contents, "pack_id": pack_id}
+        )
+    return "OK"
 
 
 # -------------------- ADMIN - WORK MANAGEMENT -------------------- #
 @app.route('/assignwork', methods=['POST'])
 @login_required
 def assign_work():
-    from sqlalchemy import text, bindparam
-
-    student = request.form['student']
+    students = request.form.getlist('student')
     pack_id = int(request.form['package_id'])
     force = (request.form.get('force') == 'true')
+    results = []
 
-    logger.info(f"Assigning pack_id={pack_id} to student={student}")
+    for student in students:
+        logger.info(f"Assigning pack_id={pack_id} to student={student}")
 
-    # 1) Get all work_ids in the package
-    fetch_ids_sql = text("""
-        SELECT unnest(string_to_array(pack_contents, '|')) AS work_id
-        FROM prod.mx_work_packs
-        WHERE pack_id = :pack_id
-    """)
-    work_ids_raw = db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()
-    work_ids = []
-    for r in work_ids_raw:
-        s = (r['work_id'] or '').strip()
-        if not s:
-            continue
-        try:
-            work_ids.append(int(s))
-        except ValueError:
-            logger.warning(f"Non-integer work_id in pack {pack_id}: {s} (skipped)")
-    work_ids = list(dict.fromkeys(work_ids))  # de-dupe preserve order
-
-    logger.info(f"Fetched work_ids for pack_id={pack_id}: {work_ids}")
-    if not work_ids:
-        return jsonify({"success": False, "message": f"❌ No valid work_ids found for package {pack_id}."})
-
-    # 2) Find conflicts (same work already assigned to this student in other packs, exclude videos)
-    conflict_sql = text("""
-        SELECT work_id, pack_id, work_name
-        FROM prod.user_works
-        WHERE username = :username
-          AND work_id IN :work_ids
-          AND pack_id != :pack_id
-          AND COALESCE(work_name,'') NOT LIKE 'V%%'
-    """).bindparams(bindparam("work_ids", expanding=True))
-
-    conflicts = db.session.execute(
-        conflict_sql, {"username": student, "work_ids": work_ids, "pack_id": pack_id}
-    ).mappings().all()
-
-    if conflicts and not force:
-        conflict_items = [{"id": str(row['work_id']), "name": row['work_name']} for row in conflicts]
-        return jsonify({
-            "conflict": True,
-            "conflict_items": conflict_items,
-            "student": student,
-            "pack_id": pack_id
-        })
-
-    # 3) Fetch full work details for the pack
-    fetch_sql = text("""
-        SELECT 
-            m.pack_id,
-            m.pack_desc,
-            r.work_id,
-            r.work_level,
-            r.work_name,
-            r.work_link,
-            ROW_NUMBER() OVER () AS work_rank
-        FROM prod.mx_works r
-        JOIN (
-            SELECT pack_id, pack_desc, unnest(string_to_array(pack_contents, '|')) AS work_id
+        # 1) Get all work_ids in the package
+        fetch_ids_sql = text("""
+            SELECT unnest(string_to_array(pack_contents, '|')) AS work_id
             FROM prod.mx_work_packs
             WHERE pack_id = :pack_id
-        ) m ON r.work_id = m.work_id::int
-    """)
-    works = db.session.execute(fetch_sql, {"pack_id": pack_id}).mappings().all()
-    if not works:
-        return jsonify({"success": False, "message": f"❌ No works found for package {pack_id}."})
+        """)
+        work_ids_raw = db.session.execute(fetch_ids_sql, {"pack_id": pack_id}).mappings().all()
+        work_ids = []
+        for r in work_ids_raw:
+            s = (r['work_id'] or '').strip()
+            if not s:
+                continue
+            try:
+                work_ids.append(int(s))
+            except ValueError:
+                logger.warning(f"Non-integer work_id in pack {pack_id}: {s} (skipped)")
+        work_ids = list(dict.fromkeys(work_ids))  # de-dupe preserve order
 
-    conflict_ids = {int(c['work_id']) for c in conflicts} if conflicts else set()
+        logger.info(f"Fetched work_ids for pack_id={pack_id}: {work_ids}")
+        if not work_ids:
+            results.append({
+                "student": student,
+                "conflict": True,
+                "conflict_items": [],
+                "can_assign": False,
+                "message": f"❌ No valid work_ids found for package {pack_id}."
+            })
+            continue
 
-    # 4) Insert rows (do writes on a fresh connection-level txn to avoid nested Session txn errors)
-    insert_sql = text("""
-        INSERT INTO prod.user_works (
-            username, pack_id, work_id,
-            work_level, work_name, work_link,
-            work_rank, pack_desc,
-            work_score, incorrect, work_views, work_status, last_updated
-        ) VALUES (
-            :username, :pack_id, :work_id,
-            :work_level, :work_name, :work_link,
-            :work_rank, :pack_desc,
-            NULL, NULL, NULL, :work_status, CURRENT_TIMESTAMP
-        )
-        ON CONFLICT (username, pack_id, work_id) DO NOTHING;
-    """)
+        # 2) Find conflicts (same work already assigned to this student in other packs, exclude videos)
+        conflict_sql = text("""
+            SELECT work_id, pack_id, work_name
+            FROM prod.user_works
+            WHERE username = :username
+              AND work_id IN :work_ids
+              AND pack_id != :pack_id
+              AND COALESCE(work_name,'') NOT LIKE 'V%%'
+        """).bindparams(bindparam("work_ids", expanding=True))
 
-    try:
-        # fresh transaction independent of the request-scoped Session state (Render-safe)
-        with db.engine.begin() as conn:
-            for w in works:
-                status = 'Past' if int(w["work_id"]) in conflict_ids else 'Future'
-                conn.execute(insert_sql, {
-                    "username": student,
-                    "pack_id": int(w["pack_id"]),
-                    "work_id": int(w["work_id"]),
-                    "work_level": w["work_level"],
-                    "work_name": w["work_name"],
-                    "work_link": w["work_link"],
-                    "work_rank": int(w["work_rank"]),
-                    "pack_desc": w["pack_desc"],
-                    "work_status": status
-                })
-    except Exception as e:
-        logger.exception("Assign failed")
-        return jsonify({"success": False, "message": f"❌ Assign failed: {e}"}), 500
+        conflicts = db.session.execute(
+            conflict_sql, {"username": student, "work_ids": work_ids, "pack_id": pack_id}
+        ).mappings().all()
 
-    return jsonify({
-        "success": True,
-        "message": f"✅ Assigned package {pack_id} to {student} "
-                   f"({len(works)} works added; {len(conflict_ids)} Past, "
-                   f"{len(works) - len(conflict_ids)} Future)"
-    })
+        conflict_items = [{"id": str(row['work_id']), "name": row['work_name']} for row in conflicts]
+
+        if conflicts and not force:
+            results.append({
+                "student": student,
+                "conflict": True,
+                "conflict_items": conflict_items,
+                "can_assign": False,
+                "message": f"Student {student}: {len(conflicts)} conflicts"
+            })
+            continue
+
+        # 3) Fetch full work details for the pack
+        fetch_sql = text("""
+            SELECT 
+                m.pack_id,
+                m.pack_desc,
+                r.work_id,
+                r.work_level,
+                r.work_name,
+                r.work_link,
+                ROW_NUMBER() OVER () AS work_rank
+            FROM prod.mx_works r
+            JOIN (
+                SELECT pack_id, pack_desc, unnest(string_to_array(pack_contents, '|')) AS work_id
+                FROM prod.mx_work_packs
+                WHERE pack_id = :pack_id
+            ) m ON r.work_id = m.work_id::int
+        """)
+        works = db.session.execute(fetch_sql, {"pack_id": pack_id}).mappings().all()
+        if not works:
+            results.append({
+                "student": student,
+                "conflict": True,
+                "conflict_items": [],
+                "can_assign": False,
+                "message": f"❌ No works found for package {pack_id}."
+            })
+            continue
+
+        conflict_ids = {int(c['work_id']) for c in conflicts} if conflicts else set()
+
+        # 4) Insert rows (do writes on a fresh connection-level txn to avoid nested Session txn errors)
+        insert_sql = text("""
+            INSERT INTO prod.user_works (
+                username, pack_id, work_id,
+                work_level, work_name, work_link,
+                work_rank, pack_desc,
+                work_score, incorrect, work_views, work_status, last_updated
+            ) VALUES (
+                :username, :pack_id, :work_id,
+                :work_level, :work_name, :work_link,
+                :work_rank, :pack_desc,
+                NULL, NULL, NULL, :work_status, CURRENT_TIMESTAMP
+            )
+            ON CONFLICT (username, pack_id, work_id) DO NOTHING;
+        """)
+
+        try:
+            # fresh transaction independent of the request-scoped Session state (Render-safe)
+            with db.engine.begin() as conn:
+                for w in works:
+                    status = 'Past' if int(w["work_id"]) in conflict_ids else 'Future'
+                    conn.execute(insert_sql, {
+                        "username": student,
+                        "pack_id": int(w["pack_id"]),
+                        "work_id": int(w["work_id"]),
+                        "work_level": w["work_level"],
+                        "work_name": w["work_name"],
+                        "work_link": w["work_link"],
+                        "work_rank": int(w["work_rank"]),
+                        "pack_desc": w["pack_desc"],
+                        "work_status": status
+                    })
+            results.append({
+                "student": student,
+                "conflict": False,
+                "conflict_items": [],
+                "can_assign": True,
+                "message": f"✅ Assigned package {pack_id} to {student} "
+                           f"({len(works)} works added; {len(conflict_ids)} Past, "
+                           f"{len(works) - len(conflict_ids)} Future)"
+            })
+        except Exception as e:
+            logger.exception("Assign failed")
+            results.append({
+                "student": student,
+                "conflict": True,
+                "conflict_items": [],
+                "can_assign": False,
+                "message": f"❌ Assign failed: {e}"
+            })
+
+    return jsonify(results=results)
 
 
 
@@ -679,48 +746,53 @@ def fine_tune():
     students = UserTable.query.filter_by(user_role='student').all()
     selected_student = request.args.get('student')
     selected_status = request.args.getlist('status')
-    selected_type = request.args.getlist('type')
-    pack_ids = request.args.get('pack_ids', '').replace(' ', '')
+    if not selected_status:
+        selected_status = ['Future', 'Assigned', 'Done', 'Past', 'X-Delete']
+
+    logger.info(f"Selected student: {selected_student}")
+    logger.info(f"Selected statuses: {selected_status}")
+
     packs = []
-
+    results = []
     if selected_student:
-        query = UserWorks.query.filter_by(username=selected_student)
-        if selected_status and "ALL" not in selected_status:
-            query = query.filter(UserWorks.work_status.in_(selected_status))
-        if selected_type and "ALL" not in selected_type:
-            query = query.filter(db.or_(*[UserWorks.work_name.startswith(t) for t in selected_type]))
-        if pack_ids:
-            id_list = [int(pid) for pid in pack_ids.split(',') if pid]
-            query = query.filter(UserWorks.pack_id.in_(id_list))
-        works = query.order_by(UserWorks.pack_id, UserWorks.work_rank).all()
+        results = db.session.query(
+            UserWorks.pack_id,
+            UserWorks.pack_desc,
+            UserWorks.work_name,
+            UserWorks.work_link,
+            UserWorks.username,
+            UserWorks.work_id,
+            UserWorks.work_views,
+            UserWorks.work_status,
+            UserWorks.work_score  # <-- ADD THIS LINE
+    ).filter(
+        UserWorks.username == selected_student,
+        UserWorks.work_status.in_(selected_status)
+    ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
+    logger.info(f"Results found: {len(results)}")
 
-        # Group by pack_id
-        pack_map = {}
-        for w in works:
-            if w.pack_id not in pack_map:
-                pack_map[w.pack_id] = {
-                    "pack_id": w.pack_id,
-                    "pack_desc": w.pack_desc,
-                    "works": []
-                }
-            pack_map[w.pack_id]["works"].append({
-                "work_id": w.work_id,
-                "work_name": w.work_name,
-                "work_status": w.work_status,
-                "username": w.username,
-                "pack_id": w.pack_id,
-                "work_link": w.work_link,      # <-- add this
-                "work_views": w.work_views     # <-- add this
-            })
-        packs = list(pack_map.values())
+    pack_map = {}
+    for pack_id, pack_desc, work_name, work_link, username, work_id, work_views, work_status, work_score in results:  # <-- ADD work_score HERE
+        if pack_id not in pack_map:
+            pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
+            pack_map[pack_id] = pack_entry
+            packs.append(pack_entry)
+        pack_map[pack_id]["works"].append({
+            "work_name": work_name,
+            "work_link": work_link,
+            "username": username,
+            "work_id": work_id,
+            "work_views": work_views,
+            "work_status": work_status,
+            "pack_id": pack_id,
+            "work_score": work_score  # <-- ADD THIS LINE
+        })
 
     return render_template(
         'fine_tune.html',
         students=students,
         selected_student=selected_student,
         selected_status=selected_status,
-        selected_type=selected_type,
-        pack_ids=pack_ids,
         packs=packs
     )
 
@@ -784,6 +856,42 @@ def check_pack_id(pack_id):
     exists = db.session.query(MXWorkPacks.pack_id).filter_by(pack_id=pack_id).first() is not None
     return jsonify({'exists': exists})
 
+
+
+
+# -------------------- REPORT PAGE -------------------- #
+@app.route('/pack_report')
+@login_required
+def pack_report():
+    # Only allow admin
+    if current_user.user_role != 'admin':
+        return "Forbidden", 403
+
+    # Query all packs from the view
+    rows = db.session.execute(text("""
+        SELECT pack_id, pack_desc, broad_area, work_rank, work_id, work_name, work_filename, work_link
+        FROM prod.packs
+        ORDER BY broad_area, pack_id, work_rank
+    """)).mappings().all()
+
+    # Group by area and pack
+    area_map = {}
+    for r in rows:
+        area = r['broad_area'] or 'Uncategorized'
+        pack_key = f"{r['pack_id']}-{r['pack_desc']}"
+        if area not in area_map:
+            area_map[area] = {}
+        if pack_key not in area_map[area]:
+            area_map[area][pack_key] = []
+        area_map[area][pack_key].append({
+            "work_id": r["work_id"],
+            "work_name": r["work_name"],
+            "work_filename": r["work_filename"],
+            "work_link": r["work_link"],
+            "work_rank": r["work_rank"]
+        })
+
+    return render_template('pack_report.html', area_map=area_map)
 
 
 

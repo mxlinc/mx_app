@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fine Tune Assignments</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="d-flex justify-content-end mb-2">
+            <a href="{{ url_for('admin_home') }}" class="btn btn-outline-primary fw-bold px-4 me-2">Home</a>
+            <button type="button" class="btn btn-outline-success fw-bold px-4" data-bs-toggle="modal" data-bs-target="#studentPageModal">
+                Student's Page
+            </button>
+        </div>
+        <div class="card shadow p-3 mb-4">
+            <h4 class="card-title mb-3">Fine tune work for student</h4>
+            <form id="filterForm" method="get">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Student</label>
+                        <select name="student" class="form-select" required>
+                            <option value="" disabled selected>Select Student</option>
+                            {% for student in students|sort(attribute='full_name') %}
+                            <option value="{{ student.username }}" {% if student.username == selected_student %}selected{% endif %}>{{ student.full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-9 d-flex align-items-end">
+                        <div class="w-100 d-flex justify-content-between">
+                            {% for s in ['Future','Assigned','Done','Past','X-Delete'] %}
+                            <div class="form-check flex-fill text-center">
+                                <label class="form-check-label" for="status-{{ s }}">
+                                    <input class="form-check-input ms-1 me-2" type="checkbox" name="status" value="{{ s }}" id="status-{{ s }}"
+                                        {% if s in selected_status %}checked{% endif %}>
+                                    {{ s }}
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        {% if packs and packs|length > 0 %}
+        <div class="card shadow p-3">
+            {% for pack in packs %}
+            <div class="mb-4">
+                <h5>Pack {{ pack.pack_id }}: {{ pack.pack_desc }}</h5>
+                <ul class="list-group">
+                    {% for w in pack.works %}
+                    <li class="list-group-item d-flex align-items-center" id="work-row-{{ w.work_id }}">
+                        <!-- "A" column -->
+                        <div style="width:48px; text-align:center;">
+                            {% if w.work_status != 'Assigned' %}
+                            <a href="#" class="btn btn-sm btn-primary fw-bold"
+                               title="Assigned"
+                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Assigned', this); return false;">
+                                A
+                            </a>
+                            {% endif %}
+                        </div>
+                        <!-- Work details column -->
+                        <div class="flex-grow-1 d-flex align-items-center">
+                            <a href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}" target="_blank" class="me-2 text-decoration-underline">{{ w.work_id }}</a>
+                            {{ w.work_name }}
+                            <span class="badge bg-secondary ms-2">{{ w.work_status }}</span>
+                            {% if w.work_views is not none %}
+                                <span class="badge bg-info ms-2">{{ w.work_views }}</span>
+                            {% endif %}
+                        </div>
+                        <!-- Status buttons column -->
+                        <div>
+                            <span style="display:inline-block; width:24px;"></span>
+                            <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                               title="Future"
+                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Future', this); return false;">
+                                F
+                            </a>
+                            <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                               title="Next"
+                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Next', this); return false;">
+                                N
+                            </a>
+                            <span style="display:inline-block; width:24px;"></span>
+                            {% for code, tip in [('D','Done'),('T','Past'),('R','Defer'),('X','X-Delete')] %}
+                                <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                                   title="{{ tip }}"
+                                   onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', '{{ tip }}', this); return false;">
+                                    {{ code }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <div class="text-center mt-5 text-muted">No works found for selected student and statuses.</div>
+        {% endif %}
+    </div>
+
+    <!-- Modal for Student's Page -->
+    <div class="modal fade" id="studentPageModal" tabindex="-1" aria-labelledby="studentPageModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="studentPageModalLabel">Student's Assigned Work</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="student-modal-body">
+            <!-- Cards will be loaded here -->
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function updateWorkStatus(username, pack_id, work_id, status, btn) {
+        fetch('/update_work_status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, pack_id, work_id, status })
+        }).then(res => res.json())
+          .then data => {
+              if(data.success) {
+                  location.reload();
+              } else {
+                  alert(data.message || "Error updating status");
+              }
+          });
+    }
+
+    document.querySelector('[data-bs-target="#studentPageModal"]').addEventListener('click', function() {
+        // Get selected student from the filter form
+        var student = document.querySelector('select[name="student"]').value;
+        if (!student) return;
+        // Fetch the student's assigned work cards
+        fetch('/student_cards?student=' + encodeURIComponent(student))
+            .then(res => res.text())
+            .then(html => {
+                document.getElementById('student-modal-body').innerHTML = html;
+            });
+    });
+
+    document.querySelector('select[name="student"]').addEventListener('change', function() {
+        // Ensure all checked statuses are submitted
+        document.getElementById('filterForm').submit();
+    });
+    document.querySelectorAll('input[name="status"]').forEach(function(el) {
+        el.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
+    });
+    </script>
+</body>
+</html>

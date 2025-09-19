@@ -15,101 +15,106 @@
         </div>
         <div class="card shadow p-3 mb-4">
             <h4 class="card-title mb-3">Fine tune work for student</h4>
-            <form id="filterForm" method="get">
+            <form id="filterForm" method="get" autocomplete="off">
                 <div class="row mb-3">
                     <div class="col-md-3">
                         <label class="form-label">Student</label>
-                        <select name="student" class="form-select" required>
-                            <option value="" disabled selected>Select Student</option>
-                            {% for student in students %}
+                        <select name="student" class="form-select">
+                            <option value="" disabled {% if not selected_student %}selected{% endif %}>Select Student</option>
+                            {% for student in students|sort(attribute='full_name') %}
                             <option value="{{ student.username }}" {% if student.username == selected_student %}selected{% endif %}>{{ student.full_name }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Status</label>
-                        <select name="status" class="form-select" multiple>
-                            <option value="ALL" selected>ALL</option>
-                            {% for s in ['Future','Next','Assigned','Done','Past','Defer','X-Delete'] %}
-                            <option value="{{ s }}" {% if s in selected_status %}selected{% endif %}>{{ s }}</option>
+                    <div class="col-md-9 d-flex align-items-end">
+                        <div class="w-100 d-flex justify-content-between">
+                            {% for s in ['Future','Assigned','Done','Past','X-Delete'] %}
+                            <div class="form-check flex-fill text-center">
+                                <label class="form-check-label" for="status-{{ s }}">
+                                    <input class="form-check-input ms-1 me-2" type="checkbox" name="status" value="{{ s }}" id="status-{{ s }}"
+                                        {% if selected_status and s in selected_status %}checked{% endif %}>
+                                    {{ s }}
+                                </label>
+                            </div>
                             {% endfor %}
-                        </select>
+                        </div>
                     </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Type</label>
-                        <select name="type" class="form-select" multiple>
-                            <option value="ALL" selected>ALL</option>
-                            {% for t in ['Q','T','V','W','I'] %}
-                            <option value="{{ t }}" {% if t in selected_type %}selected{% endif %}>{{ t }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">Pack IDs (comma separated)</label>
-                        <input type="text" name="pack_ids" class="form-control" value="{{ pack_ids or '' }}" placeholder="e.g. 1,2,3">
-                    </div>
-                </div>
-                <div class="d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary fw-bold px-4 py-2">Filter</button>
                 </div>
             </form>
         </div>
 
-        {% if packs %}
-        <div class="card shadow p-3">
+        {% if packs and packs|length > 0 %}
+        <div class="accordion" id="packsAccordion">
             {% for pack in packs %}
-            <div class="mb-4">
-                <h5>Pack {{ pack.pack_id }}: {{ pack.pack_desc }}</h5>
-                <ul class="list-group">
-                    {% for w in pack.works %}
-                    <li class="list-group-item d-flex align-items-center" id="work-row-{{ w.work_id }}">
-                        <!-- "A" column -->
-                        <div style="width:48px; text-align:center;">
-                            {% if w.work_status != 'Assigned' %}
-                            <a href="#" class="btn btn-sm btn-primary fw-bold"
-                               title="Assigned"
-                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Assigned', this); return false;">
-                                A
-                            </a>
-                            {% endif %}
-                        </div>
-                        <!-- Work details column -->
-                        <div class="flex-grow-1 d-flex align-items-center">
-                            <a href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}" target="_blank" class="me-2 text-decoration-underline">{{ w.work_id }}</a>
-                            {{ w.work_name }}
-                            <span class="badge bg-secondary ms-2">{{ w.work_status }}</span>
-                            {% if w.work_views is not none %}
-                                <span class="badge bg-info ms-2">{{ w.work_views }}</span>
-                            {% endif %}
-                        </div>
-                        <!-- Status buttons column -->
-                        <div>
-                            <span style="display:inline-block; width:24px;"></span>
-                            <a href="#" class="btn btn-sm btn-outline-primary ms-1"
-                               title="Future"
-                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Future', this); return false;">
-                                F
-                            </a>
-                            <a href="#" class="btn btn-sm btn-outline-primary ms-1"
-                               title="Next"
-                               onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Next', this); return false;">
-                                N
-                            </a>
-                            <span style="display:inline-block; width:24px;"></span>
-                            {% for code, tip in [('D','Done'),('T','Past'),('R','Defer'),('X','X-Delete')] %}
-                                <a href="#" class="btn btn-sm btn-outline-primary ms-1"
-                                   title="{{ tip }}"
-                                   onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', '{{ tip }}', this); return false;">
-                                    {{ code }}
-                                </a>
+            <div class="accordion-item mb-3">
+                <h2 class="accordion-header" id="heading-{{ pack.pack_id }}">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapse-{{ pack.pack_id }}" aria-expanded="true"
+                        aria-controls="collapse-{{ pack.pack_id }}">
+                        Pack {{ pack.pack_id }}: {{ pack.pack_desc }}
+                    </button>
+                </h2>
+                <div id="collapse-{{ pack.pack_id }}" class="accordion-collapse collapse show"
+                    aria-labelledby="heading-{{ pack.pack_id }}" data-bs-parent="#packsAccordion">
+                    <div class="accordion-body">
+                        <ul class="list-group">
+                            {% for w in pack.works %}
+                            <li class="list-group-item d-flex align-items-center" id="work-row-{{ w.work_id }}">
+                                <div style="width:48px; text-align:center;">
+                                    {% if w.work_status != 'Assigned' %}
+                                    <a href="#" class="btn btn-sm {% if w.work_status == 'Done' %}btn-secondary{% else %}btn-primary fw-bold{% endif %}"
+                                       title="Assigned"
+                                       onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Assigned', this); return false;">
+                                        A
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1 d-flex align-items-center">
+                                    <a href="{{ w.work_link }}?SN={{ w.username }}&TITLE={{ w.work_id }}" target="_blank" class="me-2 text-decoration-underline">{{ w.work_id }}</a>
+                                    {{ w.work_name }}
+                                    {% if w.work_status == 'Future' %}
+                                        <span class="badge" style="background: #ffe066; color: #222; font-weight: bold; border: 1px solid #ffec99;">Future</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary ms-2">{{ w.work_status }}</span>
+                                    {% endif %}
+                                    {% if w.work_status == 'Done' and w.work_score %}
+                                        <span class="badge bg-success ms-2">{{ w.work_score }}</span>
+                                    {% endif %}
+                                    {% if w.work_views is not none %}
+                                        <span class="badge bg-info ms-2">{{ w.work_views }}</span>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <span style="display:inline-block; width:24px;"></span>
+                                    <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                                       title="Future"
+                                       onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Future', this); return false;">
+                                        F
+                                    </a>
+                                    <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                                       title="Next"
+                                       onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', 'Next', this); return false;">
+                                        N
+                                    </a>
+                                    <span style="display:inline-block; width:24px;"></span>
+                                    {% for code, tip in [('D','Done'),('T','Past'),('R','Defer'),('X','X-Delete')] %}
+                                        <a href="#" class="btn btn-sm btn-outline-primary ms-1"
+                                           title="{{ tip }}"
+                                           onclick="updateWorkStatus('{{ w.username }}', '{{ w.pack_id }}', '{{ w.work_id }}', '{{ tip }}', this); return false;">
+                                            {{ code }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </li>
                             {% endfor %}
-                        </div>
-                    </li>
-                    {% endfor %}
-                </ul>
+                        </ul>
+                    </div>
+                </div>
             </div>
             {% endfor %}
         </div>
+        {% else %}
+            <div class="text-center mt-5 text-muted">No works found for selected student and statuses.</div>
         {% endif %}
     </div>
 
@@ -122,7 +127,6 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body" id="student-modal-body">
-            <!-- Cards will be loaded here -->
             <div class="text-center py-5">
               <div class="spinner-border text-primary" role="status"></div>
             </div>
@@ -149,15 +153,22 @@
     }
 
     document.querySelector('[data-bs-target="#studentPageModal"]').addEventListener('click', function() {
-        // Get selected student from the filter form
         var student = document.querySelector('select[name="student"]').value;
         if (!student) return;
-        // Fetch the student's assigned work cards
         fetch('/student_cards?student=' + encodeURIComponent(student))
             .then(res => res.text())
             .then(html => {
                 document.getElementById('student-modal-body').innerHTML = html;
             });
+    });
+
+    document.querySelector('select[name="student"]').addEventListener('change', function() {
+        document.getElementById('filterForm').submit();
+    });
+    document.querySelectorAll('input[name="status"]').forEach(function(el) {
+        el.addEventListener('change', function() {
+            document.getElementById('filterForm').submit();
+        });
     });
     </script>
 </body>

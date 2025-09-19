@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Package Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-4">
+        <div class="d-flex justify-content-start mb-4">
+            <a href="{{ url_for('admin_home') }}" class="btn btn-outline-primary fw-bold px-4 me-2">Admin Home</a>
+            <a href="{{ url_for('pack_report') }}" class="btn btn-outline-secondary fw-bold px-4 me-2">Packages</a>
+            <a href="{{ url_for('fine_tune') }}" class="btn btn-outline-success fw-bold px-4">Fine Tune</a>
+        </div>
+        <h3 class="mb-4">Package Report</h3>
+        {% for area, packs in area_map.items() %}
+        <h4 class="mt-4">{{ area }}</h4>
+        <div class="accordion mb-3" id="accordion-{{ loop.index }}">
+            {% for pack_key, works in packs.items() %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="heading-{{ pack_key|replace(' ','_') }}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                        data-bs-target="#collapse-{{ pack_key|replace(' ','_') }}" aria-expanded="false"
+                        aria-controls="collapse-{{ pack_key|replace(' ','_') }}">
+                        Pack: {{ pack_key }}
+                    </button>
+
+                </h2>
+                <div id="collapse-{{ pack_key|replace(' ','_') }}" class="accordion-collapse collapse"
+                    aria-labelledby="heading-{{ pack_key|replace(' ','_') }}" data-bs-parent="#accordion-{{ loop.index }}">
+                    <div class="accordion-body">
+                        <table class="table table-bordered table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Work ID</th>
+                                    <th>Work Name</th>
+                                    <th>Filename</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for w in works %}
+                                <tr>
+                                    <td>
+                                        <a href="{{ w.work_link }}" target="_blank">{{ w.work_id }}</a>
+                                    </td>
+                                    <td>{{ w.work_name }}</td>
+                                    <td>{{ w.work_filename }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
