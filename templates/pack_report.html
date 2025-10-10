@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <title>Package Report</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .video-work {
+            color: maroon;
+            font-weight: bold;
+        }
+        .worksheet-work {
+            color: darkgreen;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <div class="container mt-4">
@@ -12,50 +22,192 @@
             <a href="{{ url_for('pack_report') }}" class="btn btn-outline-secondary fw-bold px-4 me-2">Packages</a>
             <a href="{{ url_for('fine_tune') }}" class="btn btn-outline-success fw-bold px-4">Fine Tune</a>
         </div>
-        <h3 class="mb-4">Package Report</h3>
-        {% for area, packs in area_map.items() %}
-        <h4 class="mt-4">{{ area }}</h4>
-        <div class="accordion mb-3" id="accordion-{{ loop.index }}">
-            {% for pack_key, works in packs.items() %}
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="heading-{{ pack_key|replace(' ','_') }}">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#collapse-{{ pack_key|replace(' ','_') }}" aria-expanded="false"
-                        aria-controls="collapse-{{ pack_key|replace(' ','_') }}">
-                        Pack: {{ pack_key }}
-                    </button>
+        
+        <!-- Broad Area Filter -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <select id="broadAreaFilter" class="form-select">
+                    <option value="ALL">ALL</option>
+                    {% for area in area_map.keys() %}
+                    <option value="{{ area }}">{{ area }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
 
-                </h2>
-                <div id="collapse-{{ pack_key|replace(' ','_') }}" class="accordion-collapse collapse"
-                    aria-labelledby="heading-{{ pack_key|replace(' ','_') }}" data-bs-parent="#accordion-{{ loop.index }}">
-                    <div class="accordion-body">
-                        <table class="table table-bordered table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Work ID</th>
-                                    <th>Work Name</th>
-                                    <th>Filename</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for w in works %}
-                                <tr>
-                                    <td>
-                                        <a href="{{ w.work_link }}" target="_blank">{{ w.work_id }}</a>
-                                    </td>
-                                    <td>{{ w.work_name }}</td>
-                                    <td>{{ w.work_filename }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+        <!-- Pack Details Container -->
+        <div id="packDetailsContainer">
+            {% for area, packs in area_map.items() %}
+            <div class="area-section" data-area="{{ area }}">
+                <h4 class="mt-4">{{ area }}</h4>
+                <div class="accordion mb-3" id="accordion-{{ loop.index }}">
+                    {% for pack_key, works in packs.items() %}
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading-{{ pack_key|replace(' ','_')|replace('-','_') }}">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#collapse-{{ pack_key|replace(' ','_')|replace('-','_') }}" aria-expanded="false"
+                                aria-controls="collapse-{{ pack_key|replace(' ','_')|replace('-','_') }}">
+                                Pack: {{ pack_key }}
+                            </button>
+                        </h2>
+                        <div id="collapse-{{ pack_key|replace(' ','_')|replace('-','_') }}" class="accordion-collapse collapse"
+                            aria-labelledby="heading-{{ pack_key|replace(' ','_')|replace('-','_') }}" data-bs-parent="#accordion-{{ loop.index }}">
+                            <div class="accordion-body">
+                                <table class="table table-bordered table-sm align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Work ID</th>
+                                            <th>Work Name</th>
+                                            <th>Filename</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for w in works %}
+                                        <tr>
+                                            <td>
+                                                <a href="{{ w.work_link }}" target="_blank">{{ w.work_id }}</a>
+                                            </td>
+                                            <td>
+                                                {% if w.work_name.startswith('V-') %}
+                                                    <span class="video-work">{{ w.work_name }}</span>
+                                                {% elif w.work_name.startswith('W-') %}
+                                                    <span class="worksheet-work">{{ w.work_name }}</span>
+                                                {% else %}
+                                                    {{ w.work_name }}
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ w.work_filename }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <div class="mt-3">
+                                    <a href="javascript:void(0);" class="btn btn-sm btn-outline-success" 
+                                       onclick="showPackDetails({{ pack_key.split('-')[0] }})">
+                                       Edit Package
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                    {% endfor %}
                 </div>
             </div>
             {% endfor %}
         </div>
-        {% endfor %}
     </div>
+
+    <!-- Pack details modal -->
+    <div class="modal fade" id="packDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="packDescInput" class="form-label">Pack Description:</label>
+                        <input type="text" id="packDescInput" class="form-control">
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <strong>Works in this pack:</strong>
+                    </div>
+                    <table class="table table-bordered table-sm">
+                        <thead>
+                            <tr>
+                                <th>Work ID</th>
+                                <th>Work Name</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modalWorkRows"></tbody>
+                    </table>
+                    <div class="mb-3 mt-3">
+                        <label for="workIdsTextarea" class="form-label">Edit Work IDs (one per line):</label>
+                        <textarea id="workIdsTextarea" class="form-control" rows="4"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="updatePackBtn" type="button" class="btn btn-success">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+// Filter areas by broad area selection
+document.getElementById('broadAreaFilter').addEventListener('change', function() {
+    const selectedArea = this.value;
+    const areaSections = document.querySelectorAll('.area-section');
+    
+    areaSections.forEach(section => {
+        if (selectedArea === 'ALL' || section.getAttribute('data-area') === selectedArea) {
+            section.style.display = 'block';
+        } else {
+            section.style.display = 'none';
+        }
+    });
+});
+
+// Modal functionality
+let currentPackId = null;
+let currentWorkIds = [];
+
+function showPackDetails(packId) {
+    fetch(`/packdetails/${packId}`)
+        .then(res => res.json())
+        .then(data => {
+            currentPackId = data.pack_id;
+            document.getElementById("modalTitle").innerText = `Pack ${data.pack_id}`;
+            document.getElementById("packDescInput").value = data.pack_desc;
+            let rows = "";
+            currentWorkIds = [];
+            data.works.forEach(w => {
+                currentWorkIds.push(w.work_id);
+                rows += `
+                    <tr>
+                        <td style="user-select: text; white-space: nowrap;">${w.work_id}</td>
+                        <td><a href="${w.work_link}" target="_blank">${w.work_name}</a></td>
+                    </tr>`;
+            });
+            document.getElementById("modalWorkRows").innerHTML = rows;
+            document.getElementById("workIdsTextarea").value = currentWorkIds.join('\n');
+            new bootstrap.Modal(document.getElementById("packDetailsModal")).show();
+        });
+}
+
+// Handle update button click
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById("updatePackBtn").onclick = function() {
+        const newPackDesc = document.getElementById("packDescInput").value.trim();
+        const newWorkIds = document.getElementById("workIdsTextarea").value
+            .split('\n')
+            .map(x => x.trim())
+            .filter(x => x.length > 0);
+        if (!currentPackId || newWorkIds.length === 0 || !newPackDesc) {
+            alert("Pack ID, pack description, or work IDs missing.");
+            return;
+        }
+        fetch('/update_pack_works/' + currentPackId, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                work_ids: newWorkIds,
+                pack_desc: newPackDesc
+            })
+        })
+        .then(res => {
+            if (res.ok) {
+                // Hide modal and reload page
+                bootstrap.Modal.getInstance(document.getElementById("packDetailsModal")).hide();
+                window.location.reload();
+            } else {
+                res.text().then(msg => alert(msg));
+            }
+        });
+    };
+});
+    </script>
 </body>
 </html>

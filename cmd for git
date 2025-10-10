@@ -1,0 +1,14 @@
+# check current status
+git status
+
+# stage all changes
+git add .
+
+# commit with a message
+git commit -m "your message here"
+
+# pull latest from remote (avoid conflicts)
+git pull origin main
+
+# push your local commits to remote
+git push origin main

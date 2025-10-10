@@ -162,14 +162,21 @@ def student_home():
         UserWorks.work_views
     ).filter(
         UserWorks.username == current_user.username,
-        UserWorks.work_status == 'Assigned'  # <-- Fix here
-    ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
+        UserWorks.work_status == 'Assigned'
+    ).order_by(UserWorks.pack_desc, UserWorks.pack_id, UserWorks.work_rank).all()  # Changed order
 
     data = []
     pack_map = {}
     for pack_id, pack_desc, work_name, work_link, username, work_id, work_views in results:
         if pack_id not in pack_map:
-            pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
+            # Extract display name (substring after _ if present)
+            display_desc = pack_desc.split('_', 1)[1] if '_' in pack_desc else pack_desc
+            pack_entry = {
+                "pack_id": pack_id, 
+                "pack_desc": pack_desc,  # Keep original for sorting
+                "display_desc": display_desc,  # New field for display
+                "works": []
+            }
             pack_map[pack_id] = pack_entry
             data.append(pack_entry)
 
@@ -264,25 +271,33 @@ def refresh_all():
         UserWorks.work_link,
         UserWorks.username,
         UserWorks.work_id,
-        UserWorks.work_views  # <-- Add this line
+        UserWorks.work_views
     ).filter(
         UserWorks.username == current_user.username,
         UserWorks.work_status == 'Assigned'
-    ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
+    ).order_by(UserWorks.pack_desc, UserWorks.pack_id, UserWorks.work_rank).all()  # Changed order
 
     data = []
     pack_map = {}
 
-    for pack_id, pack_desc, work_name, work_link, username, work_id, work_views in item_list:  # <-- Add work_views here
+    for pack_id, pack_desc, work_name, work_link, username, work_id, work_views in item_list:
         if pack_id not in pack_map:
-            pack_map[pack_id] = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
-            data.append(pack_map[pack_id])
+            # Extract display name (substring after _ if present)
+            display_desc = pack_desc.split('_', 1)[1] if '_' in pack_desc else pack_desc
+            pack_entry = {
+                "pack_id": pack_id, 
+                "pack_desc": pack_desc,  # Keep original for sorting
+                "display_desc": display_desc,  # New field for display
+                "works": []
+            }
+            pack_map[pack_id] = pack_entry
+            data.append(pack_entry)
         pack_map[pack_id]["works"].append({
             "work_name": work_name,
             "work_link": work_link,
             "username": username,
             "work_id": work_id,
-            "work_views": work_views  # <-- Add this line
+            "work_views": work_views
         })
 
     # filter out packs where all work_names start with 'V'
@@ -533,8 +548,12 @@ def create_pack():
 def update_pack_works(pack_id):
     data = request.get_json()
     work_ids = data.get('work_ids', [])
+    pack_desc = data.get('pack_desc', '').strip()
+    
     if not work_ids:
         return "No work IDs provided.", 400
+    if not pack_desc:
+        return "Pack description is required.", 400
 
     # Validate all work_ids exist (as int or old_work_id)
     with db.engine.begin() as conn:
@@ -558,14 +577,14 @@ def update_pack_works(pack_id):
         ]
         pack_contents = "|".join(str(wid) for wid in ordered_work_ids)
 
-        # Update the pack
+        # Update the pack with both contents and description
         conn.execute(
             text("""
                 UPDATE prod.mx_work_packs
-                SET pack_contents = :contents, last_updated = CURRENT_TIMESTAMP
+                SET pack_contents = :contents, pack_desc = :pack_desc, last_updated = CURRENT_TIMESTAMP
                 WHERE pack_id = :pack_id
             """),
-            {"contents": pack_contents, "pack_id": pack_id}
+            {"contents": pack_contents, "pack_desc": pack_desc, "pack_id": pack_id}
         )
     return "OK"
 
@@ -828,14 +847,21 @@ def student_cards():
     ).filter(
         UserWorks.username == student,
         UserWorks.work_status == 'Assigned'
-    ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
+    ).order_by(UserWorks.pack_desc, UserWorks.pack_id, UserWorks.work_rank).all()  # Changed order
 
     # Group by pack_id for cards
     data = []
     pack_map = {}
     for pack_id, pack_desc, work_name, work_link, username, work_id, work_views in results:
         if pack_id not in pack_map:
-            pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
+            # Extract display name (substring after _ if present)
+            display_desc = pack_desc.split('_', 1)[1] if '_' in pack_desc else pack_desc
+            pack_entry = {
+                "pack_id": pack_id, 
+                "pack_desc": pack_desc,  # Keep original for sorting
+                "display_desc": display_desc,  # New field for display
+                "works": []
+            }
             pack_map[pack_id] = pack_entry
             data.append(pack_entry)
         pack_map[pack_id]["works"].append({
@@ -871,7 +897,7 @@ def pack_report():
     rows = db.session.execute(text("""
         SELECT pack_id, pack_desc, broad_area, work_rank, work_id, work_name, work_filename, work_link
         FROM prod.packs
-        ORDER BY broad_area, pack_id, work_rank
+        ORDER BY broad_area, pack_desc, pack_id, work_rank
     """)).mappings().all()
 
     # Group by area and pack

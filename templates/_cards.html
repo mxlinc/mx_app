@@ -24,7 +24,7 @@
 {% for pack in grouped %}
 <div class="card" id="card-{{ pack.pack_id }}">
   <div class="card-header open">
-    {{ pack.pack_desc }}
+    {{ pack.display_desc }}  <!-- Changed from pack.pack_desc to pack.display_desc -->
     <div>
       <i class="fas fa-sync-alt refresh-btn" title="Refresh"></i>
       <i class="fas fa-chevron-down chevron"></i>
