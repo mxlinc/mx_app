@@ -111,6 +111,14 @@ class EmailMessage(db.Model):
     body = db.Column(db.Text)
     parsed = db.Column(JSON) 
 
+class DonePacks(db.Model):
+    __tablename__ = 'done_packs'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    
+    username = db.Column(db.String(20), primary_key=True)
+    pack_id = db.Column(db.Integer, primary_key=True)
+    completed_at = db.Column(db.DateTime(timezone=True), default=db.func.now())
+
 # -------------------- FLASK-LOGIN SETUP -------------------- #
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -772,8 +780,27 @@ def fine_tune():
     logger.info(f"Selected statuses: {selected_status}")
 
     packs = []
+    done_packs = []
     results = []
+    
     if selected_student:
+        # Get completed packs for this student
+        completed_pack_ids_query = db.session.query(DonePacks.pack_id).filter_by(username=selected_student)
+        completed_pack_ids = completed_pack_ids_query.subquery()
+        
+        # Get done packs info for display
+        done_packs_info = db.session.query(
+            DonePacks.pack_id,
+            UserWorks.pack_desc
+        ).join(
+            UserWorks, DonePacks.pack_id == UserWorks.pack_id
+        ).filter(
+            DonePacks.username == selected_student
+        ).distinct().all()
+        
+        done_packs = [{"pack_id": pack_id, "pack_desc": pack_desc} for pack_id, pack_desc in done_packs_info]
+        
+        # Get active packs (not completed)
         results = db.session.query(
             UserWorks.pack_id,
             UserWorks.pack_desc,
@@ -783,37 +810,74 @@ def fine_tune():
             UserWorks.work_id,
             UserWorks.work_views,
             UserWorks.work_status,
-            UserWorks.work_score  # <-- ADD THIS LINE
-    ).filter(
-        UserWorks.username == selected_student,
-        UserWorks.work_status.in_(selected_status)
-    ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
-    logger.info(f"Results found: {len(results)}")
+            UserWorks.work_score
+        ).filter(
+            UserWorks.username == selected_student,
+            UserWorks.work_status.in_(selected_status),
+            ~UserWorks.pack_id.in_(completed_pack_ids)  # Exclude completed packs
+        ).order_by(UserWorks.pack_id, UserWorks.work_rank).all()
+        logger.info(f"Results found: {len(results)}")
 
-    pack_map = {}
-    for pack_id, pack_desc, work_name, work_link, username, work_id, work_views, work_status, work_score in results:  # <-- ADD work_score HERE
-        if pack_id not in pack_map:
-            pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
-            pack_map[pack_id] = pack_entry
-            packs.append(pack_entry)
-        pack_map[pack_id]["works"].append({
-            "work_name": work_name,
-            "work_link": work_link,
-            "username": username,
-            "work_id": work_id,
-            "work_views": work_views,
-            "work_status": work_status,
-            "pack_id": pack_id,
-            "work_score": work_score  # <-- ADD THIS LINE
-        })
+        pack_map = {}
+        for pack_id, pack_desc, work_name, work_link, username, work_id, work_views, work_status, work_score in results:
+            if pack_id not in pack_map:
+                pack_entry = {"pack_id": pack_id, "pack_desc": pack_desc, "works": []}
+                pack_map[pack_id] = pack_entry
+                packs.append(pack_entry)
+            pack_map[pack_id]["works"].append({
+                "work_name": work_name,
+                "work_link": work_link,
+                "username": username,
+                "work_id": work_id,
+                "work_views": work_views,
+                "work_status": work_status,
+                "pack_id": pack_id,
+                "work_score": work_score
+            })
 
     return render_template(
         'fine_tune.html',
         students=students,
         selected_student=selected_student,
         selected_status=selected_status,
-        packs=packs
+        packs=packs,
+        done_packs=done_packs
     )
+
+# ------------------- MARK PACK DONE ------------------- #
+@app.route('/mark_pack_done', methods=['POST'])
+@login_required
+def mark_pack_done():
+    data = request.get_json()
+    username = data.get('username')
+    pack_id = int(data.get('pack_id'))
+    
+    # Check if already exists
+    existing = DonePacks.query.filter_by(username=username, pack_id=pack_id).first()
+    if not existing:
+        done_pack = DonePacks(username=username, pack_id=pack_id)
+        db.session.add(done_pack)
+        db.session.commit()
+        return jsonify(success=True, message=f"Pack {pack_id} marked as done for {username}")
+    else:
+        return jsonify(success=True, message=f"Pack {pack_id} already marked as done for {username}")
+
+# ------------------- RESTORE PACK ------------------- #
+@app.route('/restore_pack', methods=['POST'])
+@login_required
+def restore_pack():
+    data = request.get_json()
+    username = data.get('username')
+    pack_id = int(data.get('pack_id'))
+    
+    # Remove from done_packs
+    done_pack = DonePacks.query.filter_by(username=username, pack_id=pack_id).first()
+    if done_pack:
+        db.session.delete(done_pack)
+        db.session.commit()
+        return jsonify(success=True, message=f"Pack {pack_id} restored for {username}")
+    else:
+        return jsonify(success=False, message=f"Pack {pack_id} was not found in done list for {username}")
 
 # ------------------- UPDATE WORK STATUS ------------------- #
 @app.route('/update_work_status', methods=['POST'])
