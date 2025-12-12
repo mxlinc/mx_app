@@ -37,6 +37,17 @@
       margin-right: auto;
       max-width: none;
     }
+
+    /* Add these new styles for color coding */
+    .video-work {
+      color: maroon;
+      font-weight: bold;
+    }
+
+    .worksheet-work {
+      color: darkgreen;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -54,9 +65,6 @@
       <h5 class="card-title mb-3">Create Work Package</h5>
       <form id="create-pack-form" method="POST" action="{{ url_for('create_pack') }}">
         <div class="row align-items-center g-2">
-          <div class="col-md-2">
-            <input type="number" name="pack_id" class="form-control" placeholder="Pack ID" required />
-          </div>
           <div class="col-md-2">
             <input type="text" name="pack_desc" class="form-control" placeholder="Description" required />
           </div>
@@ -77,203 +85,95 @@
               required></textarea>
           </div>
           <div class="col-md-2">
-            <button type="submit" class="btn btn-primary">Create/Update Package</button>
+            <button type="submit" class="btn btn-primary">Create Package</button>
           </div>
         </div>
       </form>
     </div>
 
-    <!-- Recent Packages -->
+    <!-- Bulk Assignment Panel -->
+    <div class="card shadow p-3 mb-4">
+      <form id="bulk-assign-form">
+        <div class="row mb-3">
+          <div class="col-12">
+            <div class="row" style="border: 1px solid #dee2e6; padding: 10px; border-radius: 5px;">
+              {% for student in students|sort(attribute='full_name') %}
+              <div class="col-md-2 col-sm-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="{{ student.username }}"
+                    id="bulk-student-{{ student.username }}">
+                  <label class="form-check-label" for="bulk-student-{{ student.username }}"
+                    style="font-size: 0.85em;">
+                    {{ student.full_name }}
+                  </label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="row align-items-end">
+          <div class="col-md-3">
+            <label class="form-label">Pack IDs (comma separated):</label>
+            <input type="text" id="bulk-pack-ids" class="form-control" placeholder="1001, 1002, 1003" required>
+          </div>
+          <div class="col-md-2">
+            <button type="submit" class="btn btn-success">Assign Packs</button>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- All Packages -->
     <div id="recent-packs" class="card shadow p-3 mb-4">
-      <h5 class="card-title">Recent Packages</h5>
+      {% set broad_areas_list = all_packs|groupby('broad_area')|list %}
+      {% for row_start in range(0, broad_areas_list|length, 4) %}
       <div class="row mb-3">
-        <div class="col-md-4">
-          <select id="filter-area" class="form-select" onchange="filterPackages()">
-            <option value="__all__">All Broad Areas</option>
-            {% for area in broad_areas %}
-            <option value="{{ area }}">{{ area }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="col-md-4 d-flex">
-          <select id="filter-student" class="form-select me-2" multiple size="6">
-            {% for student in students|sort(attribute='full_name') %}
-            <option value="{{ student.username }}">{{ student.full_name }}</option>
-            {% endfor %}
-          </select>
-        </div>
+        {% for col_offset in range(4) %}
+          {% set index = row_start + col_offset %}
+          {% if index < broad_areas_list|length %}
+            {% set area_group = broad_areas_list[index] %}
+            <div class="col-md-3">
+              <div class="accordion" id="packagesAccordion{{ index }}">
+                <div class="accordion-item">
+                  <h2 class="accordion-header" id="heading-{{ index }}">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                      data-bs-target="#collapse-{{ index }}" aria-expanded="false"
+                      aria-controls="collapse-{{ index }}"
+                      style="font-size: 0.425em; padding: 6px 8px;">
+                      {{ area_group.grouper }} ({{ area_group.list|length }})
+                    </button>
+                  </h2>
+                  <div id="collapse-{{ index }}" class="accordion-collapse collapse"
+                    aria-labelledby="heading-{{ index }}" data-bs-parent="#packagesAccordion{{ index }}">
+                    <div class="accordion-body p-0">
+                      <table class="table table-sm table-hover mb-0" style="font-size: 0.75em;">
+                        <tbody>
+                          {% for pack in area_group.list %}
+                          <tr>
+                            <td>{{ pack.pack_id }}</td>
+                            <td>
+                              <a href="javascript:void(0);" onclick="showPackDetails({{ pack.pack_id }})" 
+                                 style="text-decoration: none; font-size: 0.75em;">
+                                {{ pack.pack_desc }}
+                              </a>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
       </div>
-
-      <table class="table table-sm table-hover" id="recent-packs-table">
-        <thead>
-          <tr>
-            <th>Pack ID</th>
-            <th>Broad Area</th>
-            <th>Description</th>
-            <th>Assign</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in recent_packs %}
-          <tr data-area="{{ p.broad_area }}">
-            <td>
-              <a href="javascript:void(0);" onclick="showPackDetails({{ p.pack_id }})">{{ p.pack_id }}</a>
-            </td>
-            <td>{{ p.broad_area }}</td>
-            <td>{{ p.pack_desc }}</td>
-            <td>
-              <a href="#" class="btn btn-sm btn-outline-primary"
-                onclick="assignPackToStudent('{{ p.pack_id }}', '{{ p.broad_area }}')">
-                Assign to Student
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      {% endfor %}
     </div>
 
-    <div class="d-flex justify-content-center mb-4">
-      <a href="/fine_tune" class="btn btn-outline-primary fw-bold px-5 py-3" style="font-size:1.25rem;">
-        Fine Tune
-      </a>
-    </div>
   </div>
-
-  <script>
-    function toggleBroadAreaInput(val) {
-      const input = document.getElementById("broad_area_input");
-      if (val === "__new__") { input.classList.remove("d-none"); input.required = true; }
-      else { input.classList.add("d-none"); input.required = false; }
-    }
-
-    function filterPackages() {
-      const selectedArea = document.getElementById("filter-area").value;
-      const rows = document.querySelectorAll("#recent-packs-table tbody tr");
-      rows.forEach(row => {
-        row.style.display = (selectedArea === "__all__" || row.getAttribute("data-area") === selectedArea) ? "" : "none";
-      });
-    }
-
-    function assignPackToStudent(packId) {
-      const studentSelect = document.getElementById("filter-student");
-      const selectedStudents = Array.from(studentSelect.selectedOptions).map(opt => opt.value);
-      if (selectedStudents.length === 0) { alert("Please select at least one student."); return; }
-
-      const params = new URLSearchParams();
-      selectedStudents.forEach(s => params.append("student", s));
-      params.append("package_id", packId);
-
-      fetch("/assignwork", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.results && data.results.length > 0) {
-            let pending = [];
-            data.results.forEach(res => {
-              if (res.conflict && !res.can_assign) {
-                // Show conflict modal for this student
-                pending.push(res);
-              } else {
-                alert(res.message);
-              }
-            });
-            // If there are pending confirmations, show them one by one
-            if (pending.length > 0) {
-              handleNextConfirmation(pending, packId);
-            } else {
-              location.reload();
-            }
-          }
-        })
-        .catch(err => {
-          alert("Something went wrong: " + err.message);
-          console.error(err);
-        });
-    }
-
-    function goFineTune() {
-      const student = document.getElementById("filter-student").value;
-      if (!student) { alert("Please select a student first."); return; }
-      window.location.href = `/fine_tune?student=${encodeURIComponent(student)}`;
-    }
-
-    document.getElementById('create-pack-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const form = this;
-      const packId = form.pack_id.value;
-      fetch(`/check_pack_id/${packId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.exists) {
-            // Show modal
-            document.getElementById('modal-pack-id').textContent = packId;
-            const modal = new bootstrap.Modal(document.getElementById('confirmUpdateModal'));
-            modal.show();
-            document.getElementById('modal-update-btn').onclick = function() {
-              modal.hide();
-              form.submit();
-            };
-          } else {
-            form.submit();
-          }
-        });
-    });
-
-    function handleNextConfirmation(pendingList, packId) {
-  if (pendingList.length === 0) {
-    location.reload();
-    return;
-  }
-  const res = pendingList.shift();
-  showConflictModal(res.student, packId, res.conflict_items, function(confirmed) {
-    if (confirmed) {
-      // Assign with force for this student
-      const params = new URLSearchParams();
-      params.append("student", res.student);
-      params.append("package_id", packId);
-      params.append("force", "true");
-      fetch("/assignwork", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params
-      })
-      .then(r => r.json())
-      .then(data => {
-        alert(data.results[0].message);
-        handleNextConfirmation(pendingList, packId);
-      });
-    } else {
-      handleNextConfirmation(pendingList, packId);
-    }
-  });
-}
-
-function showConflictModal(student, packId, conflictItems, callback) {
-  document.getElementById("conflict-student").textContent = student;
-  document.getElementById("conflict-pack").textContent = packId;
-  const list = document.getElementById("conflict-list");
-  list.innerHTML = "";
-  conflictItems.forEach(item => {
-    const li = document.createElement("li");
-    li.textContent = `${item.id}: ${item.name}`;
-    list.appendChild(li);
-  });
-  const modal = new bootstrap.Modal(document.getElementById("conflictModal"));
-  modal.show();
-  document.getElementById("modal-yes-btn").onclick = function() {
-    modal.hide();
-    callback(true);
-  };
-  document.querySelector("#conflictModal .btn-secondary").onclick = function() {
-    modal.hide();
-    callback(false);
-  };
-}
-  </script>
 
   <!-- Pack details modal -->
   <div class="modal fade" id="packDetailsModal" tabindex="-1">
@@ -308,61 +208,6 @@ function showConflictModal(student, packId, conflictItems, callback) {
     </div>
   </div>
 
-  <script>
-let currentPackId = null;
-let currentWorkIds = [];
-
-function showPackDetails(packId) {
-  fetch(`/packdetails/${packId}`)
-    .then(res => res.json())
-    .then(data => {
-      currentPackId = data.pack_id;
-      document.getElementById("modalTitle").innerText = `Pack ${data.pack_id}: ${data.pack_desc}`;
-      let rows = "";
-      currentWorkIds = [];
-      data.works.forEach(w => {
-        currentWorkIds.push(w.work_id);
-        rows += `
-          <tr>
-            <td style="user-select: text; white-space: nowrap;">${w.work_id}</td>
-            <td><a href="${w.work_link}" target="_blank">${w.work_name}</a></td>
-          </tr>`;
-      });
-      document.getElementById("modalWorkRows").innerHTML = rows;
-      document.getElementById("workIdsTextarea").value = currentWorkIds.join('\n');
-      new bootstrap.Modal(document.getElementById("packDetailsModal")).show();
-    });
-}
-
-// Handle update button click
-document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById("updatePackBtn").onclick = function() {
-    const newWorkIds = document.getElementById("workIdsTextarea").value
-      .split('\n')
-      .map(x => x.trim())
-      .filter(x => x.length > 0);
-    if (!currentPackId || newWorkIds.length === 0) {
-      alert("Pack ID or work IDs missing.");
-      return;
-    }
-    fetch('/update_pack_works/' + currentPackId, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ work_ids: newWorkIds })
-    })
-    .then(res => {
-      if (res.ok) {
-        // Hide modal and reload admin page
-        bootstrap.Modal.getInstance(document.getElementById("packDetailsModal")).hide();
-        window.location.reload();
-      } else {
-        res.text().then(msg => alert(msg));
-      }
-    });
-  };
-});
-  </script>
-
   <!-- Conflict modal -->
   <div class="modal fade" id="conflictModal" tabindex="-1">
     <div class="modal-dialog">
@@ -384,24 +229,300 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
   </div>
 
-  <!-- Modal for confirming update of existing package -->
-  <div class="modal fade" id="confirmUpdateModal" tabindex="-1">
-    <div class="modal-dialog">
+  <!-- Conflict Resolution Modal -->
+  <div class="modal fade" id="conflictResolutionModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Update Existing Package?</h5>
+          <h5 class="modal-title">⚠️ Assignment Conflicts Detected</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p>Pack ID <strong id="modal-pack-id"></strong> already exists.<br>
-          Do you want to update this package?</p>
+          <p class="mb-3">The following works are already assigned to students under different packs:</p>
+          <div id="conflict-resolution-content"></div>
+          <hr class="my-3">
+          <p class="mb-0"><strong>Choose how to handle these conflicts:</strong></p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button id="modal-update-btn" type="button" class="btn btn-primary">Update Package</button>
+          <button type="button" class="btn btn-secondary" onclick="processAssignments('normal')" data-bs-dismiss="modal">
+            ❌ Abort
+          </button>
+          <button type="button" class="btn btn-warning" onclick="processAssignments('reject_dupes')">
+            🚫 Reject Dupes
+          </button>
+          <button type="button" class="btn btn-success" onclick="processAssignments('accept_dupes')">
+            ✅ Accept Dupes as Past
+          </button>
         </div>
       </div>
     </div>
   </div>
+
+  <script>
+function toggleBroadAreaInput(val) {
+  const input = document.getElementById("broad_area_input");
+  if (val === "__new__") { 
+    input.classList.remove("d-none"); 
+    input.required = true; 
+  } else { 
+    input.classList.add("d-none"); 
+    input.required = false; 
+  }
+}
+
+// Bulk assignment functionality
+let allConflicts = [];
+let assignmentData = {};
+
+document.getElementById('bulk-assign-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const selectedStudents = [];
+  document.querySelectorAll('input[id^="bulk-student-"]:checked').forEach(cb => {
+    selectedStudents.push(cb.value);
+  });
+  
+  if (selectedStudents.length === 0) {
+    alert('Please select at least one student.');
+    return;
+  }
+  
+  const packIdsInput = document.getElementById('bulk-pack-ids').value.trim();
+  if (!packIdsInput) {
+    alert('Please enter pack IDs.');
+    return;
+  }
+  
+  const packIds = packIdsInput.split(',').map(id => id.trim()).filter(id => id);
+  if (packIds.length === 0) {
+    alert('Please enter valid pack IDs.');
+    return;
+  }
+
+  // Store assignment data for later use
+  assignmentData = {
+    students: selectedStudents,
+    packIds: packIds
+  };
+
+  // Check conflicts for all student-pack combinations
+  checkAllConflicts(selectedStudents, packIds);
+});
+
+function checkAllConflicts(students, packIds) {
+  allConflicts = [];
+  let completedChecks = 0;
+  let totalChecks = students.length * packIds.length;
+
+  students.forEach(student => {
+    packIds.forEach(packId => {
+      // Check conflicts for this student-pack combination
+      fetch('/check_assignment_conflicts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          student: student, 
+          pack_id: packId 
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        completedChecks++;
+        
+        if (data.conflicts && data.conflicts.length > 0) {
+          data.conflicts.forEach(conflict => {
+            allConflicts.push({
+              student: student,
+              packId: packId,
+              workId: conflict.work_id,
+              workName: conflict.work_name,
+              existingPackId: conflict.existing_pack_id
+            });
+          });
+        }
+
+        // When all checks are complete, show results
+        if (completedChecks === totalChecks) {
+          if (allConflicts.length > 0) {
+            showConflictResolutionModal();
+          } else {
+            // No conflicts, proceed with assignment
+            processAssignments('normal');
+          }
+        }
+      })
+      .catch(err => {
+        completedChecks++;
+        console.error(`Error checking conflicts for ${student}, pack ${packId}:`, err);
+        
+        if (completedChecks === totalChecks) {
+          alert('Error checking conflicts. Please try again.');
+        }
+      });
+    });
+  });
+}
+
+function showConflictResolutionModal() {
+  // Group conflicts by student for display
+  const conflictsByStudent = {};
+  allConflicts.forEach(conflict => {
+    if (!conflictsByStudent[conflict.student]) {
+      conflictsByStudent[conflict.student] = [];
+    }
+    conflictsByStudent[conflict.student].push(conflict);
+  });
+
+  // Build conflict list HTML
+  let conflictHtml = '<div style="max-height: 400px; overflow-y: auto;">';
+  Object.keys(conflictsByStudent).sort().forEach(student => {
+    conflictHtml += `<h6 class="mb-2 mt-3"><strong>${student}:</strong></h6>`;
+    conflictsByStudent[student].forEach(conflict => {
+      conflictHtml += `
+        <div class="ms-3 mb-1">
+          Pack ${conflict.packId} → Work ${conflict.workId} (${conflict.workName}) 
+          <small class="text-muted">already in Pack ${conflict.existingPackId}</small>
+        </div>`;
+    });
+  });
+  conflictHtml += '</div>';
+
+  // Update modal content
+  document.getElementById('conflict-resolution-content').innerHTML = conflictHtml;
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById('conflictResolutionModal'));
+  modal.show();
+}
+
+function processAssignments(mode) {
+  // Close any open modals
+  const modalElement = document.getElementById('conflictResolutionModal');
+  if (modalElement) {
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) modal.hide();
+  }
+
+  const { students, packIds } = assignmentData;
+  
+  let completedAssignments = 0;
+  let totalAssignments = students.length * packIds.length;
+  let results = [];
+
+  students.forEach(student => {
+    packIds.forEach(packId => {
+      const params = new URLSearchParams();
+      params.append('student', student);
+      params.append('package_id', packId);
+      params.append('assignment_mode', mode); // 'normal', 'accept_dupes', 'reject_dupes'
+      
+      // Include conflict data if needed
+      if (mode !== 'normal') {
+        const studentConflicts = allConflicts.filter(c => 
+          c.student === student && c.packId == packId
+        );
+        params.append('conflicts', JSON.stringify(studentConflicts));
+      }
+
+      fetch('/process_assignment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params
+      })
+      .then(res => res.json())
+      .then(data => {
+        completedAssignments++;
+        results.push(data);
+
+        if (completedAssignments === totalAssignments) {
+          // Show final results
+          const successCount = results.filter(r => r.success).length;
+          const errorCount = results.length - successCount;
+          
+          if (errorCount > 0) {
+            alert(`Assignment completed with ${successCount} successes and ${errorCount} errors. Check console for details.`);
+            console.log('Assignment results:', results);
+          } else {
+            alert(`Successfully processed ${totalAssignments} assignments!`);
+          }
+          
+          document.getElementById('bulk-assign-form').reset();
+          location.reload();
+        }
+      })
+      .catch(err => {
+        completedAssignments++;
+        console.error(`Error processing assignment for ${student}, pack ${packId}:`, err);
+        
+        if (completedAssignments === totalAssignments) {
+          alert('Some assignments failed. Check console for details.');
+          location.reload();
+        }
+      });
+    });
+  });
+}
+
+// Pack details functionality
+let currentPackId = null;
+let currentWorkIds = [];
+
+function showPackDetails(packId) {
+  fetch(`/packdetails/${packId}`)
+    .then(res => res.json())
+    .then((data) => {
+      currentPackId = data.pack_id;
+      document.getElementById("modalTitle").innerText = `Pack ${data.pack_id}: ${data.pack_desc}`;
+      let rows = "";
+      currentWorkIds = [];
+      data.works.forEach(w => {
+        currentWorkIds.push(w.work_id);
+        
+        let workNameHtml = w.work_name;
+        if (w.work_name.startsWith('V-')) {
+          workNameHtml = `<span class="video-work">${w.work_name}</span>`;
+        } else if (w.work_name.startsWith('W-')) {
+          workNameHtml = `<span class="worksheet-work">${w.work_name}</span>`;
+        }
+        
+        rows += `
+          <tr>
+            <td style="user-select: text; white-space: nowrap;">${w.work_id}</td>
+            <td><a href="${w.work_link}" target="_blank">${workNameHtml}</a></td>
+          </tr>`;
+      });
+      document.getElementById("modalWorkRows").innerHTML = rows;
+      document.getElementById("workIdsTextarea").value = currentWorkIds.join('\n');
+      new bootstrap.Modal(document.getElementById("packDetailsModal")).show();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById("updatePackBtn").onclick = function() {
+    const newWorkIds = document.getElementById("workIdsTextarea").value
+      .split('\n')
+      .map(x => x.trim())
+      .filter(x => x.length > 0);
+    if (!currentPackId || newWorkIds.length === 0) {
+      alert("Pack ID or work IDs missing.");
+      return;
+    }
+    fetch('/update_pack_works/' + currentPackId, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ work_ids: newWorkIds })
+    })
+    .then(res => {
+      if (res.ok) {
+        bootstrap.Modal.getInstance(document.getElementById("packDetailsModal")).hide();
+        window.location.reload();
+      } else {
+        res.text().then(msg => alert(msg));
+      }
+    });
+  };
+});
+  </script>
 </body>
 
 </html>

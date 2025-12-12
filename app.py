@@ -1,16 +1,15 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from sqlalchemy import text
+import html2text  # Add this import
 from dotenv import load_dotenv
-from flask import jsonify
-import html2text
 from sqlalchemy.dialects.postgresql import JSON
 from datetime import datetime
 import re
-from sqlalchemy import text
-import logging
 from sqlalchemy.sql import bindparam
+import logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -441,24 +440,35 @@ def update_work_with_result(result):
     logger.warning(f"Updated {len(updated_rows)} rows with result={result}")
 
 # -------------------- ADMIN HOME -------------------- #
-@app.route('/adminhome')
+@app.route('/admin_home')
 @login_required
 def admin_home():
-    broad_areas = db.session.execute(
-        text("SELECT DISTINCT broad_area FROM prod.mx_work_packs WHERE broad_area IS NOT NULL AND broad_area <> ''")
-    ).scalars().all()
+    # Only allow admin
+    if current_user.user_role != 'admin':
+        return "Forbidden", 403
+
+    # Get students
     students = UserTable.query.filter_by(user_role='student').all()
-    recent_packs = db.session.execute(text("""
-        SELECT pack_id, pack_desc, broad_area 
-        FROM prod.mx_work_packs 
-        WHERE is_deleted = false 
-        ORDER BY last_updated DESC
-    """)).mappings().all()
+
+    # Get broad areas for dropdowns
+    broad_areas = db.session.query(MXWorkPacks.broad_area)\
+                           .filter(MXWorkPacks.broad_area.isnot(None))\
+                           .distinct()\
+                           .order_by(MXWorkPacks.broad_area)\
+                           .all()
+    broad_areas = [area[0] for area in broad_areas if area[0]]
+
+    # Get all packs ordered by broad area, then by pack_desc (description)
+    all_packs = MXWorkPacks.query\
+                          .filter(MXWorkPacks.broad_area.isnot(None))\
+                          .order_by(MXWorkPacks.broad_area, MXWorkPacks.pack_desc)\
+                          .all()
+
     return render_template(
-        "admin_home.html",
+        'admin_home.html',
         students=students,
         broad_areas=broad_areas,
-        recent_packs=recent_packs
+        all_packs=all_packs
     )
 
 
@@ -495,7 +505,6 @@ def pack_details(pack_id):
 # -------------------- ADMIN - CREATE PACK -------------------- #
 @app.route("/createpack", methods=["POST"])
 def create_pack():
-    pack_id = int(request.form["pack_id"])
     pack_desc = request.form["pack_desc"]
     broad_area = request.form.get("broad_area") or request.form.get("broad_area_select")
     raw_ids = request.form["work_ids"]
@@ -530,23 +539,17 @@ def create_pack():
         ]
         pack_contents = "|".join(str(wid) for wid in ordered_work_ids)
 
-        # Upsert (insert or update)
+        # Insert only (no upsert since pack_id is auto-generated)
         result = conn.execute(
             text("""
-                INSERT INTO prod.mx_work_packs (pack_id, pack_desc, broad_area, pack_contents, last_updated)
-                VALUES (:id, :desc, :area, :contents, CURRENT_TIMESTAMP)
-                ON CONFLICT (pack_id) DO UPDATE SET
-                    pack_desc = EXCLUDED.pack_desc,
-                    broad_area = EXCLUDED.broad_area,
-                    pack_contents = EXCLUDED.pack_contents,
-                    last_updated = CURRENT_TIMESTAMP
-                RETURNING xmax = 0 AS inserted, pack_id, pack_desc
+                INSERT INTO prod.mx_work_packs (pack_desc, broad_area, pack_contents, last_updated)
+                VALUES (:desc, :area, :contents, CURRENT_TIMESTAMP)
+                RETURNING pack_id, pack_desc
             """),
-            {"id": pack_id, "desc": pack_desc, "area": broad_area, "contents": pack_contents}
+            {"desc": pack_desc, "area": broad_area, "contents": pack_contents}
         ).mappings().first()
 
-        action = "INSERTED" if result["inserted"] else "UPDATED"
-        logger.info(f"✅ {action} pack_id={result['pack_id']} | {result['pack_desc']}")
+        logger.info(f"✅ CREATED pack_id={result['pack_id']} | {result['pack_desc']}")
 
     return redirect(url_for("admin_home"))
 
@@ -983,6 +986,166 @@ def pack_report():
 
     return render_template('pack_report.html', area_map=area_map)
 
+
+
+# -------------------- CHECK ASSIGNMENT CONFLICTS -------------------- #
+@app.route('/check_assignment_conflicts', methods=['POST'])
+@login_required
+def check_assignment_conflicts():
+    data = request.get_json()
+    student = data.get('student')
+    pack_id = int(data.get('pack_id'))
+    
+    # Get works in the pack to be assigned
+    pack_works = db.session.execute(
+        text("""
+            SELECT mw.work_id, mw.work_name 
+            FROM prod.mx_works mw
+            JOIN (
+                SELECT UNNEST(string_to_array(pack_contents, '|'))::int as work_id 
+                FROM prod.mx_work_packs 
+                WHERE pack_id = :pack_id
+            ) pw ON mw.work_id = pw.work_id
+        """), 
+        {"pack_id": pack_id}
+    ).mappings().all()
+    
+    conflicts = []
+    
+    for work in pack_works:
+        # Skip videos (no conflicts for V- works)
+        if work['work_name'].startswith('V-'):
+            continue
+            
+        # Check if this work is already assigned to the student under a different pack
+        existing = db.session.execute(
+            text("""
+                SELECT pack_id FROM prod.user_works 
+                WHERE username = :student 
+                AND work_id = :work_id 
+                AND pack_id != :pack_id
+            """),
+            {"student": student, "work_id": work['work_id'], "pack_id": pack_id}
+        ).mappings().first()
+        
+        if existing:
+            conflicts.append({
+                "work_id": work['work_id'],
+                "work_name": work['work_name'],
+                "existing_pack_id": existing['pack_id']
+            })
+    
+    return jsonify({"conflicts": conflicts})
+
+
+@app.route('/process_assignment', methods=['POST'])
+@login_required
+def process_assignment():
+    student = request.form.get('student')
+    pack_id = int(request.form.get('package_id'))
+    mode = request.form.get('assignment_mode', 'normal')
+    conflicts_json = request.form.get('conflicts', '[]')
+    
+    try:
+        import json
+        conflicts = json.loads(conflicts_json) if conflicts_json else []
+        conflict_work_ids = [c['workId'] for c in conflicts]
+        
+        # Get pack details for pack_desc
+        pack_info = db.session.execute(
+            text("""
+                SELECT pack_desc FROM prod.mx_work_packs 
+                WHERE pack_id = :pack_id
+            """),
+            {"pack_id": pack_id}
+        ).mappings().first()
+        
+        if not pack_info:
+            return jsonify({
+                "success": False,
+                "message": f"❌ Pack {pack_id} not found"
+            })
+        
+        # Get all works in the pack
+        pack_works = db.session.execute(
+            text("""
+                SELECT mw.work_id, mw.work_name, mw.work_link, mw.work_level,
+                       ROW_NUMBER() OVER() as work_rank
+                FROM prod.mx_works mw
+                JOIN (
+                    SELECT UNNEST(string_to_array(pack_contents, '|'))::int as work_id
+                    FROM prod.mx_work_packs 
+                    WHERE pack_id = :pack_id
+                ) pw ON mw.work_id = pw.work_id
+            """), 
+            {"pack_id": pack_id}
+        ).mappings().all()
+        
+        # Check if pack already assigned to student
+        existing_works = db.session.execute(
+            text("""
+                SELECT work_id FROM prod.user_works 
+                WHERE username = :student AND pack_id = :pack_id
+            """),
+            {"student": student, "pack_id": pack_id}
+        ).mappings().all()
+        
+        existing_work_ids = [w['work_id'] for w in existing_works]
+        
+        # Process each work based on mode
+        for work in pack_works:
+            work_id = work['work_id']
+            
+            # Skip if work already exists for this student-pack combination
+            if work_id in existing_work_ids:
+                continue
+                
+            # Determine status
+            if mode == 'accept_dupes' and work_id in conflict_work_ids:
+                status = 'Past'
+            elif mode == 'reject_dupes' and work_id in conflict_work_ids:
+                continue  # Skip conflicting work
+            else:
+                status = 'Future'
+            
+            # Insert the work using the correct table name
+            db.session.execute(
+                text("""
+                    INSERT INTO prod.user_works 
+                    (username, pack_id, work_id, work_level, work_name, work_link, 
+                     work_rank, pack_desc, work_score, incorrect, work_views, 
+                     work_status, last_updated)
+                    VALUES (:username, :pack_id, :work_id, :work_level, :work_name, 
+                            :work_link, :work_rank, :pack_desc, NULL, NULL, NULL, 
+                            :status, CURRENT_TIMESTAMP)
+                """),
+                {
+                    "username": student,
+                    "pack_id": pack_id,
+                    "work_id": work_id,
+                    "work_level": work['work_level'],
+                    "work_name": work['work_name'],
+                    "work_link": work['work_link'],
+                    "work_rank": work['work_rank'],
+                    "pack_desc": pack_info['pack_desc'],
+                    "status": status
+                }
+            )
+        
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": f"✅ Pack {pack_id} processed for {student} (mode: {mode})"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error processing assignment: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"❌ Error processing pack {pack_id} for {student}: {str(e)}"
+        })
 
 
 # -------------------- RUN -------------------- #
