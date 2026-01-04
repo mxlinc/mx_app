@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Contact Us - MX Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Poppins', sans-serif; background: #f4f7fb; margin:0; color:#222 }
+        .container { max-width:820px; margin:36px auto; padding:20px }
+        .card { background:#fff; border-radius:12px; box-shadow:0 6px 18px rgba(22,40,80,0.08); padding:22px }
+        h2 { color:#1b3a6f; margin-top:0 }
+        .row { display:flex; gap:12px; margin-bottom:12px }
+        .col { flex:1 }
+        .small-input { width:100%; padding:10px 12px; border:1px solid #d6dbe8; border-radius:8px; box-sizing:border-box }
+        label { display:block; font-weight:600; margin-bottom:6px; color:#333 }
+        input[type="text"], textarea, select { width:100%; padding:10px 12px; border:1px solid #d6dbe8; border-radius:8px; font-size:14px }
+        textarea { min-height:120px; resize:vertical }
+        .btn { background:#1b3a6f; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600 }
+        .muted { color:#666; font-size:13px }
+        .message { margin-top:12px; font-size:14px }
+        .small { font-size:12px; color:#666 }
+        @media (max-width:640px){ .row { flex-direction:column } }
+    </style>
+</head>
+<body>
+    <div class="container">
+            <div class="card">
+                <h2>Contact Us</h2>
+                <p class="muted">Please fill this form and we will give you some scheduling options for a free assessment/orientation session with us.</p>
+
+            <form id="contactForm">
+                <div class="row">
+                    <div class="col">
+                        <label for="your_name">Your Name</label>
+                        <input id="your_name" name="your_name" type="text" class="small-input" required>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label for="phone">Phone</label>
+                        <input id="phone" name="phone" type="text" class="small-input" placeholder="e.g. 416-555-1212" required>
+                    </div>
+                    <div class="col">
+                        <label for="email">Email</label>
+                        <input id="email" name="email" type="text" class="small-input" placeholder="name@example.com">
+                    </div>
+                </div>
+
+                <div style="margin-bottom:12px">
+                    <label for="child_name">Child's Name & Age</label>
+                    <input id="child_name" name="child_name" type="text" class="small-input">
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <label for="grade">Grade</label>
+                        <select id="grade" name="grade">
+                            <option>Preschool / Casa / Kindergarten</option>
+                            <option>Grade 1 to 3</option>
+                            <option>Grade 4 to 8</option>
+                            <option>High school</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <label for="subject">Subject</label>
+                        <select id="subject" name="subject">
+                            <option>Math</option>
+                            <option>English</option>
+                            <option>Both Math & English</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:12px">
+                    <label for="about">Tell us about your child</label>
+                    <textarea id="about" name="about"></textarea>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:12px">
+                    <button id="submitBtn" class="btn" type="submit">Send</button>
+                    <div id="status" class="message"></div>
+                </div>
+                <div style="height:6px"></div>
+                <div class="small"></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('contactForm');
+        const btn = document.getElementById('submitBtn');
+        const status = document.getElementById('status');
+
+        function cooldownActive(){
+            const t = sessionStorage.getItem('contact_cooldown');
+            if(!t) return false;
+            return Date.now() < parseInt(t,10);
+        }
+
+        form.addEventListener('submit', async (e)=>{
+            e.preventDefault();
+            if(cooldownActive()){
+                status.textContent = 'Please wait before sending another request.';
+                return;
+            }
+            btn.disabled = true;
+            status.textContent = 'Sending...';
+
+            const payload = {
+                your_name: document.getElementById('your_name').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email') ? document.getElementById('email').value : '',
+                child_name: document.getElementById('child_name').value,
+                grade: document.getElementById('grade').value,
+                subject: document.getElementById('subject').value,
+                about: document.getElementById('about').value
+            };
+
+            try{
+                const resp = await fetch('/contact_submit', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const j = await resp.json();
+                // show a professional confirmation and remove the form
+                const heading = document.querySelector('.card h2');
+                if (heading) heading.style.display = 'none';
+                const muted = document.querySelector('.card .muted');
+                if (muted) muted.style.display = 'none';
+
+                const confirmation = document.createElement('div');
+                confirmation.style.fontFamily = "'Poppins', sans-serif";
+                confirmation.style.fontSize = '16px';
+                confirmation.style.color = '#1b3a6f';
+                confirmation.style.padding = '18px';
+                confirmation.innerHTML = '<h3>Your message has been received.</h3><p style="color:#333;font-size:15px;">One of our certified teachers will contact you within the next 24 hours.</p>';
+
+                // add Close button below the message that returns to homepage
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'btn';
+                closeBtn.textContent = 'Close';
+                closeBtn.style.marginTop = '14px';
+                closeBtn.addEventListener('click', ()=>{ window.location.href = '/'; });
+                confirmation.appendChild(closeBtn);
+
+                form.parentNode.replaceChild(confirmation, form);
+                // set short client cooldown to reduce accidental resends
+                const cooldownMs = 60*1000; // 60s
+                sessionStorage.setItem('contact_cooldown', String(Date.now() + cooldownMs));
+            }catch(err){
+                console.error(err);
+                status.textContent = 'Error sending. Please try again later.';
+            }finally{
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

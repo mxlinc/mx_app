@@ -6,7 +6,7 @@ from sqlalchemy import text
 import html2text  # Add this import
 from dotenv import load_dotenv
 from sqlalchemy.dialects.postgresql import JSON
-from datetime import datetime
+from datetime import datetime, timedelta
 import re
 from sqlalchemy.sql import bindparam
 import logging
@@ -117,6 +117,18 @@ class DonePacks(db.Model):
     username = db.Column(db.String(20), primary_key=True)
     pack_id = db.Column(db.Integer, primary_key=True)
     completed_at = db.Column(db.DateTime(timezone=True), default=db.func.now())
+
+
+class ContactSubmission(db.Model):
+    __tablename__ = 'contact_submissions'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+
+    id = db.Column(db.Integer, primary_key=True)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    ip_address = db.Column(db.String(100))
+    sms_sent = db.Column(db.Boolean, default=False)
+    sms_sent_at = db.Column(db.DateTime)
 
 # -------------------- FLASK-LOGIN SETUP -------------------- #
 login_manager = LoginManager(app)
@@ -350,6 +362,90 @@ def emails():
     messages = EmailMessage.query.order_by(EmailMessage.id.desc()).limit(20).all()
     global last_result
     return render_template('emails.html', messages=messages, last_result=last_result)
+
+
+# -------------------- CONTACT FORM (public) -------------------- #
+@app.route('/contact', methods=['GET'])
+def contact():
+    return render_template('contact.html')
+
+
+@app.route('/contact_submit', methods=['POST'])
+def contact_submit():
+    # Accept JSON or form-encoded
+    data = request.get_json(silent=True) or request.form or {}
+    your_name = (data.get('your_name') or '').strip()
+    phone = (data.get('phone') or '').strip()
+    email = (data.get('email') or '').strip()
+    child_name = (data.get('child_name') or '').strip()
+    grade = (data.get('grade') or '').strip()
+    subject = (data.get('subject') or '').strip()
+    about = (data.get('about') or '').strip()
+
+    # Concatenate with | delimiter, avoid internal pipes by replacing
+    safe = lambda s: (s or '').replace('|', ' ')
+    # include email in the saved content and SMS
+    parts = [safe(your_name), safe(phone), safe(email), safe(child_name), safe(grade), safe(subject), safe(about)]
+    content = '|'.join(parts)
+
+    # client IP (support X-Forwarded-For)
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+
+    # Persist record
+    cs = ContactSubmission(content=content, ip_address=ip)
+    db.session.add(cs)
+    db.session.commit()
+
+    # Flood control: limit SMS per IP to 3 per hour
+    cutoff = datetime.utcnow() - timedelta(hours=1)
+    recent_count = ContactSubmission.query.filter(
+        ContactSubmission.ip_address == ip,
+        ContactSubmission.created_at >= cutoff
+    ).count()
+
+    if recent_count > 3:
+        logger.info(f"Rate limit reached for IP={ip} recent_count={recent_count}")
+        return jsonify(success=True, sms_sent=False, message='Rate limit reached; submission saved.')
+
+    # Attempt to send SMS via Twilio if configured
+    TW_SID = os.getenv('TWILIO_ACCOUNT_SID')
+    TW_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+    TW_FROM = os.getenv('TWILIO_FROM_NUMBER')
+    TO_NUMBER = os.getenv('CONTACT_TARGET_NUMBER', '+14165600611')
+
+    if not (TW_SID and TW_TOKEN and TW_FROM):
+        logger.warning('Twilio credentials not configured; skipping SMS send')
+        return jsonify(success=True, sms_sent=False, message='Submission saved; SMS not sent (no credentials).')
+
+    try:
+        from twilio.rest import Client
+        # Log attempt (trim content for logs)
+        preview = content if len(content) <= 300 else content[:300] + '...'
+        logger.info(f"Attempting to send contact SMS from={TW_FROM} to={TO_NUMBER} ip={ip} content_preview={preview}")
+        client = Client(TW_SID, TW_TOKEN)
+        sms = client.messages.create(body=content, from_=TW_FROM, to=TO_NUMBER)
+        cs.sms_sent = True
+        cs.sms_sent_at = datetime.utcnow()
+        db.session.commit()
+        # Log response details
+        try:
+            sid = getattr(sms, 'sid', None)
+            status = getattr(sms, 'status', None)
+            logger.info(f"Sent contact SMS sid={sid} status={status} for ip={ip}")
+        except Exception:
+            logger.info(f"Sent contact SMS (no response attributes) for ip={ip}")
+        return jsonify(success=True, sms_sent=True)
+    except Exception as e:
+        # Capture Twilio-specific info if present
+        try:
+            from twilio.base.exceptions import TwilioRestException
+            if isinstance(e, TwilioRestException):
+                logger.error(f"Twilio error when sending SMS: status={getattr(e, 'status', None)} code={getattr(e, 'code', None)} msg={str(e)}")
+            else:
+                logger.exception('Failed to send contact SMS')
+        except Exception:
+            logger.exception('Failed to send contact SMS (error inspecting exception)')
+        return jsonify(success=True, sms_sent=False, error=str(e))
 
 
 # -------------------- PARSE EMAIL -------------------- #
