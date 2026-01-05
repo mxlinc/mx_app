@@ -5,21 +5,30 @@
     <title>Contact Us - MX Learning</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Poppins', sans-serif; background: #f4f7fb; margin:0; color:#222 }
-        .container { max-width:820px; margin:36px auto; padding:20px }
-        .card { background:#fff; border-radius:12px; box-shadow:0 6px 18px rgba(22,40,80,0.08); padding:22px }
-        h2 { color:#1b3a6f; margin-top:0 }
-        .row { display:flex; gap:12px; margin-bottom:12px }
+        :root{ --maroon:#5a0f1f; --navy:#0f2b59; --bg:#f7f8fb; --text:#122033 }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); margin:0; color:var(--text); -webkit-font-smoothing:antialiased; font-size:16px }
+        .container { max-width:820px; margin:28px auto; padding:18px }
+        .card { background:#fff; border-radius:14px; box-shadow:0 8px 26px rgba(16,32,56,0.08); padding:26px }
+        h2 { color:var(--maroon); margin-top:0; font-size:22px; letter-spacing:-0.2px }
+        .muted { color:var(--navy); font-size:15px; margin-top:6px }
+        .row { display:flex; gap:12px; margin-bottom:14px }
         .col { flex:1 }
-        .small-input { width:100%; padding:10px 12px; border:1px solid #d6dbe8; border-radius:8px; box-sizing:border-box }
-        label { display:block; font-weight:600; margin-bottom:6px; color:#333 }
-        input[type="text"], textarea, select { width:100%; padding:10px 12px; border:1px solid #d6dbe8; border-radius:8px; font-size:14px }
-        textarea { min-height:120px; resize:vertical }
-        .btn { background:#1b3a6f; color:white; border:none; padding:10px 16px; border-radius:8px; cursor:pointer; font-weight:600 }
-        .muted { color:#666; font-size:13px }
-        .message { margin-top:12px; font-size:14px }
-        .small { font-size:12px; color:#666 }
-        @media (max-width:640px){ .row { flex-direction:column } }
+        label { display:block; font-weight:600; margin-bottom:8px; color:var(--navy); font-size:15px }
+        .small-input { width:100%; padding:12px 14px; border:1px solid #e2e7f0; border-radius:10px; box-sizing:border-box; font-size:16px }
+        input[type="text"], textarea, select { width:100%; padding:12px 14px; border:1px solid #e2e7f0; border-radius:10px; font-size:16px }
+        textarea { min-height:140px; resize:vertical }
+        .btn { background:var(--navy); color:white; border:none; padding:12px 18px; border-radius:10px; cursor:pointer; font-weight:700; font-size:16px }
+        .btn:disabled { opacity:0.6; cursor:default }
+        .message { margin-top:12px; font-size:15px; color:var(--navy) }
+        .small { font-size:13px; color:#6b7280 }
+        .footer { font-size:13px; color:var(--navy); opacity:0.85 }
+        @media (max-width:640px){
+            body { font-size:18px }
+            .container { padding:14px; margin:18px auto }
+            .card { padding:20px }
+            .row { flex-direction:column }
+            .btn { width:100% }
+        }
     </style>
 </head>
 <body>
@@ -41,9 +50,6 @@
                         <label for="phone">Phone</label>
                         <input id="phone" name="phone" type="text" class="small-input" placeholder="e.g. 416-555-1212">
                     </div>
-                </div>
-
-                <div class="row">
                     <div class="col">
                         <label for="email">Email</label>
                         <input id="email" name="email" type="text" class="small-input" placeholder="name@example.com">
@@ -69,16 +75,7 @@
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col">
-                        <label for="subject">Subject</label>
-                        <select id="subject" name="subject">
-                            <option>Math</option>
-                            <option>English</option>
-                            <option>Both Math & English</option>
-                        </select>
-                    </div>
-                </div>
+                <!-- Subject removed per design -->
 
                 <div class="row">
                     <div class="col">
@@ -93,6 +90,7 @@
                 </div>
                 <div style="height:6px"></div>
                 <div class="small"></div>
+                <div class="footer" style="text-align:center;margin-top:14px">© Montessori Experience Inc.</div>
             </form>
         </div>
     </div>
@@ -123,7 +121,6 @@
                 email: document.getElementById('email') ? document.getElementById('email').value : '',
                 child_name: document.getElementById('child_name').value,
                 grade: document.getElementById('grade').value,
-                subject: document.getElementById('subject').value,
                 about: document.getElementById('about').value
             };
 
