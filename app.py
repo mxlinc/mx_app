@@ -448,6 +448,14 @@ def contact_submit():
         return jsonify(success=True, sms_sent=False, error=str(e))
 
 
+# --- Debug endpoint to check Twilio env vars (remove after use) ---
+@app.route('/_debug/twilio_status', methods=['GET'])
+def _debug_twilio_status():
+    keys = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_FROM_NUMBER', 'CONTACT_TARGET_NUMBER']
+    missing = [k for k in keys if not os.getenv(k)]
+    return jsonify(twilio_configured=(len(missing) == 0), missing=missing)
+
+
 # -------------------- PARSE EMAIL -------------------- #
 def parse_email_content(subject, html_body):
     txt = html2text.html2text(html_body)
