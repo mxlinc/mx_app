@@ -32,24 +32,29 @@
                 <div class="row">
                     <div class="col">
                         <label for="your_name">Your Name</label>
-                        <input id="your_name" name="your_name" type="text" class="small-input" required>
+                        <input id="your_name" name="your_name" type="text" class="small-input">
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col">
                         <label for="phone">Phone</label>
-                        <input id="phone" name="phone" type="text" class="small-input" placeholder="e.g. 416-555-1212" required>
+                        <input id="phone" name="phone" type="text" class="small-input" placeholder="e.g. 416-555-1212">
                     </div>
+                </div>
+
+                <div class="row">
                     <div class="col">
                         <label for="email">Email</label>
                         <input id="email" name="email" type="text" class="small-input" placeholder="name@example.com">
                     </div>
                 </div>
 
-                <div style="margin-bottom:12px">
-                    <label for="child_name">Child's Name & Age</label>
-                    <input id="child_name" name="child_name" type="text" class="small-input">
+                <div class="row">
+                    <div class="col">
+                        <label for="child_name">Child's Name & Age</label>
+                        <input id="child_name" name="child_name" type="text" class="small-input">
+                    </div>
                 </div>
 
                 <div class="row">
@@ -62,6 +67,9 @@
                             <option>High school</option>
                         </select>
                     </div>
+                </div>
+
+                <div class="row">
                     <div class="col">
                         <label for="subject">Subject</label>
                         <select id="subject" name="subject">
@@ -72,9 +80,11 @@
                     </div>
                 </div>
 
-                <div style="margin-bottom:12px">
-                    <label for="about">Tell us about your child</label>
-                    <textarea id="about" name="about"></textarea>
+                <div class="row">
+                    <div class="col">
+                        <label for="about">Tell us about your child</label>
+                        <textarea id="about" name="about"></textarea>
+                    </div>
                 </div>
 
                 <div style="display:flex; align-items:center; gap:12px">
@@ -141,7 +151,7 @@
                 closeBtn.className = 'btn';
                 closeBtn.textContent = 'Close';
                 closeBtn.style.marginTop = '14px';
-                closeBtn.addEventListener('click', ()=>{ window.location.href = '/'; });
+                closeBtn.addEventListener('click', ()=>{ window.location.href = 'https://mxlearning.com/'; });
                 confirmation.appendChild(closeBtn);
 
                 form.parentNode.replaceChild(confirmation, form);
