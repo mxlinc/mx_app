@@ -55,6 +55,8 @@ class UserTable(db.Model, UserMixin):
     user_role = db.Column(db.String)   # admin / teacher / student
     password_hash = db.Column(db.String)  # for demo only, use hashing in prod
     is_active = db.Column(db.Boolean, default=True)
+    # Controls whether the user should appear on assignment lists
+    can_assign_work = db.Column(db.Boolean, default=True)
 
     def get_id(self):
         return str(self.id)
@@ -149,6 +151,7 @@ def login():
     if request.method == "POST":
         username = request.form['username'].strip().lower()
         password = request.form.get("password")
+        # only allow login for users marked active
         user = UserTable.query.filter_by(username=username, is_active=True).first()
 
         if user and user.password_hash == password:
@@ -551,8 +554,8 @@ def admin_home():
     if current_user.user_role != 'admin':
         return "Forbidden", 403
 
-    # Get students
-    students = UserTable.query.filter_by(user_role='student').all()
+    # Get students (only those who can be assigned work)
+    students = UserTable.query.filter_by(user_role='student', can_assign_work=True).all()
 
     # Get broad areas for dropdowns
     broad_areas = db.session.query(MXWorkPacks.broad_area)\
@@ -877,7 +880,7 @@ def mark_complete():
 @app.route('/fine_tune', methods=['GET'])
 @login_required
 def fine_tune():
-    students = UserTable.query.filter_by(user_role='student').all()
+    students = UserTable.query.filter_by(user_role='student', can_assign_work=True).all()
     selected_student = request.args.get('student')
     selected_status = request.args.getlist('status')
     if not selected_status:
