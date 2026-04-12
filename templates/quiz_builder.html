@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Math Quiz Builder - MX Learning</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #faf7f5;
+            color: #333;
+            padding: 8px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .banner {
+            display: none;
+        }
+
+        .main-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin: 0;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            position: relative;
+            top: 0;
+            height: auto;
+            padding: 10px 0;
+            border-bottom: 1px solid #e8e8e8;
+            margin-bottom: 10px;
+        }
+
+        .sidebar button {
+            flex: 1 1 auto;
+            width: auto;
+        }
+
+        .main-content {
+            min-width: 0;
+        }
+
+        .builder-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+
+        .form-section {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 0.95em;
+            font-weight: 600;
+            color: #1b3a6f;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .form-row.three-column {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .form-row.full {
+            grid-template-columns: 1fr;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 500;
+            margin-bottom: 3px;
+            color: #333;
+            font-size: 0.85em;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.85em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #0077cc;
+            box-shadow: 0 0 0 3px rgba(0, 119, 204, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 6px 0;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .image-upload-box {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .image-upload-box:hover {
+            border-color: #0077cc;
+            background: #f0f7ff;
+        }
+
+        .image-upload-box input[type="file"] {
+            display: none;
+        }
+
+        .image-preview {
+            margin-top: 10px;
+            max-width: 150px;
+            max-height: 150px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .options-container {
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .option-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
+        .option-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.85em;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            transition: all 0.3s;
+        }
+
+        .btn-add {
+            background: #4caf50;
+            color: white;
+            flex: 1;
+        }
+
+        .btn-add:hover {
+            background: #45a049;
+        }
+
+        .btn-remove {
+            background: #f44336;
+            color: white;
+            padding: 6px 10px;
+        }
+
+        .btn-remove:hover {
+            background: #da190b;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 0;
+        }
+
+        button {
+            padding: 10px 12px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        #previewBtn {
+            background: #2196F3;
+            color: white;
+        }
+
+        #previewBtn:hover {
+            background: #0b7dda;
+        }
+
+        #jsonBtn {
+            background: #6c757d;
+            color: white;
+        }
+
+        #jsonBtn:hover {
+            background: #5a6268;
+        }
+
+        #saveBtn {
+            background: #0077cc;
+            color: white;
+        }
+
+        #saveBtn:hover {
+            background: #005fa3;
+        }
+
+        #addNewBtn {
+            background: #ff9800;
+            color: white;
+        }
+
+        #addNewBtn:hover {
+            background: #e68900;
+        }
+
+        .preview-section {
+            display: none !important;
+        }
+
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            width: 100%;
+            max-width: 860px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-header {
+            padding: 14px 18px;
+            background: #f4f7fb;
+            border-bottom: 1px solid #e1e8f0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .modal-header h2 {
+            font-size: 1rem;
+            margin: 0;
+            font-weight: 700;
+            color: #1b3a6f;
+        }
+
+        .modal-body {
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            border: none;
+            background: transparent;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #333;
+        }
+
+        .preview-block {
+            padding: 18px;
+            background: #fbfcff;
+            border-radius: 10px;
+            border: 1px solid #e8ecf3;
+            margin-bottom: 16px;
+        }
+
+        .preview-block h3 {
+            margin: 0 0 12px;
+            font-size: 1rem;
+            color: #1b3a6f;
+        }
+
+        .preview-block img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .preview-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .preview-row label {
+            font-size: 0.9em;
+            color: #555;
+        }
+
+        .rendered-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #e0e7ef;
+            margin-bottom: 8px;
+            background: white;
+        }
+
+        .rendered-option input {
+            margin: 0;
+        }
+
+        .rendered-question {
+            padding: 0;
+            background: transparent;
+            border: none;
+            border-radius: 0;
+        }
+
+        .math {
+            white-space: pre-wrap;
+        }
+
+        .math-frac {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.98em;
+            margin: 0 0.15em;
+            line-height: 1;
+        }
+
+        .math-num,
+        .math-den {
+            display: block;
+            padding: 0 0.2em;
+        }
+
+        .math-den {
+            border-top: 1px solid #333;
+        }
+
+        .preview-answer-input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #d1d9e2;
+            border-radius: 10px;
+            background: #f7f9fc;
+            color: #333;
+            font-size: 0.96em;
+            box-sizing: border-box;
+        }
+
+        .hotspot-image-wrapper {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+        }
+
+        .hotspot-image-wrapper img {
+            display: block;
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        .hotspot-marker {
+            position: absolute;
+            border: 2px dashed rgba(0, 119, 204, 0.85);
+            box-shadow: 0 0 0 1px rgba(0, 119, 204, 0.15);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .hotspot-marker.circle {
+            border-radius: 50%;
+        }
+
+        .hotspot-marker.rect {
+            transform: none;
+        }
+
+        .rendered-mfb-row {
+            margin-bottom: 14px;
+        }
+
+        .rendered-mfb-row label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .message {
+            padding: 8px 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: none;
+            font-size: 0.9em;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .input-type-label {
+            font-size: 0.8em;
+            color: #666;
+            font-weight: normal;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                flex-direction: row;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-layout">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <button id="saveBtn" title="Save question (S)">
+                    <i class="fas fa-save"></i> Save
+                </button>
+                <button id="discardBtn" title="Discard changes (D)">
+                    <i class="fas fa-times"></i> Discard
+                </button>
+            </div>
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <div class="builder-card">
+                    <div id="message" class="message"></div>
+
+                    <!-- Edit Mode: Show Question ID -->
+                    <div id="editModeBar" style="display: none; background: #f0f7ff; border: 1px solid #0077cc; border-radius: 6px; padding: 12px; margin-bottom: 15px;">
+                        <div style="color: #0077cc; font-weight: 600;">Editing Question ID: <span id="displayId"></span></div>
+                    </div>
+
+                    <form id="quizForm">
+                <!-- Metadata Section -->
+                <div class="form-section">
+                    <div class="form-row three-column">
+                        <div class="form-group">
+                            <label for="topic">Topic *</label>
+                            <select id="topic" name="topic" required>
+                                <option value="Number Sense">Number Sense</option>
+                                <option value="Algebra">Algebra</option>
+                                <option value="Measurement">Measurement</option>
+                                <option value="Data Management">Data Management</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="subtopic">Subtopic *</label>
+                            <select id="subtopic" name="subtopic" required>
+                                <option value="Fraction">Fraction</option>
+                                <option value="Decimal">Decimal</option>
+                                <option value="Percent">Percent</option>
+                                <option value="Ratio">Ratio</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="level">Level *</label>
+                            <select id="level" name="level" required>
+                                <option value="D">D</option>
+                                <option value="E">E</option>
+                                <option value="F">F</option>
+                                <option value="G">G</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stem Section -->
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="stem_latex">Question * <span class="input-type-label">(LaTeX format)</span></label>
+                        <textarea id="stem_latex" name="stem_latex" placeholder="Enter LaTeX format question text..." required></textarea>
+                    </div>
+                </div>
+
+                <!-- Image Section -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-image"></i> Optional Image
+                    </div>
+                    <div class="image-upload-box" onclick="document.getElementById('image').click()">
+                        <input type="file" id="image" accept="image/*">
+                        <div>
+                            <i class="fas fa-cloud-upload-alt" style="font-size: 2em; color: #0077cc; margin-bottom: 10px; display: block;"></i>
+                            <div style="font-weight: 500;">Click to upload or drag and drop</div>
+                            <div style="font-size: 0.85em; color: #666;">PNG, JPG up to 5MB</div>
+                        </div>
+                        <img id="imagePreview" class="image-preview" style="display: none;">
+                    </div>
+                    <button type="button" id="discardImageBtn" style="display: none; margin-top: 10px; background: #f44336; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em;">
+                        <i class="fas fa-trash"></i> Remove Image
+                    </button>
+                </div>
+
+                <!-- MCQ Options Section -->
+                <div class="form-section">
+                    <div class="section-title">
+                        <i class="fas fa-list"></i> Options
+                    </div>
+                    <div class="form-group">
+                        <label>Options <span class="input-type-label">(one per line, LaTeX format)</span></label>
+                        <textarea id="options" name="options" placeholder="$\\frac{4}{3}$&#10;$\\frac{3}{4}$&#10;None of the Above" required></textarea>
+                    </div>
+                    <div class="checkbox-label">
+                        <input type="checkbox" id="shuffle" name="shuffle" checked>
+                        <label for="shuffle" style="margin: 0;">Shuffle options</label>
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label for="correct">Correct Option <span class="input-type-label">(optional - default is first)</span></label>
+                        <input type="text" id="correct" name="correct" placeholder="e.g., $\\frac{3}{4}$, None of the Above, All of the Above">
+                        <small style="color: #666; margin-top: 3px; display: block; font-size: 0.8em;">Leave empty to use first option as correct.</small>
+                    </div>
+                </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== State Management =====
+        let lastQuestion = {
+            topic: 'Number Sense',
+            subtopic: 'Fraction',
+            level: 'D',
+            type: 'mcq'
+        };
+
+        let editingQuestionId = null;
+        let editingQuestionImage = null;
+
+        // ===== URL Parameter Handling =====
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // ===== Image Handling =====
+        const imageUploadBox = document.querySelector('.image-upload-box');
+        const imageInput = document.getElementById('image');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            imageUploadBox.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            imageUploadBox.addEventListener(eventName, () => {
+                imageUploadBox.style.borderColor = '#0077cc';
+                imageUploadBox.style.background = '#f0f7ff';
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            imageUploadBox.addEventListener(eventName, () => {
+                imageUploadBox.style.borderColor = '#ddd';
+                imageUploadBox.style.background = '#fafafa';
+            });
+        });
+
+        imageUploadBox.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            imageInput.files = files;
+            handleImagePreview();
+        });
+
+        imageInput.addEventListener('change', handleImagePreview);
+
+        // Handle Ctrl+V clipboard paste
+        document.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault();
+                    const file = item.getAsFile();
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    imageInput.files = dataTransfer.files;
+                    handleImagePreview();
+                    showMessage('✓ Image pasted from clipboard', 'success');
+                    break;
+                }
+            }
+        });
+
+        function handleImagePreview() {
+            const file = imageInput.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+                editingQuestionImage = null; // Clear cached server image when new file selected
+            }
+        }
+
+        // ===== UI Events =====
+        document.getElementById('saveBtn').addEventListener('click', save);
+        document.getElementById('discardBtn').addEventListener('click', discard);
+        document.getElementById('discardImageBtn').addEventListener('click', discardImage);
+
+        // ===== Messaging =====
+        function showMessage(text, type) {
+            // Messages disabled for cleaner UI
+        }
+
+        // ===== Data Collection =====
+        function collectImageDataUrl() {
+            return new Promise((resolve) => {
+                const fileInput = document.getElementById('image');
+                if (!fileInput.files[0]) {
+                    resolve(null);
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(fileInput.files[0]);
+            });
+        }
+
+        async function collectData() {
+            const question = {
+                type: 'mcq',
+                stem: { latex: document.getElementById('stem_latex').value },
+                input: {
+                    options: document.getElementById('options').value
+                        .split('\n')
+                        .filter(o => o.trim())
+                        .map((o, i) => ({ id: `opt${i+1}`, latex: o.trim() })),
+                    shuffle: document.getElementById('shuffle').checked
+                },
+                answer: {}
+            };
+
+            // Determine correct option
+            const customCorrect = document.getElementById('correct').value.trim();
+            if (customCorrect) {
+                // Find which option matches the custom text
+                const matchingOption = question.input.options.find(opt => 
+                    opt.latex === customCorrect
+                );
+                if (matchingOption) {
+                    question.answer.correct_option_id = matchingOption.id;
+                } else {
+                    // If no exact match, use first option as default
+                    question.answer.correct_option_id = 'opt1';
+                }
+            } else {
+                question.answer.correct_option_id = 'opt1';
+            }
+
+            const imageDataUrl = await collectImageDataUrl();
+
+            return {
+                type: 'mcq',
+                topic: document.getElementById('topic').value,
+                subtopic: document.getElementById('subtopic').value,
+                level: document.getElementById('level').value,
+                question: question,
+                image_data_url: imageDataUrl,
+                id: editingQuestionId
+            };
+        }
+
+        // ===== Save Flow =====
+        async function save() {
+            try {
+                const data = await collectData();
+                console.log('Sending to /quiz/save:', data);
+                const response = await fetch('/quiz/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                console.log('Response status:', response.status);
+                const text = await response.text();
+                console.log('Response text:', text);
+                let result;
+                try {
+                    result = JSON.parse(text);
+                } catch (parseError) {
+                    showMessage('✗ Error saving question: server returned non-JSON response.', 'error');
+                    console.error('Server response:', text);
+                    return;
+                }
+
+                console.log('Parsed response:', result);
+
+                if (result.ok) {
+                    showMessage('✓ ' + result.message, 'success');
+                    // Save state for next question
+                    lastQuestion = {
+                        topic: data.topic,
+                        subtopic: data.subtopic,
+                        level: data.level,
+                        type: 'mcq'
+                    };
+                    // Go to full-screen display
+                    if (result.question_id) {
+                        setTimeout(() => {
+                            window.location.href = `/quiz/display/${result.question_id}`;
+                        }, 500);
+                    }
+                } else {
+                    const errorMessage = result.errors ? result.errors.join('; ') : 'Error saving question';
+                    showMessage('✗ ' + errorMessage, 'error');
+                    console.error('Backend error:', errorMessage);
+                }
+            } catch (error) {
+                showMessage('✗ Error saving question: ' + error.message, 'error');
+                console.error('Save error:', error);
+            }
+        }
+
+        // ===== Discard Flow =====
+        function discard() {
+            // Save current metadata
+            lastQuestion = {
+                topic: document.getElementById('topic').value,
+                subtopic: document.getElementById('subtopic').value,
+                level: document.getElementById('level').value,
+                type: 'mcq'
+            };
+
+            // Clear form
+            document.getElementById('stem_latex').value = '';
+            document.getElementById('options').value = '';
+            document.getElementById('correct').value = '';
+            document.getElementById('image').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('discardImageBtn').style.display = 'none';
+            document.getElementById('shuffle').checked = true;
+
+            // Restore metadata
+            document.getElementById('topic').value = lastQuestion.topic;
+            document.getElementById('subtopic').value = lastQuestion.subtopic;
+            document.getElementById('level').value = lastQuestion.level;
+
+            // Clear edit mode if present
+            if (editingQuestionId) {
+                editingQuestionId = null;
+                editingQuestionImage = null;
+                document.getElementById('editModeBar').style.display = 'none';
+            }
+
+            showMessage('✓ Question discarded. Metadata retained.', 'success');
+        }
+
+        // ===== Discard Image =====
+        function discardImage() {
+            document.getElementById('image').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('discardImageBtn').style.display = 'none';
+            editingQuestionImage = null;
+            showMessage('✓ Image removed.', 'success');
+        }
+
+        // ===== Load Question for Editing =====
+        async function loadQuestionForEdit(questionId) {
+            try {
+                const response = await fetch(`/quiz/get-display/${questionId}`);
+                const data = await response.json();
+                if (!data.ok) {
+                    showMessage('✗ Failed to load question', 'error');
+                    return;
+                }
+
+                const question = data.question;
+                editingQuestionId = questionId;
+
+                // Show edit mode bar
+                document.getElementById('editModeBar').style.display = 'block';
+                document.getElementById('displayId').textContent = questionId;
+
+                // Populate form
+                document.getElementById('stem_latex').value = question.stem?.latex || '';
+                document.getElementById('topic').value = data.topic;
+                document.getElementById('subtopic').value = data.subtopic;
+                document.getElementById('level').value = data.level;
+
+                if (question.input?.options) {
+                    document.getElementById('options').value = question.input.options
+                        .map(o => o.latex)
+                        .join('\n');
+                }
+
+                document.getElementById('shuffle').checked = question.input?.shuffle !== false;
+
+                // Handle image
+                if (question.image?.src) {
+                    editingQuestionImage = question.image.src;
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = editingQuestionImage;
+                    preview.style.display = 'block';
+                    document.getElementById('discardImageBtn').style.display = 'block';
+                }
+
+                showMessage('✓ Question loaded for editing', 'success');
+            } catch (error) {
+                showMessage('✗ Error loading question: ' + error.message, 'error');
+                console.error(error);
+            }
+        }
+
+        // ===== Initialize =====
+        window.addEventListener('DOMContentLoaded', () => {
+            // Check for edit ID in URL
+            const idParam = getQueryParam('id');
+            if (idParam) {
+                editingQuestionId = parseInt(idParam);
+                loadQuestionForEdit(editingQuestionId);
+            } else {
+                // Check for new question parameters
+                const topicParam = getQueryParam('topic');
+                const subtopicParam = getQueryParam('subtopic');
+                const levelParam = getQueryParam('level');
+
+                if (topicParam) lastQuestion.topic = topicParam;
+                if (subtopicParam) lastQuestion.subtopic = subtopicParam;
+                if (levelParam) lastQuestion.level = levelParam;
+            }
+
+            // Set metadata
+            document.getElementById('topic').value = lastQuestion.topic;
+            document.getElementById('subtopic').value = lastQuestion.subtopic;
+            document.getElementById('level').value = lastQuestion.level;
+        });
+    </script>
+</body>
+</html>

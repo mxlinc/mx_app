@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCQ Question Display</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .top-band {
+            background: #1b3a6f;
+            color: white;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .top-band .id-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .top-band .id-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .top-band .id-value {
+            font-size: 1.1em;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .top-band .links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .top-band a {
+            color: white;
+            text-decoration: none;
+            font-size: 0.95em;
+            padding: 6px 12px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .top-band a:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
+        .container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 10px;
+        }
+
+        .question-block {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            width: 100%;
+            max-width: 900px;
+            height: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            padding: 15px;
+            overflow: hidden;
+        }
+
+        .qa-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .qa-left {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .stem-band {
+            background: rgb(235, 250, 255);
+            padding: 16px;
+            border-radius: 8px;
+            width: 100%;
+        }
+
+        .options-band {
+            background: rgb(235, 250, 255);
+            padding: 16px;
+            border-radius: 8px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            justify-content: center;
+        }
+
+        .qa-right {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .question-stem {
+            font-size: clamp(1em, 3vw, 1.3em);
+            font-weight: 500;
+            color: #1b3a6f;
+            margin-bottom: 12px;
+            line-height: 1.5;
+            flex-shrink: 0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            word-break: break-word;
+            width: 100%;
+        }
+
+        .question-image {
+            margin-bottom: 12px;
+            text-align: center;
+            flex-shrink: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .question-image img {
+            max-width: 100%;
+            max-height: 25vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .options-section {
+            flex: 1;
+            overflow-y: auto;
+            margin: 0;
+            min-height: 0;
+            padding-left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .options-section::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .options-section::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 3px;
+        }
+
+        .options-section::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 3px;
+        }
+
+        .options-section::-webkit-scrollbar-thumb:hover {
+            background: #999;
+        }
+
+        .option {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .option input[type="radio"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 3px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .option label {
+            flex: 1;
+            font-size: clamp(0.9em, 2vw, 1.05em);
+            color: #333;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 6px;
+            transition: background 0.3s;
+            display: block;
+        }
+
+        .option:hover label {
+            background: #f5f5f5;
+        }
+
+        .option input[type="radio"]:checked + label {
+            background: #e3f2fd;
+            font-weight: 600;
+        }
+
+        .feedback {
+            margin: 8px 0 0 0;
+            padding: 10px 12px;
+            border-radius: 6px;
+            font-size: clamp(0.9em, 2vw, 1em);
+            font-weight: 600;
+            display: none;
+            max-height: 15vh;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+
+        .feedback.show {
+            display: block;
+        }
+
+        .feedback.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .feedback.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .button-row {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            padding: 10px 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            margin-top: 12px;
+            flex-shrink: 0;
+            line-height: 1;
+            height: fit-content;
+        }
+
+        .question-counter {
+            font-size: 0.9em;
+            color: #666;
+            white-space: nowrap;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .submit-button {
+            padding: 8px 20px;
+            font-size: clamp(0.9em, 1.5vw, 1em);
+            font-weight: 600;
+            background: #0077cc;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-family: 'Poppins', sans-serif;
+            flex-shrink: 0;
+            white-space: nowrap;
+            line-height: 1;
+            margin: 0;
+        }
+
+        .submit-button:hover {
+            background: #005fa3;
+        }
+
+        .submit-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .math {
+            white-space: pre-wrap;
+        }
+
+        .math-frac {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.98em;
+            margin: 0 0.15em;
+            line-height: 1;
+        }
+
+        .math-num,
+        .math-den {
+            display: block;
+            padding: 0 0.2em;
+        }
+
+        .math-den {
+            border-top: 1px solid #333;
+        }
+
+        .json-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .json-modal.show {
+            display: flex;
+        }
+
+        .json-modal-content {
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .json-modal-header {
+            padding: 16px 20px;
+            background: #f4f7fb;
+            border-bottom: 1px solid #e1e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .json-modal-header h2 {
+            font-size: 1.1em;
+            margin: 0;
+            color: #1b3a6f;
+        }
+
+        .json-modal-close {
+            border: none;
+            background: transparent;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #333;
+        }
+
+        .json-modal-body {
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .json-modal-body pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            font-size: 0.9em;
+            line-height: 1.4;
+            margin: 0;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+
+        .json-key {
+            color: #0077cc;
+            font-weight: 600;
+        }
+
+        .json-string {
+            color: #165e2a;
+        }
+
+        .json-number {
+            color: #d73a01;
+        }
+
+        .json-boolean {
+            color: #d73a01;
+            font-weight: 600;
+        }
+
+        .json-null {
+            color: #999;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .top-band {
+                flex-direction: column;
+                gap: 8px;
+                padding: 8px 12px;
+            }
+
+            .top-band .id-section {
+                width: 100%;
+                font-size: 0.9em;
+            }
+
+            .top-band .links {
+                width: 100%;
+                justify-content: space-around;
+                gap: 8px;
+            }
+
+            .top-band a {
+                font-size: clamp(0.8em, 2vw, 0.9em);
+                padding: 4px 8px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .qa-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            .qa-left {
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            .qa-right {
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+            }
+            .options-section {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 12px;
+                overflow-y: visible;
+                margin: 0;
+            }
+            .qa-grid.no-image .options-section {
+                grid-template-columns: 1fr;
+            }
+            .qa-grid.no-image .stem-band {
+                min-height: 25vh;
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                padding-left: 40px;
+            }
+            .qa-grid.no-image .question-stem {
+                text-align: left;
+            }
+            .option {
+                margin-bottom: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-band">
+        <div class="id-section">
+            <span class="id-label">Question ID:</span>
+            <span class="id-value" id="questionId">{{ question_id }}</span>
+        </div>
+        <div class="links">
+            <a href="#" id="editLink">Edit</a>
+            <a href="#" id="jsonLink">JSON</a>
+            <a href="#" id="newLink">New</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="question-block">
+            <div class="qa-grid">
+                <div class="qa-left">
+                    <div class="stem-band">
+                        <div class="question-stem" id="stemContainer"></div>
+                    </div>
+                    <div class="question-image" id="imageContainer" style="display: none;">
+                        <img id="questionImage" alt="Question image">
+                    </div>
+                </div>
+                <div class="qa-right">
+                    <div class="options-band">
+                        <div class="options-section" id="optionsContainer"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="feedback" id="feedbackContainer"></div>
+            <div class="button-row">
+                <span class="question-counter">Question 1 of 5</span>
+                <button class="submit-button" id="submitBtn">SUBMIT</button>
+            </div>
+    </div>
+
+    <!-- JSON Modal -->
+    <div class="json-modal" id="jsonModal">
+        <div class="json-modal-content">
+            <div class="json-modal-header">
+                <h2>Question JSON Schema</h2>
+                <button class="json-modal-close" id="closeJsonBtn">×</button>
+            </div>
+            <div class="json-modal-body">
+                <pre id="jsonContent"></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load common quiz utilities -->
+    <script src="{{ url_for('static', filename='js/quiz-common.js') }}"></script>
+    
+    <!-- Load question type-specific handlers -->
+    <script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
+
+    <script>
+        /**
+         * Quiz Display Orchestrator
+         * Coordinates common functionality with type-specific handlers
+         */
+
+        async function initializeQuiz() {
+            console.log('initializeQuiz() called');
+            
+            try {
+                // Fetch question data
+                const questionId = quizCommon.getQuestionId();
+                console.log('Question ID:', questionId);
+                
+                await quizCommon.fetchQuestion(questionId);
+                const question = quizCommon.question;
+                
+                if (!question) {
+                    throw new Error('Failed to fetch question');
+                }
+                
+                // Render common elements (stem + image)
+                quizCommon.renderStem();
+                const hasImage = quizCommon.renderImage();
+                if (!hasImage) {
+                    quizCommon.setNoImageClass();
+                }
+
+                // Route to type-specific handler
+                const questionType = question.type || 'MCQ';
+                console.log('Question type:', questionType);
+                
+                switch (questionType.toUpperCase()) {
+                    case 'MCQ':
+                        quizMCQ = new QuizMCQ(quizCommon);
+                        quizMCQ.render();
+                        document.getElementById('submitBtn').addEventListener('click', () => quizMCQ.checkAnswer());
+                        break;
+                    
+                    // Future question types will be added here
+                    // case 'MR':
+                    // case 'HOTSPOT':
+                    // case 'FB':
+                    // case 'MFB':
+                    
+                    default:
+                        throw new Error(`Unknown question type: ${questionType}`);
+                }
+
+                // Setup common navigation and JSON display
+                quizCommon.setupNavigation();
+
+                // Render MathJax
+                quizCommon.renderMathJax();
+                
+                console.log('Quiz initialization completed');
+            } catch (e) {
+                console.error('Quiz initialization failed:', e);
+                document.getElementById('stemContainer').innerHTML = `<div style="background: red; color: white; padding: 10px;">Error: ${e.message}</div>`;
+            }
+        }
+
+        // Initialize when DOM is ready
+        console.log('Setting up quiz initialization...');
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', initializeQuiz);
+        } else {
+            initializeQuiz();
+        }
+    </script>
+</body>
+</html>

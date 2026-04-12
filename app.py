@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Blueprint
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy import text
@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 import re
 from sqlalchemy.sql import bindparam
 import logging
+from jsonschema import validate, ValidationError
 
 logging.basicConfig(
     level=logging.INFO,
@@ -132,6 +133,18 @@ class ContactSubmission(db.Model):
     sms_sent = db.Column(db.Boolean, default=False)
     sms_sent_at = db.Column(db.DateTime)
 
+class QBank(db.Model):
+    __tablename__ = 'q_bank'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(20), nullable=False)
+    json = db.Column(JSON, nullable=False)
+    topic = db.Column(db.String(100))
+    subtopic = db.Column(db.String(100))
+    level = db.Column(db.String(1))
+    created_at = db.Column(db.DateTime, default=db.func.now())
+    updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
+
 # -------------------- FLASK-LOGIN SETUP -------------------- #
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -139,6 +152,306 @@ login_manager.login_view = "login"
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(UserTable, int(user_id))  
+
+# -------------------- QUIZ BLUEPRINT -------------------- #
+quiz_bp = Blueprint("quiz", __name__, url_prefix="/quiz")
+
+@quiz_bp.errorhandler(Exception)
+def quiz_error_handler(error):
+    app.logger.exception(error)
+    response = jsonify({"ok": False, "errors": [str(error)]})
+    response.status_code = 500
+    return response
+
+# ================== JSON SCHEMA & VALIDATION ================== #
+MCQ_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "MCQ Question",
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["id", "type", "stem", "input", "answer"],
+    "properties": {
+        "id": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "type": {
+            "const": "mcq"
+        },
+        "stem": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["latex", "html"],
+            "properties": {
+                "latex": {"type": "string", "minLength": 1},
+                "html": {"type": "string", "minLength": 1}
+            }
+        },
+        "image": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["src", "alt"],
+            "properties": {
+                "src": {"type": "string", "minLength": 1},
+                "alt": {"type": "string"}
+            }
+        },
+        "input": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["options", "shuffle"],
+            "properties": {
+                "options": {
+                    "type": "array",
+                    "minItems": 2,
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["id", "latex", "html"],
+                        "properties": {
+                            "id": {
+                                "type": "string",
+                                "pattern": "^opt[1-9][0-9]*$"
+                            },
+                            "latex": {"type": "string", "minLength": 1},
+                            "html": {"type": "string", "minLength": 1}
+                        }
+                    }
+                },
+                "shuffle": {"type": "boolean"}
+            }
+        },
+        "answer": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["correct_option_id"],
+            "properties": {
+                "correct_option_id": {
+                    "type": "string",
+                    "pattern": "^opt[1-9][0-9]*$"
+                }
+            }
+        },
+        "topic": {"type": "string"},
+        "subtopic": {"type": "string"},
+        "level": {"type": "string"}
+    }
+}
+
+def validate_question_json(question_json):
+    """Validate question JSON against schema. Returns (valid, error_message)"""
+    try:
+        validate(instance=question_json, schema=MCQ_SCHEMA)
+        return True, None
+    except ValidationError as e:
+        error_msg = f"Schema Validation Error: {e.message}"
+        if e.path:
+            error_msg += f" at '{'.'.join(str(p) for p in e.path)}'"
+        return False, error_msg
+
+def order_question_json(question_json):
+    """Reorder question JSON to match schema field order"""
+    ordered = {}
+    
+    # Define field order
+    field_order = ["id", "type", "stem", "image", "input", "answer", "topic", "subtopic", "level"]
+    
+    for field in field_order:
+        if field in question_json:
+            ordered[field] = question_json[field]
+    
+    return ordered
+
+# Utility functions
+import base64
+
+def latex_to_html(latex):
+    """Convert LaTeX to HTML by preserving LaTeX in math spans"""
+    if not isinstance(latex, str):
+        return latex
+    # Normalize escaped backslashes
+    normalized = latex.replace('\\\\', '\\')
+    # Just wrap in math span - preserve LaTeX as-is for client-side rendering
+    return f'<span class="math">{normalized}</span>'
+
+def save_image_from_data_url(data_url, filename, subdir="qimage"):
+    if not data_url:
+        return None
+    # data:image/png;base64,...
+    header, encoded = data_url.split(",", 1)
+    data = base64.b64decode(encoded)
+    upload_dir = os.path.join(app.static_folder, subdir)
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, filename)
+    with open(file_path, "wb") as f:
+        f.write(data)
+    return f"./static/{subdir}/{filename}"
+
+def generate_question_html(question):
+    # Generate HTML for stem and options
+    if 'stem' in question:
+        question['stem']['html'] = latex_to_html(question['stem']['latex'])
+    if 'input' in question:
+        if 'options' in question['input']:
+            for opt in question['input']['options']:
+                opt['html'] = latex_to_html(opt['latex'])
+        if 'blanks' in question['input']:
+            for blank in question['input']['blanks']:
+                if 'label' in blank:
+                    blank['label']['html'] = latex_to_html(blank['label']['latex'])
+    return question
+
+# Quiz routes
+@quiz_bp.route("/builder", methods=["GET"])
+@login_required
+def builder_page():
+    return render_template("quiz_builder.html")
+
+@quiz_bp.route("/preview", methods=["POST"])
+@login_required
+def preview_question():
+    data = request.get_json()
+    # Validate and generate HTML
+    question = generate_question_html(data['question'])
+    if 'image_data_url' in data and data['image_data_url']:
+        question['image']['src'] = data['image_data_url']
+    return jsonify({"ok": True, "question": question, "errors": []})
+
+@quiz_bp.route("/save", methods=["POST"])
+@login_required
+def save_question():
+    data = request.get_json()
+
+    if data.get('id'):
+        # ===== EDITING EXISTING =====
+        q = QBank.query.get(data['id'])
+        if not q:
+            return jsonify({"ok": False, "errors": ["Question not found"]}), 404
+        q.type = data['type']
+        q.topic = data['topic']
+        q.subtopic = data['subtopic']
+        q.level = data['level']
+        question_id = q.id
+    else:
+        # ===== CREATE NEW: SKELETON FIRST TO GET ID =====
+        q = QBank(
+            type=data['type'],
+            topic=data['topic'],
+            subtopic=data['subtopic'],
+            level=data['level'],
+            json={}  # Skeleton with empty JSON
+        )
+        db.session.add(q)
+        db.session.flush()  # Generate ID without committing
+        question_id = q.id
+
+    # ===== NOW THAT WE HAVE ID, HANDLE IMAGE =====
+    image_path = None
+    if 'image_data_url' in data and data['image_data_url']:
+        # New image upload
+        filename = f"{question_id}.png"
+        image_path = save_image_from_data_url(data['image_data_url'], filename, subdir="qimage")
+    elif data.get('id') and q.json and q.json.get('image'):
+        # Preserve existing image when editing without new upload
+        image_path = q.json['image']['src']
+
+    # ===== BUILD COMPLETE QUESTION JSON =====
+    question = generate_question_html(data['question'])
+    
+    # Add image if exists
+    if image_path:
+        question['image'] = {"src": image_path, "alt": ""}
+
+    # Add ID and reorder to match schema
+    question['id'] = question_id
+    final_json = order_question_json(question)
+
+    # ===== VALIDATE AGAINST SCHEMA =====
+    valid, error_msg = validate_question_json(final_json)
+    if not valid:
+        return jsonify({"ok": False, "errors": [error_msg]}), 400
+
+    # ===== SAVE TO DATABASE =====
+    q.json = final_json
+    db.session.commit()
+    return jsonify({"ok": True, "question_id": question_id, "message": "Question saved.", "question": final_json})
+
+@quiz_bp.route("/display/<int:question_id>", methods=["GET"])
+@login_required
+def display_question(question_id):
+    q = QBank.query.get(question_id)
+    if not q:
+        return "Question not found", 404
+    return render_template("quiz_display.html", question_id=question_id)
+
+@quiz_bp.route("/get-display/<int:question_id>", methods=["GET"])
+@login_required
+def get_display_question(question_id):
+    q = QBank.query.get(question_id)
+    if not q:
+        return jsonify({"ok": False, "errors": ["Question not found"]}), 404
+    question = generate_question_html(q.json)
+    # Ensure ordered output
+    ordered_question = order_question_json(question)
+    return jsonify({
+        "ok": True, 
+        "question": ordered_question,
+        "question_id": q.id,
+        "type": q.type,
+        "topic": q.topic,
+        "subtopic": q.subtopic,
+        "level": q.level
+    })
+
+@quiz_bp.route("/question/<int:question_id>", methods=["GET"])
+@login_required
+def get_question(question_id):
+    q = QBank.query.get(question_id)
+    if not q:
+        return jsonify({"ok": False, "errors": ["Question not found"]}), 404
+    return jsonify({"ok": True, "id": q.id, "type": q.type, "topic": q.topic, "subtopic": q.subtopic, "level": q.level, "question": q.json})
+
+@quiz_bp.route("/questions", methods=["GET"])
+@login_required
+def list_questions():
+    query = QBank.query
+    if request.args.get('type'):
+        query = query.filter_by(type=request.args['type'])
+    if request.args.get('topic'):
+        query = query.filter_by(topic=request.args['topic'])
+    if request.args.get('subtopic'):
+        query = query.filter_by(subtopic=request.args['subtopic'])
+    if request.args.get('level'):
+        query = query.filter_by(level=request.args['level'])
+    items = []
+    for q in query.all():
+        items.append({
+            "id": q.id,
+            "type": q.type,
+            "topic": q.topic,
+            "subtopic": q.subtopic,
+            "level": q.level,
+            "stem_latex": q.json['stem']['latex'],
+            "image": q.json.get('image')
+        })
+    return jsonify({"ok": True, "items": items})
+
+@quiz_bp.route("/play/<int:question_id>", methods=["GET"])
+@login_required
+def play_question(question_id):
+    q = QBank.query.get(question_id)
+    if not q:
+        return "Question not found", 404
+    return render_template("quiz_play.html", question=q.json)
+
+@quiz_bp.route("/play-preview", methods=["POST"])
+@login_required
+def play_preview():
+    data = request.get_json()
+    question = generate_question_html(data['question'])
+    if 'image_data_url' in data and data['image_data_url']:
+        question['image']['src'] = data['image_data_url']
+    return render_template("quiz_play.html", question=question)  
 
 
 # -------------------- ROUTES -------------------- #
@@ -1256,6 +1569,8 @@ def process_assignment():
 
 
 # -------------------- RUN -------------------- #
+app.register_blueprint(quiz_bp)
+
 if __name__ == "__main__":
     app.run(debug=True)
 

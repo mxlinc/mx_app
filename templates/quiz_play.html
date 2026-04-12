@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Play</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Math Quiz</h1>
+    <div id="question">
+        {% if question.stem.html %}
+        <div class="stem">{{ question.stem.html|safe }}</div>
+        {% endif %}
+        {% if question.image and question.image.src %}
+        <img src="{{ question.image.src }}" alt="{{ question.image.alt }}">
+        {% endif %}
+        {% if question.type == 'mcq' or question.type == 'mr' %}
+        <form>
+            {% for opt in question.input.options %}
+            <label>
+                <input type="{% if question.type == 'mcq' %}radio{% else %}checkbox{% endif %}" name="answer" value="{{ opt.id }}">
+                {{ opt.html|safe }}
+            </label><br>
+            {% endfor %}
+        </form>
+        {% elif question.type == 'hotspot' %}
+        <div style="position: relative;">
+            <img src="{{ question.image.src }}" alt="{{ question.image.alt }}" style="width: 100%;">
+            <div style="position: absolute; left: {{ question.input.shape.x * 100 }}%; top: {{ question.input.shape.y * 100 }}%; width: {{ question.input.shape.w * 100 }}%; height: {{ question.input.shape.h * 100 }}%; border: 2px solid red;"></div>
+        </div>
+        {% elif question.type == 'fb' %}
+        <input type="text" id="fb_answer">
+        {% elif question.type == 'mfb' %}
+        {% for blank in question.input.blanks %}
+        <label>{{ blank.label.html|safe }}: <input type="text" name="{{ blank.key }}"></label><br>
+        {% endfor %}
+        {% endif %}
+    </div>
+    <button id="submitBtn">Submit</button>
+    <div id="result"></div>
+    <script>
+        // Simple submit handler
+        document.getElementById('submitBtn').addEventListener('click', () => {
+            // For now, just alert
+            alert('Submitted');
+        });
+    </script>
+</body>
+</html>
