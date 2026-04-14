@@ -17,7 +17,7 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: #f5f5f5;
+            background: #F7F6F3;
             display: flex;
             flex-direction: column;
             height: 100vh;
@@ -25,8 +25,8 @@
         }
 
         .top-band {
-            background: #1b3a6f;
-            color: white;
+            background: #2F4A5C;
+            color: #FFFFFF;
             padding: 12px 20px;
             display: flex;
             justify-content: space-between;
@@ -86,23 +86,25 @@
         }
 
         .question-block {
-            background: white;
+            background: #EAF3EF;
             border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            border: 1px solid #DDE7E2;
             width: 100%;
             max-width: 900px;
             height: 100%;
             max-height: 100%;
             display: flex;
             flex-direction: column;
-            padding: 15px;
-            overflow: hidden;
+            padding: 20px;
+            overflow: auto;
+        }
         }
 
         .qa-grid {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 20px;
             flex: 1;
             min-height: 0;
         }
@@ -110,22 +112,22 @@
         .qa-left {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 20px;
             flex-shrink: 0;
         }
 
         .stem-band {
-            background: rgb(235, 250, 255);
-            padding: 16px;
-            border-radius: 8px;
+            background: #EAF3EF;
+            padding: 20px;
+            border-radius: 12px;
             width: 100%;
         }
 
         .options-band {
-            background: rgb(235, 250, 255);
-            padding: 16px;
-            border-radius: 8px;
-            flex: 1;
+            background: #EAF3EF;
+            padding: 20px;
+            border-radius: 12px;
+            flex: 0 1 auto;
             display: flex;
             flex-direction: column;
             min-height: 0;
@@ -170,7 +172,7 @@
         }
 
         .options-section {
-            flex: 1;
+            flex: 0 1 auto;
             overflow-y: auto;
             margin: 0;
             min-height: 0;
@@ -178,6 +180,7 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            max-height: 50vh;
         }
 
         .options-section::-webkit-scrollbar {
@@ -233,6 +236,54 @@
             font-weight: 600;
         }
 
+        /* Correct option styling */
+        .option.correct-option label {
+            color: #1b5e20;
+            background: #c8e6c9;
+            font-weight: 700;
+            border: 2px solid #4caf50;
+        }
+
+        /* Incorrect option styling */
+        .option.incorrect-option label {
+            color: #b71c1c;
+            background: #ffcdd2;
+            font-weight: 700;
+            border: 2px solid #f44336;
+        }
+
+        /* FILL question styling */
+        .blank-input {
+            border: 1.5px solid #999 !important;
+            border-radius: 4px !important;
+            padding: 8px 10px !important;
+            font-size: 0.95em !important;
+            transition: border-color 0.3s, box-shadow 0.3s !important;
+            font-family: inherit !important;
+        }
+
+        .blank-input:focus {
+            outline: none;
+            border-color: #1b3a6f !important;
+            box-shadow: 0 0 0 3px rgba(27, 58, 111, 0.1) !important;
+        }
+
+        /* Correct blank input styling */
+        .blank-input.correct-answer {
+            background: #c8e6c9 !important;
+            border: 2px solid #4caf50 !important;
+            color: #1b5e20 !important;
+            font-weight: 700 !important;
+        }
+
+        /* Incorrect blank input styling */
+        .blank-input.incorrect-answer {
+            background: #ffcdd2 !important;
+            border: 2px solid #f44336 !important;
+            color: #b71c1c !important;
+            font-weight: 700 !important;
+        }
+
         .feedback {
             margin: 8px 0 0 0;
             padding: 10px 12px;
@@ -267,7 +318,7 @@
             justify-content: flex-end;
             gap: 12px;
             padding: 10px 16px;
-            background: #f0f0f0;
+            background: transparent;
             border-radius: 8px;
             margin-top: 12px;
             flex-shrink: 0;
@@ -284,29 +335,35 @@
         }
 
         .submit-button {
-            padding: 8px 20px;
+            padding: 14px 36px;
             font-size: clamp(0.9em, 1.5vw, 1em);
             font-weight: 600;
-            background: #0077cc;
-            color: white;
+            background: #4A6FA5;
+            color: #FFFFFF;
             border: none;
-            border-radius: 20px;
+            border-radius: 6px;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s ease;
             font-family: 'Poppins', sans-serif;
             flex-shrink: 0;
             white-space: nowrap;
             line-height: 1;
             margin: 0;
+            box-shadow: 0 2px 8px rgba(74, 111, 165, 0.2);
+            letter-spacing: 0.5px;
         }
 
         .submit-button:hover {
-            background: #005fa3;
+            background: #3F5F8E;
+            box-shadow: 0 4px 12px rgba(74, 111, 165, 0.3);
+            transform: translateY(-1px);
         }
 
         .submit-button:disabled {
             background: #ccc;
             cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
         }
 
         .math {
@@ -445,6 +502,31 @@
                 font-size: clamp(0.8em, 2vw, 0.9em);
                 padding: 4px 8px;
             }
+
+            .options-section {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                overflow-y: visible;
+                max-height: none;
+                padding-left: 20px;
+            }
+
+            .options-band {
+                flex: auto;
+                display: flex;
+                flex-direction: column;
+                min-height: auto;
+                justify-content: flex-start;
+            }
+
+            .qa-grid {
+                padding: 12px 10px;
+            }
+
+            .question-block {
+                max-height: 100%;
+            }
         }
 
         @media (min-width: 1024px) {
@@ -470,18 +552,50 @@
                 overflow-y: visible;
                 margin: 0;
             }
-            .qa-grid.no-image .options-section {
-                grid-template-columns: 1fr;
+            .qa-grid.no-image {
+                flex: 0 0 auto;
+                margin: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+                align-items: flex-start;
+                width: 100%;
+                max-width: 600px;
+            }
+            .qa-grid.no-image .qa-left {
+                width: 100%;
+                max-width: 600px;
+                flex-shrink: 0;
             }
             .qa-grid.no-image .stem-band {
-                min-height: 25vh;
-                display: flex;
-                align-items: center;
-                justify-content: flex-start;
-                padding-left: 40px;
+                padding: 20px;
+                border-radius: 12px 12px 0 0;
+                background: #EAF3EF;
+                margin-bottom: -2px;
             }
             .qa-grid.no-image .question-stem {
                 text-align: left;
+            }
+            .qa-grid.no-image .qa-right {
+                width: 100%;
+                max-width: 600px;
+                flex: 0;
+                min-height: 0;
+            }
+            .qa-grid.no-image .options-band {
+                background: #EAF3EF;
+                padding: 0 20px 20px 20px;
+                border-radius: 0 0 12px 12px;
+            }
+            .qa-grid.no-image .options-section {
+                grid-template-columns: 1fr;
+                padding-left: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                overflow-y: visible;
+                max-height: none;
+                margin: 0;
             }
             .option {
                 margin-bottom: 0;
@@ -498,6 +612,7 @@
         <div class="links">
             <a href="#" id="editLink">Edit</a>
             <a href="#" id="jsonLink">JSON</a>
+            <a href="#" id="printLink">Print</a>
             <a href="#" id="newLink">New</a>
         </div>
     </div>
@@ -521,7 +636,6 @@
             </div>
             <div class="feedback" id="feedbackContainer"></div>
             <div class="button-row">
-                <span class="question-counter">Question 1 of 5</span>
                 <button class="submit-button" id="submitBtn">SUBMIT</button>
             </div>
     </div>
@@ -544,6 +658,8 @@
     
     <!-- Load question type-specific handlers -->
     <script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
 
     <script>
         /**
@@ -584,8 +700,19 @@
                         document.getElementById('submitBtn').addEventListener('click', () => quizMCQ.checkAnswer());
                         break;
                     
+                    case 'MR':
+                        quizMR = new QuizMR(quizCommon);
+                        quizMR.render();
+                        document.getElementById('submitBtn').addEventListener('click', () => quizMR.checkAnswer());
+                        break;
+                    
+                    case 'FILL':
+                        quizFill = new QuizFILL(quizCommon);
+                        quizFill.render();
+                        document.getElementById('submitBtn').addEventListener('click', () => quizFill.checkAnswer());
+                        break;
+                    
                     // Future question types will be added here
-                    // case 'MR':
                     // case 'HOTSPOT':
                     // case 'FB':
                     // case 'MFB':
@@ -614,6 +741,13 @@
         } else {
             initializeQuiz();
         }
+
+        // Print functionality
+        document.getElementById('printLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            const questionId = document.getElementById('questionId').textContent;
+            window.location.href = `/quiz/print/${questionId}`;
+        });
     </script>
 </body>
 </html>

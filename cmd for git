@@ -12,3 +12,13 @@ git pull origin main
 
 # push your local commits to remote
 git push origin main
+
+
+
+
+
+
+DONE -- git tag -a qb-v1 -m "Quiz builder MCQ"  
+
+git tag -a before-big-change -m "safe point"
+git push origin before-big-change

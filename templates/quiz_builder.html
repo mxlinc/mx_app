@@ -45,11 +45,39 @@
             padding: 10px 0;
             border-bottom: 1px solid #e8e8e8;
             margin-bottom: 10px;
+            align-items: center;
         }
 
         .sidebar button {
             flex: 1 1 auto;
             width: auto;
+        }
+
+        .question-type-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .question-type-selector label {
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            white-space: nowrap;
+            font-size: 0.9em;
+        }
+
+        .question-type-selector select {
+            padding: 6px 10px;
+            border: none;
+            font-size: 0.9em;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 500;
         }
 
         .main-content {
@@ -187,6 +215,35 @@
             padding: 10px;
             border-radius: 8px;
             margin-bottom: 10px;
+        }
+
+        .fill-blank {
+            margin-bottom: 12px;
+        }
+
+        .fill-blank select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+            background: white;
+        }
+
+        .fill-blank textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9em;
+            resize: vertical;
+        }
+
+        .text-options-only {
+            margin-top: 8px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
         }
 
         .option-row {
@@ -529,6 +586,14 @@
         <div class="main-layout">
             <!-- Sidebar -->
             <div class="sidebar">
+                <div class="question-type-selector">
+                    <label for="questionType">Question Type:</label>
+                    <select id="questionType">
+                        <option value="mcq">MCQ (Multiple Choice)</option>
+                        <option value="mr">MR (Multiple Response)</option>
+                        <option value="fill">FILL (Fill in the Blank)</option>
+                    </select>
+                </div>
                 <button id="saveBtn" title="Save question (S)">
                     <i class="fas fa-save"></i> Save
                 </button>
@@ -609,13 +674,13 @@
                 </div>
 
                 <!-- MCQ Options Section -->
-                <div class="form-section">
+                <div id="mcq-section" class="form-section">
                     <div class="section-title">
                         <i class="fas fa-list"></i> Options
                     </div>
                     <div class="form-group">
                         <label>Options <span class="input-type-label">(one per line, LaTeX format)</span></label>
-                        <textarea id="options" name="options" placeholder="$\\frac{4}{3}$&#10;$\\frac{3}{4}$&#10;None of the Above" required></textarea>
+                        <textarea id="options" name="options" placeholder="$\\frac{4}{3}$&#10;$\\frac{3}{4}$&#10;None of the Above"></textarea>
                     </div>
                     <div class="checkbox-label">
                         <input type="checkbox" id="shuffle" name="shuffle" checked>
@@ -627,11 +692,49 @@
                         <small style="color: #666; margin-top: 3px; display: block; font-size: 0.8em;">Leave empty to use first option as correct.</small>
                     </div>
                 </div>
+
+                <!-- MR (Multiple Response) Section -->
+                <div id="mr-section" class="form-section" style="display: none;">
+                    <div class="section-title">
+                        <i class="fas fa-check-square"></i> Options
+                    </div>
+                    <div class="form-group">
+                        <label>Options <span class="input-type-label">(one per line, LaTeX format)</span></label>
+                        <textarea id="mr-options" name="mr-options" placeholder="$\\frac{4}{3}$&#10;$\\frac{3}{4}$&#10;$\\frac{2}{3}$&#10;None of the Above"></textarea>
+                    </div>
+                    <div class="checkbox-label">
+                        <input type="checkbox" id="mr-shuffle" name="mr-shuffle" checked>
+                        <label for="mr-shuffle" style="margin: 0;">Shuffle options</label>
+                    </div>
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label>Correct Options <span class="input-type-label">(select at least 2 correct options)</span></label>
+                        <div id="mr-correct-options" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #f9f9f9; max-height: 200px; overflow-y: auto; min-height: 80px;">
+                            <p style="color: #999; text-align: center; margin: 30px 0;">Enter options above to select correct ones</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILL (Fill in the Blank) Section -->
+                <div id="fill-section" class="form-section" style="display: none;">
+                    <div class="section-title">
+                        <i class="fas fa-edit"></i> Fill in the Blanks
+                    </div>
+                    <div id="fill-blanks-container" style="margin-bottom: 15px;"></div>
+                    <button type="button" id="addBlankBtn" style="background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-plus"></i> Add Blank
+                    </button>
+                </div>
+
                     </form>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Load question type handlers -->
+    <script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
 
     <script>
         // ===== State Management =====
@@ -723,9 +826,65 @@
         document.getElementById('discardBtn').addEventListener('click', discard);
         document.getElementById('discardImageBtn').addEventListener('click', discardImage);
 
+        // ===== Question Type Switching =====
+        document.getElementById('questionType').addEventListener('change', (e) => {
+            const type = e.target.value.toLowerCase();
+            const mcqSection = document.getElementById('mcq-section');
+            const mrSection = document.getElementById('mr-section');
+            const fillSection = document.getElementById('fill-section');
+            const addBlankBtn = document.getElementById('addBlankBtn');
+            
+            if (type === 'mcq') {
+                mcqSection.style.display = 'block';
+                mrSection.style.display = 'none';
+                fillSection.style.display = 'none';
+                lastQuestion.type = 'mcq';
+            } else if (type === 'mr') {
+                mcqSection.style.display = 'none';
+                mrSection.style.display = 'block';
+                fillSection.style.display = 'none';
+                lastQuestion.type = 'mr';
+                // Regenerate MR options when switching
+                updateMRCorrectOptions();
+            } else if (type === 'fill') {
+                mcqSection.style.display = 'none';
+                mrSection.style.display = 'none';
+                fillSection.style.display = 'block';
+                lastQuestion.type = 'fill';
+                
+                // Initialize FILL if needed (only when creating new, not editing)
+                if (!editingQuestionId && document.getElementById('fill-blanks-container').children.length === 0) {
+                    addBlankUI();
+                }
+            }
+            
+            // Clear form when switching types - but NOT when editing an existing question
+            if (!editingQuestionId) {
+                clearForm();
+            }
+        });
+
+        // ===== Add Blank Button =====
+        const addBlankBtn = document.getElementById('addBlankBtn');
+        if (addBlankBtn) {
+            addBlankBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                addBlankUI();
+            });
+        }
+
         // ===== Messaging =====
         function showMessage(text, type) {
-            // Messages disabled for cleaner UI
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = 'message show ' + type;
+            
+            // Auto-hide success messages after 3 seconds
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.classList.remove('show');
+                }, 3000);
+            }
         }
 
         // ===== Data Collection =====
@@ -743,40 +902,73 @@
         }
 
         async function collectData() {
-            const question = {
-                type: 'mcq',
-                stem: { latex: document.getElementById('stem_latex').value },
-                input: {
-                    options: document.getElementById('options').value
-                        .split('\n')
-                        .filter(o => o.trim())
-                        .map((o, i) => ({ id: `opt${i+1}`, latex: o.trim() })),
-                    shuffle: document.getElementById('shuffle').checked
-                },
-                answer: {}
-            };
+            const questionType = document.getElementById('questionType').value.toLowerCase();
+            
+            let question;
+            if (questionType === 'mcq') {
+                // Collect MCQ data
+                question = {
+                    type: 'mcq',
+                    stem: { latex: document.getElementById('stem_latex').value },
+                    input: {
+                        options: document.getElementById('options').value
+                            .split('\n')
+                            .filter(o => o.trim())
+                            .map((o, i) => ({ id: `opt${i+1}`, latex: o.trim() })),
+                        shuffle: document.getElementById('shuffle').checked
+                    },
+                    answer: {}
+                };
 
-            // Determine correct option
-            const customCorrect = document.getElementById('correct').value.trim();
-            if (customCorrect) {
-                // Find which option matches the custom text
-                const matchingOption = question.input.options.find(opt => 
-                    opt.latex === customCorrect
-                );
-                if (matchingOption) {
-                    question.answer.correct_option_id = matchingOption.id;
+                // Determine correct option
+                const customCorrect = document.getElementById('correct').value.trim();
+                if (customCorrect) {
+                    const matchingOption = question.input.options.find(opt => 
+                        opt.latex === customCorrect
+                    );
+                    if (matchingOption) {
+                        question.answer.correct_option_id = matchingOption.id;
+                    } else {
+                        question.answer.correct_option_id = 'opt1';
+                    }
                 } else {
-                    // If no exact match, use first option as default
                     question.answer.correct_option_id = 'opt1';
                 }
+            } else if (questionType === 'mr') {
+                // Collect MR data
+                question = {
+                    type: 'mr',
+                    stem: { latex: document.getElementById('stem_latex').value },
+                    input: {
+                        options: document.getElementById('mr-options').value
+                            .split('\n')
+                            .filter(o => o.trim())
+                            .map((o, i) => ({ id: `opt${i+1}`, latex: o.trim() })),
+                        shuffle: document.getElementById('mr-shuffle').checked
+                    },
+                    answer: {}
+                };
+
+                // Get checked correct options
+                const checkedCorrect = Array.from(document.querySelectorAll('#mr-correct-options input[type="checkbox"]:checked'))
+                    .map(checkbox => checkbox.value);
+                
+                if (checkedCorrect.length < 2) {
+                    throw new Error('MR questions require at least 2 correct options');
+                }
+                
+                question.answer.correct_option_ids = checkedCorrect;
+            } else if (questionType === 'fill') {
+                // Collect FILL data
+                question = getFILLQuestion();
             } else {
-                question.answer.correct_option_id = 'opt1';
+                throw new Error(`Unknown question type: ${questionType}`);
             }
 
             const imageDataUrl = await collectImageDataUrl();
 
             return {
-                type: 'mcq',
+                type: questionType,
                 topic: document.getElementById('topic').value,
                 subtopic: document.getElementById('subtopic').value,
                 level: document.getElementById('level').value,
@@ -790,6 +982,33 @@
         async function save() {
             try {
                 const data = await collectData();
+                
+                // Type-specific validation
+                let validator;
+                const questionType = data.type.toUpperCase();
+                
+                switch (questionType) {
+                    case 'MCQ':
+                        validator = new QuizMCQ({showMessage: showMessage});
+                        break;
+                    case 'MR':
+                        validator = new QuizMR({showMessage: showMessage});
+                        break;
+                    case 'FILL':
+                        // FILL questions don't require additional validation at this point
+                        validator = { validate: () => true };
+                        break;
+                    // Future types: HOTSPOT, FB, MFB
+                    default:
+                        showMessage('✗ Unknown question type: ' + questionType, 'error');
+                        return;
+                }
+                
+                // Validate before saving
+                if (!validator.validate(data)) {
+                    return; // Validation errors already displayed
+                }
+                
                 console.log('Sending to /quiz/save:', data);
                 const response = await fetch('/quiz/save', {
                     method: 'POST',
@@ -836,6 +1055,60 @@
             }
         }
 
+        // ===== MR Correct Options Management =====
+        function updateMRCorrectOptions() {
+            const optionsText = document.getElementById('mr-options').value;
+            const options = optionsText.split('\n').filter(o => o.trim());
+            const container = document.getElementById('mr-correct-options');
+            
+            if (options.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center; margin: 30px 0;">Enter options above to select correct ones</p>';
+                return;
+            }
+            
+            const checkboxesHtml = options.map((opt, i) => {
+                const optId = `opt${i+1}`;
+                return `
+                    <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="correct_${optId}" value="${optId}" style="cursor: pointer;">
+                        <label for="correct_${optId}" style="cursor: pointer; margin: 0; flex: 1;">${opt}</label>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML = checkboxesHtml;
+        }
+
+        // Setup MR options listener
+        document.getElementById('mr-options').addEventListener('keyup', updateMRCorrectOptions);
+
+        // ===== Clear Form =====
+        function clearForm() {
+            document.getElementById('stem_latex').value = '';
+            document.getElementById('options').value = '';
+            document.getElementById('correct').value = '';
+            document.getElementById('mr-options').value = '';
+            document.getElementById('mr-shuffle').checked = true;
+            document.getElementById('image').value = '';
+            document.getElementById('imagePreview').style.display = 'none';
+            document.getElementById('discardImageBtn').style.display = 'none';
+            document.getElementById('shuffle').checked = true;
+            
+            // Clear MR correct options
+            document.getElementById('mr-correct-options').innerHTML = '<p style="color: #999; text-align: center; margin: 30px 0;">Enter options above to select correct ones</p>';
+            
+            // Clear FILL blanks
+            const fillBlankContainer = document.getElementById('fill-blanks-container');
+            if (fillBlankContainer) {
+                fillBlankContainer.innerHTML = '';
+            }
+            
+            editingQuestionId = null;
+            editingQuestionImage = null;
+            document.getElementById('editModeBar').style.display = 'none';
+            document.getElementById('message').classList.remove('show');
+        }
+
         // ===== Discard Flow =====
         function discard() {
             // Save current metadata
@@ -843,17 +1116,11 @@
                 topic: document.getElementById('topic').value,
                 subtopic: document.getElementById('subtopic').value,
                 level: document.getElementById('level').value,
-                type: 'mcq'
+                type: document.getElementById('questionType').value.toLowerCase()
             };
 
             // Clear form
-            document.getElementById('stem_latex').value = '';
-            document.getElementById('options').value = '';
-            document.getElementById('correct').value = '';
-            document.getElementById('image').value = '';
-            document.getElementById('imagePreview').style.display = 'none';
-            document.getElementById('discardImageBtn').style.display = 'none';
-            document.getElementById('shuffle').checked = true;
+            clearForm();
 
             // Restore metadata
             document.getElementById('topic').value = lastQuestion.topic;
@@ -884,31 +1151,38 @@
             try {
                 const response = await fetch(`/quiz/get-display/${questionId}`);
                 const data = await response.json();
+                console.log('API Response:', data);
+                
                 if (!data.ok) {
                     showMessage('✗ Failed to load question', 'error');
                     return;
                 }
 
                 const question = data.question;
+                console.log('Question object:', question);
+                console.log('Stem:', question.stem);
+                
                 editingQuestionId = questionId;
 
                 // Show edit mode bar
                 document.getElementById('editModeBar').style.display = 'block';
                 document.getElementById('displayId').textContent = questionId;
 
-                // Populate form
-                document.getElementById('stem_latex').value = question.stem?.latex || '';
-                document.getElementById('topic').value = data.topic;
-                document.getElementById('subtopic').value = data.subtopic;
-                document.getElementById('level').value = data.level;
-
-                if (question.input?.options) {
-                    document.getElementById('options').value = question.input.options
-                        .map(o => o.latex)
-                        .join('\n');
-                }
-
-                document.getElementById('shuffle').checked = question.input?.shuffle !== false;
+                // Populate common fields
+                const stemValue = question.stem?.latex || question.stem || '';
+                console.log('Stem object:', question.stem);
+                console.log('Setting stem_latex to:', stemValue);
+                document.getElementById('stem_latex').value = stemValue;
+                
+                document.getElementById('topic').value = data.topic || '';
+                document.getElementById('subtopic').value = data.subtopic || '';
+                document.getElementById('level').value = data.level || '';
+                
+                const questionType = (data.type || 'mcq').toLowerCase();
+                // Note: questionType is already set in init via URL param
+                // Just verify it matches for debugging
+                console.log('Question type from API:', questionType);
+                console.log('Question type from dropdown:', document.getElementById('questionType').value);
 
                 // Handle image
                 if (question.image?.src) {
@@ -919,7 +1193,78 @@
                     document.getElementById('discardImageBtn').style.display = 'block';
                 }
 
+                // Load type-specific fields
+                if (questionType === 'mcq') {
+                    if (question.input?.options) {
+                        document.getElementById('options').value = question.input.options
+                            .map(o => o.latex)
+                            .join('\n');
+                    }
+                    document.getElementById('shuffle').checked = question.input?.shuffle !== false;
+                } else if (questionType === 'mr') {
+                    // Populate MR options
+                    if (question.input?.options) {
+                        document.getElementById('mr-options').value = question.input.options
+                            .map(o => o.latex)
+                            .join('\n');
+                    }
+                    document.getElementById('mr-shuffle').checked = question.input?.shuffle !== false;
+                    
+                    // Update and populate correct options
+                    updateMRCorrectOptions();
+                    const correctIds = question.answer?.correct_option_ids || [];
+                    correctIds.forEach(id => {
+                        const checkbox = document.getElementById(`correct_${id}`);
+                        if (checkbox) {
+                            checkbox.checked = true;
+                        }
+                    });
+                } else if (questionType === 'fill') {
+                    // Populate FILL blanks
+                    const blanksContainer = document.getElementById('fill-blanks-container');
+                    if (blanksContainer) {
+                        blanksContainer.innerHTML = ''; // Clear existing
+                        
+                        if (question.input?.blanks && Array.isArray(question.input.blanks)) {
+                            question.input.blanks.forEach((blank, idx) => {
+                                // Create blank UI
+                                addBlankUI();
+                                const blankEl = blanksContainer.querySelector('.fill-blank:last-child');
+                                
+                                if (blankEl) {
+                                    // Populate fields
+                                    blankEl.querySelector('.blank-label-latex').value = blank.input_label?.latex || '';
+                                    blankEl.querySelector('.blank-response-type').value = blank.response_type || 'text';
+                                    blankEl.querySelector('.blank-placeholder').value = blank.placeholder || '';
+                                    
+                                    // Populate correct answers
+                                    const correctAnswer = question.answer?.correct?.[idx];
+                                    if (correctAnswer) {
+                                        if (correctAnswer.response_type === 'text' && correctAnswer.accepted_text) {
+                                            blankEl.querySelector('.blank-correct-answers').value = correctAnswer.accepted_text.join('\n');
+                                            blankEl.querySelector('.blank-case-sensitive').checked = correctAnswer.case_sensitive !== false;
+                                        } else if (correctAnswer.response_type === 'numeric' && correctAnswer.accepted_numeric) {
+                                            blankEl.querySelector('.blank-correct-answers').value = correctAnswer.accepted_numeric.join(', ');
+                                        } else if (correctAnswer.response_type === 'fraction' && correctAnswer.accepted_fraction) {
+                                            blankEl.querySelector('.blank-correct-answers').value = correctAnswer.accepted_fraction
+                                                .map(f => `${f.numerator}/${f.denominator}`)
+                                                .join('\n');
+                                        }
+                                    }
+                                    
+                                    // Show/hide case sensitive option
+                                    const textOptions = blankEl.querySelector('.text-options-only');
+                                    if (textOptions) {
+                                        textOptions.style.display = blank.response_type === 'text' ? 'block' : 'none';
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+
                 showMessage('✓ Question loaded for editing', 'success');
+                console.log('Question load complete');
             } catch (error) {
                 showMessage('✗ Error loading question: ' + error.message, 'error');
                 console.error(error);
@@ -927,12 +1272,33 @@
         }
 
         // ===== Initialize =====
-        window.addEventListener('DOMContentLoaded', () => {
-            // Check for edit ID in URL
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Check for URL parameters
             const idParam = getQueryParam('id');
+            const typeParam = getQueryParam('type');
+            
+            // Set editingQuestionId FIRST if provided
             if (idParam) {
                 editingQuestionId = parseInt(idParam);
-                loadQuestionForEdit(editingQuestionId);
+            }
+            
+            // If type parameter provided (from edit redirect), set and trigger change event
+            if (typeParam) {
+                document.getElementById('questionType').value = typeParam.toLowerCase();
+                document.getElementById('questionType').disabled = false;
+                // Trigger change event to show the appropriate UI
+                // This is safe now because editingQuestionId is already set
+                const event = new Event('change', { bubbles: true });
+                document.getElementById('questionType').dispatchEvent(event);
+            }
+            
+            // Load question if editing
+            if (idParam) {
+                try {
+                    await loadQuestionForEdit(editingQuestionId);
+                } catch (error) {
+                    console.error('Failed to load question:', error);
+                }
             } else {
                 // Check for new question parameters
                 const topicParam = getQueryParam('topic');

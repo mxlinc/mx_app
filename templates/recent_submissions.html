@@ -193,8 +193,8 @@
     <div class="student-card">
         <div><span class="student-label">Student:</span><span class="student-name">{{ full_name }}</span></div>
         <div class="links-right">
-            <a href="{{ url_for('student_home') }}" class="nav-link"><i class="fa fa-home"></i> Home</a>
-            <a href="{{ url_for('logout') }}" class="nav-link"><i class="fa fa-sign-out-alt"></i> Logout</a>
+            <a href="{{ url_for('lms.student_home') }}" class="nav-link"><i class="fa fa-home"></i> Home</a>
+            <a href="{{ url_for('lms.logout') }}" class="nav-link"><i class="fa fa-sign-out-alt"></i> Logout</a>
         </div>
     </div>
 
@@ -206,8 +206,8 @@
                 <span><i class="fa fa-clipboard-list"></i> Recent Submissions</span>
                 <div class="pagination" style="margin: 0;">
                     {% if pagination.page > 1 %}
-                    <a class="page-link" href="{{ url_for('recent_submissions', page=1) }}">&laquo;&laquo;</a>
-                    <a class="page-link" href="{{ url_for('recent_submissions', page=pagination.prev_num) }}">&laquo;</a>
+                    <a class="page-link" href="{{ url_for('lms.recent_submissions', page=1) }}">&laquo;&laquo;</a>
+                    <a class="page-link" href="{{ url_for('lms.recent_submissions', page=pagination.prev_num) }}">&laquo;</a>
                     {% else %}
                     <span class="page-link disabled">&laquo;&laquo;</span>
                     <span class="page-link disabled">&laquo;</span>
@@ -216,8 +216,8 @@
                     <span class="pagination-page-label">Page {{ pagination.page }} of {{ pagination.pages }}</span>
 
                     {% if pagination.has_next %}
-                    <a class="page-link" href="{{ url_for('recent_submissions', page=pagination.next_num) }}">&raquo;</a>
-                    <a class="page-link" href="{{ url_for('recent_submissions', page=pagination.pages) }}">&raquo;&raquo;</a>
+                    <a class="page-link" href="{{ url_for('lms.recent_submissions', page=pagination.next_num) }}">&raquo;</a>
+                    <a class="page-link" href="{{ url_for('lms.recent_submissions', page=pagination.pages) }}">&raquo;&raquo;</a>
                     {% else %}
                     <span class="page-link disabled">&raquo;</span>
                     <span class="page-link disabled">&raquo;&raquo;</span>

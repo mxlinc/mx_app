@@ -55,15 +55,15 @@
   <div class="container mt-4">
     <!-- Navigation buttons -->
     <div class="d-flex justify-content-start mb-4">
-      <a href="{{ url_for('admin_home') }}" class="btn btn-outline-primary fw-bold px-4 me-2">Admin Home</a>
-      <a href="{{ url_for('pack_report') }}" class="btn btn-outline-secondary fw-bold px-4 me-2">Packages</a>
-      <a href="{{ url_for('fine_tune') }}" class="btn btn-outline-success fw-bold px-4">Fine Tune</a>
+      <a href="{{ url_for('lms.admin_home') }}" class="btn btn-outline-primary fw-bold px-4 me-2">Admin Home</a>
+      <a href="{{ url_for('lms.pack_report') }}" class="btn btn-outline-secondary fw-bold px-4 me-2">Packages</a>
+      <a href="{{ url_for('lms.fine_tune') }}" class="btn btn-outline-success fw-bold px-4">Fine Tune</a>
     </div>
 
     <!-- Create Work Package -->
     <div class="card shadow p-3 mb-4">
       <h5 class="card-title mb-3">Create Work Package</h5>
-      <form id="create-pack-form" method="POST" action="{{ url_for('create_pack') }}">
+      <form id="create-pack-form" method="POST" action="{{ url_for('lms.create_pack') }}">
         <div class="row align-items-center g-2">
           <div class="col-md-2">
             <input type="text" name="pack_desc" class="form-control" placeholder="Description" required />

@@ -195,7 +195,8 @@ class QuizCommon {
     setupNavigation() {
         document.getElementById('editLink')?.addEventListener('click', (e) => {
             e.preventDefault();
-            window.location.href = `/quiz/builder?id=${document.getElementById('questionId').textContent.trim()}`;
+            const questionId = document.getElementById('questionId').textContent.trim();
+            window.location.href = `/quiz/edit/${questionId}`;
         });
 
         document.getElementById('jsonLink')?.addEventListener('click', (e) => {

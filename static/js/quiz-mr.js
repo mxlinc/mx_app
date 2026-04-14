@@ -1,20 +1,20 @@
 /**
- * MCQ (Multiple Choice Question) Handler
- * Specific rendering and answer checking for MCQ type questions
+ * MR (Multiple Response) Handler
+ * Specific rendering and answer checking for MR type questions
  */
 
-class QuizMCQ {
+class QuizMR {
     constructor(common) {
         this.common = common || {};
-        this.selectedOption = null;
+        this.selectedOptions = new Set();
     }
 
     /**
-     * Render MCQ-specific content
+     * Render MR-specific content with checkboxes
      * Assumes common.question is already populated
      */
     render() {
-        console.log('MCQ.render() called');
+        console.log('MR.render() called');
         this.renderOptions();
         this.attachEventListeners();
     }
@@ -32,7 +32,7 @@ class QuizMCQ {
     }
 
     /**
-     * Render MCQ options with radio buttons
+     * Render MR options with checkboxes
      */
     renderOptions() {
         console.log('question.input:', this.common.question.input);
@@ -44,17 +44,25 @@ class QuizMCQ {
                 console.log('Shuffling options');
                 options = this.shuffleArray(options);
             }
+            
+            // Get number of correct options to select
+            const correctOptionIds = this.common.question.answer?.correct_option_ids || [];
+            const numCorrect = correctOptionIds.length;
+            
+            // Build options HTML with instruction prompt
+            const promptHtml = `<p style="font-size: 0.85em; color: #666; margin-bottom: 12px; font-style: italic;">Select ${numCorrect} correct option${numCorrect > 1 ? 's' : ''}</p>`;
+            
             const optionsHtml = options.map((opt, idx) => {
                 const labelText = opt.html || opt.latex || opt.text || JSON.stringify(opt);
                 return `
                     <div class="option" data-option-id="${opt.id}">
-                        <input type="radio" id="opt${opt.id}" name="answer" value="${opt.id}" data-index="${idx}">
+                        <input type="checkbox" id="opt${opt.id}" name="answer" value="${opt.id}" data-index="${idx}">
                         <label for="opt${opt.id}">${labelText}</label>
                         <span class="option-feedback-indicator"></span>
                     </div>
                 `;
             }).join('');
-            document.getElementById('optionsContainer').innerHTML = optionsHtml;
+            document.getElementById('optionsContainer').innerHTML = promptHtml + optionsHtml;
             console.log('Options rendered');
         } else {
             console.log('No options found');
@@ -63,12 +71,16 @@ class QuizMCQ {
     }
 
     /**
-     * Attach MCQ-specific event listeners
+     * Attach MR-specific event listeners
      */
     attachEventListeners() {
         document.querySelectorAll('input[name="answer"]').forEach(input => {
             input.addEventListener('change', (e) => {
-                this.selectedOption = e.target.value;
+                if (e.target.checked) {
+                    this.selectedOptions.add(e.target.value);
+                } else {
+                    this.selectedOptions.delete(e.target.value);
+                }
                 this.common.clearFeedback();
                 // Clear per-option feedback indicators
                 document.querySelectorAll('.option-feedback-indicator').forEach(indicator => {
@@ -80,43 +92,33 @@ class QuizMCQ {
     }
 
     /**
-     * Check MCQ answer
+     * Check MR answer
      */
     checkAnswer() {
-        console.log('MCQ.checkAnswer() called');
-        if (!this.selectedOption) {
-            alert('Please select an option');
+        console.log('MR.checkAnswer() called');
+        if (this.selectedOptions.size === 0) {
+            alert('Please select at least one option');
             return;
         }
 
-        // Determine correct option
-        let correctOptionId = null;
-        let correctOptionDisplay = null;
-        
-        if (this.common.question.answer?.correct_option_id) {
-            correctOptionId = this.common.question.answer.correct_option_id;
-        } else if (this.common.question.answer?.correct_option_text) {
-            // Fallback: Find the option with matching text
-            const correctOption = this.common.question.input.options.find(opt => 
-                opt.latex === this.common.question.answer.correct_option_text || 
-                opt.html === this.common.question.answer.correct_option_text
-            );
-            correctOptionId = correctOption?.id;
-        }
+        // Get correct option IDs
+        const correctOptionIds = this.common.question.answer?.correct_option_ids || [];
+        console.log('Correct option IDs:', correctOptionIds);
+        console.log('Selected options:', Array.from(this.selectedOptions));
 
-        // Get display text for correct option
-        if (correctOptionId) {
-            const correctOption = this.common.question.input.options.find(opt => opt.id === correctOptionId);
-            if (correctOption) {
-                correctOptionDisplay = correctOption.html || correctOption.latex;
-            }
-        }
+        // Check if selection exactly matches correct options
+        const correctSet = new Set(correctOptionIds);
+        const isCorrect = this.selectedOptions.size === correctSet.size && 
+                          Array.from(this.selectedOptions).every(id => correctSet.has(id));
 
         // Display per-option feedback
-        this.displayPerOptionFeedback(correctOptionId);
+        this.displayPerOptionFeedback(correctOptionIds);
 
-        // Disable submit button on correct answer
-        if (this.selectedOption === correctOptionId) {
+        // Show overall feedback only on correct answer
+        if (isCorrect) {
+            this.common.showFeedback('All correct answers selected!', true);
+            
+            // Disable submit button on correct answer
             const submitBtn = document.querySelector('[onclick*="checkAnswer"]');
             if (submitBtn) submitBtn.disabled = true;
         }
@@ -125,27 +127,37 @@ class QuizMCQ {
     /**
      * Display feedback indicators next to each option
      */
-    displayPerOptionFeedback(correctOptionId) {
+    displayPerOptionFeedback(correctOptionIds) {
+        const correctSet = new Set(correctOptionIds);
+        
         document.querySelectorAll('.option').forEach((optionDiv) => {
             const optionId = optionDiv.getAttribute('data-option-id');
             const indicator = optionDiv.querySelector('.option-feedback-indicator');
+            const isCorrect = correctSet.has(optionId);
+            const isSelected = this.selectedOptions.has(optionId);
             
             if (!indicator) return;
 
-            if (optionId === correctOptionId) {
-                // Correct option - add green styling to the option itself
+            if (isCorrect && isSelected) {
+                // Correct option - selected correctly
                 optionDiv.classList.add('correct-option');
                 optionDiv.classList.remove('incorrect-option');
                 indicator.innerHTML = '<span style="color: #4CAF50; font-size: 1.2em; margin-left: 12px; font-weight: bold;">✓</span>';
                 indicator.style.display = 'inline';
-            } else if (optionId === this.selectedOption) {
-                // Selected but incorrect - add red styling to the option itself
+            } else if (!isCorrect && isSelected) {
+                // Incorrect option - selected but shouldn't be
                 optionDiv.classList.add('incorrect-option');
                 optionDiv.classList.remove('correct-option');
                 indicator.innerHTML = '<span style="color: #f44336; font-size: 1.2em; margin-left: 12px; font-weight: bold;">✗</span>';
                 indicator.style.display = 'inline';
+            } else if (isCorrect && !isSelected) {
+                // Correct option - should have been selected but wasn't
+                optionDiv.classList.add('incorrect-option');
+                optionDiv.classList.remove('correct-option');
+                indicator.innerHTML = '<span style="font-size: 0.85em; color: #ff9800; margin-left: 12px; font-style: italic; font-weight: 600;">You missed!</span>';
+                indicator.style.display = 'inline';
             } else {
-                // Not selected - remove any styling classes
+                // Not selected, not correct - nothing to show
                 optionDiv.classList.remove('correct-option', 'incorrect-option');
                 indicator.textContent = '';
                 indicator.style.display = 'none';
@@ -154,12 +166,12 @@ class QuizMCQ {
     }
 
     /**
-     * Validate MCQ form before saving
+     * Validate MR form before saving
      * Returns true if valid, false otherwise
      * Displays error messages via common.showMessage()
      */
     validate(data) {
-        console.log('MCQ.validate() called with data:', data);
+        console.log('MR.validate() called with data:', data);
         const errors = [];
 
         // Validate stem
@@ -187,14 +199,13 @@ class QuizMCQ {
             }
         });
 
-        // Validate correct option if specified (need to check DOM since it's from builder form)
-        const correctInput = document.getElementById('correct')?.value?.trim();
-        if (correctInput) {
-            const optionLatexValues = optionsArray.map(opt => opt.latex);
-            const found = optionLatexValues.some(latex => latex === correctInput);
-            if (!found) {
-                errors.push('Correct option must match one of the listed options exactly');
-            }
+        // Validate correct options
+        const correctIds = data.question.answer?.correct_option_ids || [];
+        if (correctIds.length < 2) {
+            errors.push('At least 2 correct options must be selected');
+        }
+        if (correctIds.length >= optionsArray.length) {
+            errors.push('At least one option must be incorrect');
         }
 
         // Show errors if any
@@ -208,10 +219,7 @@ class QuizMCQ {
             return false;
         }
 
-        console.log('MCQ validation passed');
         return true;
     }
 }
 
-// Create singleton instance (will be initialized in quiz_display.html)
-let quizMCQ;

@@ -8,5 +8,6 @@ psycopg[binary]==3.2.9
 typing-extensions==4.14.1
 packaging==25.0
 html2text
+reportlab>=4.0.0
 
 twilio>=8.0.0
