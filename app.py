@@ -4,6 +4,7 @@ import os
 import logging
 from flask import Flask
 from flask_login import LoginManager
+from flask import send_from_directory
 
 # Import configuration and database
 from config import SECRET_KEY, DATABASE_URL
@@ -45,6 +46,17 @@ def load_user(user_id):
 
 
 # ================== REGISTER BLUEPRINTS ================== #
+
+# ==================== direct path for testing ==================== #
+
+@app.route('/pkg/<pkg_name>')
+def serve_pkg(pkg_name):
+    return send_from_directory(f'/data/mont/{pkg_name}', 'index.html')
+
+@app.route('/pkg/<pkg_name>/<path:filename>')
+def serve_pkg_files(pkg_name, filename):
+    return send_from_directory(f'/data/mont/{pkg_name}', filename)
+
 
 # LMS Blueprint (Learning Management System)
 app.register_blueprint(lms_bp)
