@@ -11,3 +11,4 @@ html2text
 reportlab>=4.0.0
 
 twilio>=8.0.0
+jsonschema
