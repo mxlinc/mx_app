@@ -49,7 +49,13 @@ def load_user(user_id):
 
 # ==================== direct path for testing ==================== #
 
+from flask import send_from_directory, redirect
+
 @app.route('/pkg/<pkg_name>')
+def serve_pkg_redirect(pkg_name):
+    return redirect(f'/pkg/{pkg_name}/')
+
+@app.route('/pkg/<pkg_name>/')
 def serve_pkg(pkg_name):
     return send_from_directory(f'/data/mont/{pkg_name}', 'index.html')
 
