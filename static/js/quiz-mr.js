@@ -114,13 +114,16 @@ class QuizMR {
         // Display per-option feedback
         this.displayPerOptionFeedback(correctOptionIds);
 
-        // Show overall feedback only on correct answer
+        // Show feedback
         if (isCorrect) {
             this.common.showFeedback('All correct answers selected!', true);
             
             // Disable submit button on correct answer
             const submitBtn = document.querySelector('[onclick*="checkAnswer"]');
             if (submitBtn) submitBtn.disabled = true;
+        } else if (this.common.question.stem?.feedback?.html) {
+            // Display question-level feedback on wrong answer
+            this.common.showFeedback(this.common.question.stem.feedback.html, false);
         }
     }
 

@@ -95,6 +95,12 @@ function getFILLQuestion() {
         }
     };
 
+    // Add feedback if provided
+    const feedbackLatex = document.getElementById('feedback_latex')?.value.trim();
+    if (feedbackLatex) {
+        question.stem.feedback = { latex: feedbackLatex };
+    }
+
     return question;
 }
 
@@ -402,6 +408,11 @@ class QuizFILL {
 
         // Display per-blank feedback
         this.displayPerBlankFeedback(blanks, blankFeedback);
+
+        // Display question-level feedback on wrong answer if available
+        if (!allCorrect && this.common.question.stem?.feedback?.html) {
+            this.common.showFeedback(this.common.question.stem.feedback.html, false);
+        }
 
         if (allCorrect) {
             // Disable submit button

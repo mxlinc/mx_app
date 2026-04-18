@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>My Packages - Montessori</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .package-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .package-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .package-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .package-description {
+            color: #666;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .package-meta {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .meta-item {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #666;
+        }
+
+        .meta-icon {
+            margin-right: 5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 10px 24px;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #66428a 100%);
+            transform: scale(1.02);
+        }
+
+        .no-packages {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            color: #0066cc;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" style="max-width: 800px;">
+        <h1>👋 Welcome, {{ student_name }}!</h1>
+        <p class="subtitle">Your assigned Montessori learning packages</p>
+
+        {% if packages %}
+            {% for pkg in packages %}
+                <div class="package-card">
+                    <div class="package-title">📚 {{ pkg.subject }} - {{ pkg.topic }}</div>
+                    <div class="package-description">{{ pkg.work }}</div>
+
+                    <div class="package-meta">
+                        <div class="meta-item">
+                            <span class="meta-icon">📅</span>
+                            Assigned: {{ pkg.assigned_date.strftime('%d %b %Y') }}
+                        </div>
+                        {% if pkg.last_accessed %}
+                            <div class="meta-item">
+                                <span class="meta-icon">👁️</span>
+                                Last: {{ pkg.last_accessed.strftime('%d %b %H:%M') }}
+                            </div>
+                        {% endif %}
+                        <div class="meta-item">
+                            <span class="meta-icon">📊</span>
+                            Views: {{ pkg.click_count }}
+                        </div>
+                    </div>
+
+                    <a href="{{ pkg.link }}"
+                       class="btn btn-primary btn-sm"
+                       target="_blank"
+                       onclick="trackClick({{ pkg.id }})">
+                        <i class="fas fa-external-link-alt"></i> Open
+                    </a>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="no-packages">
+                <i class="fas fa-info-circle"></i> No packages assigned yet. Please check back soon!
+            </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function trackClick(packageId) {
+            fetch(`/montessori/track/{{ token }}/${packageId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .catch(err => console.error('Tracking error:', err));
+        }
+    </script>
+</body>
+
+</html>

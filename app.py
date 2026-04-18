@@ -7,13 +7,14 @@ from flask_login import LoginManager
 from flask import send_from_directory
 
 # Import configuration and database
-from config import SECRET_KEY, DATABASE_URL
+from config import SECRET_KEY, DATABASE_URL, PACKAGE_DATA_PATH
 from db import db
 from models import UserTable
 
 # Import blueprints
 from lms import lms_bp
 from qb import qb_bp
+from mm import mm_bp
 
 # Configure logging
 logging.basicConfig(
@@ -57,11 +58,11 @@ def serve_pkg_redirect(pkg_name):
 
 @app.route('/pkg/<pkg_name>/')
 def serve_pkg(pkg_name):
-    return send_from_directory(f'/data/mont/{pkg_name}', 'index.html')
+    return send_from_directory(os.path.join(PACKAGE_DATA_PATH, pkg_name), 'index.html')
 
 @app.route('/pkg/<pkg_name>/<path:filename>')
 def serve_pkg_files(pkg_name, filename):
-    return send_from_directory(f'/data/mont/{pkg_name}', filename)
+    return send_from_directory(os.path.join(PACKAGE_DATA_PATH, pkg_name), filename)
 
 
 # LMS Blueprint (Learning Management System)
@@ -69,6 +70,9 @@ app.register_blueprint(lms_bp)
 
 # QB Blueprint (Question Bank)
 app.register_blueprint(qb_bp)
+
+# MM Blueprint (Montessori Materials)
+app.register_blueprint(mm_bp)
 
 # ================== RUN ================== #
 

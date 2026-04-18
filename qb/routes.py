@@ -229,3 +229,271 @@ def play_preview():
     if 'image_data_url' in data and data['image_data_url']:
         question['image']['src'] = data['image_data_url']
     return render_template("quiz_play.html", question=question)
+
+
+# ==================== QUIZ MANAGEMENT ==================== #
+
+@qb_bp.route("/create-quiz", methods=["GET"])
+@login_required
+def create_quiz_page():
+    """Display create quiz form."""
+    return render_template("create_quiz.html")
+
+
+@qb_bp.route("/create-quiz", methods=["POST"])
+@login_required
+def create_quiz():
+    """Save a new quiz."""
+    from models import Quiz
+    
+    data = request.get_json()
+    
+    # Parse question_ids
+    question_ids_str = data.get('question_ids', '').strip()
+    question_ids = [qid.strip() for qid in question_ids_str.split(',') if qid.strip()] if question_ids_str else []
+    
+    quiz = Quiz(
+        title=data.get('title', ''),
+        description=data.get('description', ''),
+        topic=data.get('topic', ''),
+        subtopic=data.get('subtopic', ''),
+        question_ids=','.join(question_ids) if question_ids else '',
+        question_count=len(question_ids)
+    )
+    
+    db.session.add(quiz)
+    db.session.commit()
+    
+    return jsonify({
+        'ok': True,
+        'quiz_id': quiz.id,
+        'message': 'Quiz created successfully'
+    }), 201
+
+
+@qb_bp.route("/quiz/<int:quiz_id>/preview", methods=["GET"])
+@login_required
+def preview_quiz(quiz_id):
+    """Display quiz preview with all questions."""
+    from models import Quiz
+    
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return "Quiz not found", 404
+    
+    # Parse question IDs
+    question_ids = [int(qid.strip()) for qid in quiz.question_ids.split(',') if qid.strip()] if quiz.question_ids else []
+    
+    # Fetch all questions in order
+    questions = []
+    for qid in question_ids:
+        q = QBank.query.get(qid)
+        if q:
+            questions.append(q.json)
+    
+    return render_template("quiz_preview.html", quiz=quiz, questions=questions)
+
+
+@qb_bp.route("/quiz/<int:quiz_id>/questions", methods=["GET"])
+@login_required
+def get_quiz_questions(quiz_id):
+    """Get quiz questions as JSON."""
+    from models import Quiz
+    
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return jsonify({'ok': False, 'error': 'Quiz not found'}), 404
+    
+    # Parse question IDs
+    question_ids = [int(qid.strip()) for qid in quiz.question_ids.split(',') if qid.strip()] if quiz.question_ids else []
+    
+    # Fetch all questions in order
+    questions = []
+    for qid in question_ids:
+        q = QBank.query.get(qid)
+        if q:
+            questions.append({'id': q.id, 'json': q.json})
+    
+    return jsonify({
+        'ok': True,
+        'quiz': {
+            'id': quiz.id,
+            'title': quiz.title,
+            'description': quiz.description,
+            'topic': quiz.topic,
+            'subtopic': quiz.subtopic,
+            'question_count': quiz.question_count
+        },
+        'questions': questions
+    })
+
+
+# ==================== WIZARD MODE ==================== #
+
+@qb_bp.route("/quiz/<int:quiz_id>/builder", methods=["GET"])
+@login_required
+def quiz_wizard_builder(quiz_id):
+    """Builder in wizard mode for a specific quiz."""
+    from models import Quiz
+    
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return "Quiz not found", 404
+    
+    return render_template("quiz_builder.html", quiz_id=quiz_id, wizard_mode=True, quiz_title=quiz.title)
+
+
+@qb_bp.route("/quiz/<int:quiz_id>/append-question", methods=["POST"])
+@login_required
+def append_question_to_quiz(quiz_id):
+    """Save a question in wizard mode and append to quiz."""
+    from models import Quiz
+    
+    data = request.get_json()
+    question_type = data.get('type', '').lower()
+    
+    handler = get_handler(question_type)
+    if not handler:
+        return jsonify({'ok': False, 'error': f'Unknown question type: {question_type}'}), 400
+    
+    # Save the question
+    question_obj, error = handler.save_question(data)
+    if error:
+        return jsonify({'ok': False, 'error': error}), 400
+    
+    # Get the quiz
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return jsonify({'ok': False, 'error': 'Quiz not found'}), 404
+    
+    # Append question ID to quiz
+    existing_ids = [qid.strip() for qid in quiz.question_ids.split(',') if qid.strip()] if quiz.question_ids else []
+    existing_ids.append(str(question_obj.id))
+    
+    quiz.question_ids = ','.join(existing_ids)
+    quiz.question_count = len(existing_ids)
+    quiz.updated_at = db.func.now()
+    
+    db.session.commit()
+    
+    return jsonify({
+        'ok': True,
+        'question_id': question_obj.id,
+        'quiz_id': quiz_id,
+        'question_count': quiz.question_count,
+        'message': f'Question {question_obj.id} added to quiz'
+    }), 201
+
+
+# ==================== QUIZ PREVIEW & EXECUTION ==================== #
+
+@qb_bp.route("/quiz/<int:quiz_id>/execute", methods=["GET"])
+@login_required
+def execute_quiz(quiz_id):
+    """Display quiz execution with sequential navigation."""
+    from models import Quiz
+    from flask import current_user
+    
+    quiz = Quiz.query.get(quiz_id)
+    if not quiz:
+        return "Quiz not found", 404
+    
+    # Parse question IDs
+    question_ids = [int(qid.strip()) for qid in quiz.question_ids.split(',') if qid.strip()] if quiz.question_ids else []
+    
+    # Fetch all questions in order and prepare with HTML
+    questions = []
+    for qid in question_ids:
+        q = QBank.query.get(qid)
+        if q:
+            question_type = q.type.lower() if q.type else 'mcq'
+            handler = get_handler(question_type)
+            if handler:
+                prepared = handler.prepare_html(q.json)
+                questions.append(prepared)
+            else:
+                questions.append(q.json)
+    
+    return render_template(
+        "quiz_execution.html", 
+        quiz=quiz, 
+        questions=questions,
+        user_id=current_user.id
+    )
+
+
+@qb_bp.route("/admin-return", methods=["GET"])
+@login_required
+def admin_return():
+    """Return page after quiz completion."""
+    return render_template("quiz-admin-return.html")
+
+
+@qb_bp.route("/submit-answer", methods=["POST"])
+@login_required
+def submit_answer():
+    """Submit an answer during quiz execution and store result."""
+    from models import UserQuiz, Quiz
+    from flask import current_user
+    import json as json_lib
+    
+    try:
+        data = request.get_json()
+        
+        quiz_id = data.get('quiz_id')
+        question_id = data.get('question_id')
+        user_answer = data.get('user_answer')
+        is_correct = data.get('is_correct', False)
+        feedback = data.get('feedback', '')
+        
+        # Validate required fields
+        if not all([quiz_id, question_id]):
+            return jsonify({'ok': False, 'error': 'Missing required fields'}), 400
+        
+        # Get or create user_quiz record
+        user_quiz = UserQuiz.query.filter_by(
+            user_id=current_user.id,
+            quiz_id=quiz_id
+        ).first()
+        
+        if not user_quiz:
+            user_quiz = UserQuiz(
+                user_id=current_user.id,
+                quiz_id=quiz_id,
+                status='in_progress'
+            )
+            db.session.add(user_quiz)
+            db.session.flush()
+        
+        # Store the answer
+        # Store responses as JSON string in user_quiz.responses field
+        responses = {}
+        if user_quiz.responses:
+            try:
+                responses = json_lib.loads(user_quiz.responses) if isinstance(user_quiz.responses, str) else user_quiz.responses
+            except:
+                responses = {}
+        
+        responses[str(question_id)] = {
+            'answer': user_answer,
+            'is_correct': is_correct,
+            'feedback': feedback
+        }
+        
+        user_quiz.responses = json_lib.dumps(responses)
+        
+        # Update score if tracking
+        if is_correct:
+            user_quiz.score = (user_quiz.score or 0) + 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'ok': True,
+            'message': 'Answer submitted successfully',
+            'user_quiz_id': user_quiz.id
+        }), 201
+        
+    except Exception as e:
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500

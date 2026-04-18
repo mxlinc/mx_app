@@ -654,6 +654,15 @@
                     </div>
                 </div>
 
+                <!-- Feedback Section -->
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="feedback_latex">Feedback <span class="input-type-label">(LaTeX format, optional)</span></label>
+                        <textarea id="feedback_latex" name="feedback_latex" placeholder="Enter feedback to display when student answers incorrectly (optional)..."></textarea>
+                        <small style="color: #666; margin-top: 3px; display: block; font-size: 0.8em;">This feedback will be shown only when the student provides an incorrect answer.</small>
+                    </div>
+                </div>
+
                 <!-- Image Section -->
                 <div class="form-section">
                     <div class="section-title">
@@ -920,6 +929,12 @@
                     answer: {}
                 };
 
+                // Add feedback if provided
+                const feedbackLatex = document.getElementById('feedback_latex').value.trim();
+                if (feedbackLatex) {
+                    question.stem.feedback = { latex: feedbackLatex };
+                }
+
                 // Determine correct option
                 const customCorrect = document.getElementById('correct').value.trim();
                 if (customCorrect) {
@@ -948,6 +963,12 @@
                     },
                     answer: {}
                 };
+
+                // Add feedback if provided
+                const feedbackLatex = document.getElementById('feedback_latex').value.trim();
+                if (feedbackLatex) {
+                    question.stem.feedback = { latex: feedbackLatex };
+                }
 
                 // Get checked correct options
                 const checkedCorrect = Array.from(document.querySelectorAll('#mr-correct-options input[type="checkbox"]:checked'))
@@ -1085,6 +1106,7 @@
         // ===== Clear Form =====
         function clearForm() {
             document.getElementById('stem_latex').value = '';
+            document.getElementById('feedback_latex').value = '';
             document.getElementById('options').value = '';
             document.getElementById('correct').value = '';
             document.getElementById('mr-options').value = '';
@@ -1173,6 +1195,10 @@
                 console.log('Stem object:', question.stem);
                 console.log('Setting stem_latex to:', stemValue);
                 document.getElementById('stem_latex').value = stemValue;
+                
+                // Populate feedback if present
+                const feedbackValue = question.stem?.feedback?.latex || '';
+                document.getElementById('feedback_latex').value = feedbackValue;
                 
                 document.getElementById('topic').value = data.topic || '';
                 document.getElementById('subtopic').value = data.subtopic || '';

@@ -49,6 +49,15 @@ def generate_question_html(question):
             question['stem']['html'] = latex_to_html(question['stem']['latex'])
         elif 'html' not in question['stem']:
             question['stem']['html'] = question['stem'].get('latex', '')
+        
+        # Generate HTML for feedback if present
+        if 'feedback' in question['stem'] and isinstance(question['stem']['feedback'], dict):
+            feedback_copy = dict(question['stem']['feedback'])
+            if 'latex' in feedback_copy:
+                feedback_copy['html'] = latex_to_html(feedback_copy['latex'])
+            elif 'html' not in feedback_copy:
+                feedback_copy['html'] = feedback_copy.get('latex', '')
+            question['stem']['feedback'] = feedback_copy
     
     # Generate HTML for options
     if 'input' in question and 'options' in question['input']:
@@ -80,5 +89,4 @@ def generate_question_html(question):
             blanks_list.append(blank_copy)
         question['input']['blanks'] = blanks_list
     
-    return question
     return question

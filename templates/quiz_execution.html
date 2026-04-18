@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }} - Quiz Execution</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- MathJax for LaTeX rendering -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Include the reusable question display component -->
+    {% include "quiz-question-display.html" %}
+
+    <!-- Load type-specific handlers (used for consistent rendering across all modes) -->
+    <script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
+
+    <!-- Load the Quiz Controller -->
+    <script src="{{ url_for('static', filename='js/quiz-controller.js') }}"></script>
+
+    <script>
+        // MathJax configuration
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+
+        // Quiz data passed from Flask
+        const quizData = {
+            id: {{ quiz.id }},
+            title: "{{ quiz.title }}",
+            description: "{{ quiz.description or '' }}",
+            questions: {{ questions|tojson }}
+        };
+
+        // Initialize Quiz Controller in execution mode
+        function initializeQuizExecution() {
+            const controller = new QuizController({
+                mode: 'execution',
+                quizId: quizData.id,
+                quizTitle: quizData.title,
+                quizDescription: quizData.description,
+                userId: {{ user_id }},
+                questions: quizData.questions,
+                onClose: (mode) => {
+                    window.location.href = `/quiz/admin-return?from=${mode}`;
+                }
+            });
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            window.addEventListener('DOMContentLoaded', initializeQuizExecution);
+        } else {
+            initializeQuizExecution();
+        }
+    </script>
+</body>
+</html>

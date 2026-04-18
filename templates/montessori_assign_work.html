@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Assign Work - {{ student.name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        * {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        body {
+            background: #f8f9fa;
+            padding: 12px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        h1 {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin: 0;
+            color: #333;
+        }
+
+        .student-name {
+            font-size: 1.1em;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        a.back-btn {
+            text-decoration: none;
+            color: white;
+            background: #667eea;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        a.back-btn:hover {
+            background: #5568d3;
+            color: white;
+        }
+
+        .wrapper {
+            max-width: 80%;
+            margin: 0 auto;
+        }
+
+        .container-main {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            background: #f0f0f0;
+            padding: 12px;
+            border-bottom: 2px solid #667eea;
+            font-weight: 600;
+            font-size: 0.95em;
+            color: #333;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .work-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9em;
+            color: #333;
+            transition: all 0.2s;
+            gap: 10px;
+        }
+
+        .work-item:hover {
+            background: #f8f9fa;
+            padding-left: 4px;
+            padding-right: 4px;
+            border-radius: 3px;
+        }
+
+        .work-item input[type="checkbox"] {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .work-item-content {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .work-item-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .work-item-meta {
+            font-size: 0.8em;
+            color: #999;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 0;
+        }
+
+        .filter-row > div {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        .filter-row label {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #555;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .filter-row select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+
+        .assigned-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .assigned-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .assigned-column .subject-header {
+            margin-top: 0;
+        }
+
+        .work-title {
+            flex: 1;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .work-date {
+            font-size: 0.75em;
+            color: #999;
+            white-space: nowrap;
+        }
+
+        .topic-heading {
+            font-size: 0.85em;
+            font-weight: 500;
+            color: #555;
+            margin-top: 10px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .topic-heading:first-of-type {
+            margin-top: 0;
+        }
+
+        .subject-header {
+            font-size: 0.95em;
+            font-weight: 700;
+            color: #333;
+            margin-top: 12px;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+
+        .subject-header:first-child {
+            margin-top: 0;
+        }
+
+        .subject-header.mathematics {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .subject-header.english {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .delete-work-btn {
+            background: none;
+            color: #ccc;
+            border: none;
+            padding: 0;
+            font-size: 1.2em;
+            cursor: pointer;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        .delete-work-btn:hover {
+            color: #dc3545;
+            transform: scale(1.2);
+        }
+
+        .add-work-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .add-work-btn:hover {
+            background: #218838;
+        }
+
+        .add-work-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: #999;
+            padding: 20px;
+            font-size: 0.9em;
+        }
+
+        .package-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .package-item:hover {
+            background: #f0f0f0;
+            border-color: #28a745;
+        }
+
+        .package-title {
+            flex: 1;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: #333;
+            word-break: break-word;
+        }
+
+        .package-desc {
+            font-size: 0.8em;
+            color: #999;
+            word-break: break-word;
+        }
+
+        .alert {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            border-left: 4px solid;
+        }
+
+        .alert-success {
+            background: #f0f9f4;
+            color: #155724;
+            border-left-color: #28a745;
+        }
+
+        .alert-error {
+            background: #fff5f5;
+            color: #721c24;
+            border-left-color: #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div>
+            <h1>📚 Assign Work</h1>
+            <div class="student-name">👤 {{ student.name }}</div>
+        </div>
+        <a href="/montessori_admin" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+
+    <div class="wrapper">
+        <div class="container-main">
+            <!-- TOP PANEL: Filter and Select Work -->
+            <div class="panel">
+                <div class="panel-header">
+                    <i class="fas fa-plus-circle"></i> Add Work
+                </div>
+                <div class="panel-content" id="filter-panel" style="padding: 15px;">
+                    <div class="filter-row">
+                        <div>
+                            <label>Subject</label>
+                            <select id="subject-dropdown">
+                                <option value="">-- Select Subject --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Topic</label>
+                            <select id="topic-dropdown" disabled>
+                                <option value="">-- Select Topic --</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Work</label>
+                            <select id="work-dropdown" disabled>
+                                <option value="">-- Select Work --</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM PANEL: Assigned Work -->
+            <div class="panel">
+                <div class="panel-header" style="justify-content: space-between; align-items: center;">
+                    <span><i class="fas fa-check-circle"></i> Currently Assigned ({{ assigned|length }})</span>
+                    <button id="bulk-delete-btn" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 3px; font-size: 0.85em; cursor: pointer; display: none;">Delete Selected</button>
+                </div>
+                <div class="panel-content" id="assigned-list">
+                    {% if assigned %}
+                        {% set math_items = [] %}
+                        {% set english_items = [] %}
+                        {% for assignment_id, pkg_id, subject, topic, work, date in assigned %}
+                            {% if subject == 'Mathematics' %}
+                                {% set _ = math_items.append((assignment_id, pkg_id, subject, topic, work, date)) %}
+                            {% elif subject == 'English' %}
+                                {% set _ = english_items.append((assignment_id, pkg_id, subject, topic, work, date)) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <div class="assigned-columns">
+                            <div class="assigned-column">
+                                {% if math_items %}
+                                    <div class="subject-header mathematics">Mathematics</div>
+                                    {% for assignment_id, pkg_id, subject, topic, work, date in math_items %}
+                                        <div class="work-item" data-assignment-id="{{ assignment_id }}">
+                                            <input type="checkbox" class="work-checkbox" value="{{ assignment_id }}">
+                                            <div class="work-item-content">
+                                                <div class="work-item-name">{{ topic }} - {{ work }}</div>
+                                                <div class="work-item-meta">{{ date.strftime('%d-%b-%Y') }} • 0 views</div>
+                                            </div>
+                                            <button class="delete-work-btn" onclick="removeAssignment({{ assignment_id }})">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+
+                            <div class="assigned-column">
+                                {% if english_items %}
+                                    <div class="subject-header english">English</div>
+                                    {% for assignment_id, pkg_id, subject, topic, work, date in english_items %}
+                                        <div class="work-item" data-assignment-id="{{ assignment_id }}">
+                                            <input type="checkbox" class="work-checkbox" value="{{ assignment_id }}">
+                                            <div class="work-item-content">
+                                                <div class="work-item-name">{{ topic }} - {{ work }}</div>
+                                                <div class="work-item-meta">{{ date.strftime('%d-%b-%Y') }} • 0 views</div>
+                                            </div>
+                                            <button class="delete-work-btn" onclick="removeAssignment({{ assignment_id }})">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    {% endfor %}
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="empty-msg">No assignments yet</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const studentId = {{ student.id }};
+
+        // Store all available packages
+        const allPackages = [
+            {% for pkg in available %}
+                { id: {{ pkg.id }}, subject: '{{ pkg.subject }}', topic: '{{ pkg.topic }}', work: '{{ pkg.work }}' },
+            {% endfor %}
+        ];
+
+        // Get unique subjects
+        function getSubjects() {
+            const subjects = [...new Set(allPackages.map(p => p.subject))].sort();
+            return subjects;
+        }
+
+        // Get unique topics for a subject
+        function getTopics(subject) {
+            return [...new Set(allPackages.filter(p => p.subject === subject).map(p => p.topic))].sort();
+        }
+
+        // Get work items for subject and topic
+        function getWork(subject, topic) {
+            return allPackages.filter(p => p.subject === subject && p.topic === topic);
+        }
+
+        // Initialize subject dropdown
+        function initSubjects() {
+            const subjectDropdown = document.getElementById('subject-dropdown');
+            const subjects = getSubjects();
+            
+            subjects.forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                subjectDropdown.appendChild(option);
+            });
+        }
+
+        // Update left panel with assigned items
+        function updateAssignedList() {
+            fetch(`/montessori_admin/assign/${studentId}/assigned-items`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok) {
+                        const assignedList = document.getElementById('assigned-list');
+                        
+                        if (data.items.length === 0) {
+                            assignedList.innerHTML = '<div class="empty-msg">No assignments yet</div>';
+                        } else {
+                            // Group items by subject
+                            const grouped = {};
+                            data.items.forEach(item => {
+                                if (!grouped[item.subject]) {
+                                    grouped[item.subject] = [];
+                                }
+                                grouped[item.subject].push(item);
+                            });
+
+                            // Build HTML with 2-column layout
+                            let html = '<div class="assigned-columns">';
+                            
+                            // Math column
+                            html += '<div class="assigned-column">';
+                            if (grouped['Mathematics'] && grouped['Mathematics'].length > 0) {
+                                html += '<div class="subject-header mathematics">Mathematics</div>';
+                                grouped['Mathematics'].forEach(item => {
+                                    const dateObj = new Date(item.assigned_date);
+                                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                    const day = String(dateObj.getDate()).padStart(2, '0');
+                                    const month = months[dateObj.getMonth()];
+                                    const year = dateObj.getFullYear();
+                                    const formattedDate = `${day}-${month}-${year}`;
+                                    
+                                    html += `
+                                        <div class="work-item" data-assignment-id="${item.assignment_id}">
+                                            <input type="checkbox" class="work-checkbox" value="${item.assignment_id}">
+                                            <div class="work-item-content">
+                                                <div class="work-item-name">${item.topic} - ${item.work}</div>
+                                                <div class="work-item-meta">${formattedDate} • 0 views</div>
+                                            </div>
+                                            <button class="delete-work-btn" onclick="removeAssignment(${item.assignment_id})">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    `;
+                                });
+                            }
+                            html += '</div>';
+                            
+                            // English column
+                            html += '<div class="assigned-column">';
+                            if (grouped['English'] && grouped['English'].length > 0) {
+                                html += '<div class="subject-header english">English</div>';
+                                grouped['English'].forEach(item => {
+                                    const dateObj = new Date(item.assigned_date);
+                                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                    const day = String(dateObj.getDate()).padStart(2, '0');
+                                    const month = months[dateObj.getMonth()];
+                                    const year = dateObj.getFullYear();
+                                    const formattedDate = `${day}-${month}-${year}`;
+                                    
+                                    html += `
+                                        <div class="work-item" data-assignment-id="${item.assignment_id}">
+                                            <input type="checkbox" class="work-checkbox" value="${item.assignment_id}">
+                                            <div class="work-item-content">
+                                                <div class="work-item-name">${item.topic} - ${item.work}</div>
+                                                <div class="work-item-meta">${formattedDate} • 0 views</div>
+                                            </div>
+                                            <button class="delete-work-btn" onclick="removeAssignment(${item.assignment_id})">
+                                                ✕
+                                            </button>
+                                        </div>
+                                    `;
+                                });
+                            }
+                            html += '</div>';
+                            html += '</div>';
+                            
+                            assignedList.innerHTML = html;
+                        }
+                        
+                        // Update header count
+                        const header = document.querySelector('.panel-header');
+                        const bulkDeleteBtn = header.querySelector('#bulk-delete-btn');
+                        const headerText = header.querySelector('span');
+                        if (headerText) {
+                            headerText.innerHTML = `<i class="fas fa-check-circle"></i> Currently Assigned (${data.count})`;
+                        }
+                        
+                        // Reset bulk delete button
+                        if (bulkDeleteBtn) {
+                            bulkDeleteBtn.style.display = 'none';
+                        }
+                        
+                        // Re-attach checkbox listeners
+                        setupCheckboxes();
+                    }
+                })
+                .catch(err => console.error('Error updating assigned list:', err));
+        }
+
+        // Initialize dropdown event listeners
+        function initializeDropdowns() {
+            const subjectDropdown = document.getElementById('subject-dropdown');
+            const topicDropdown = document.getElementById('topic-dropdown');
+            const workDropdown = document.getElementById('work-dropdown');
+
+            subjectDropdown.addEventListener('change', function() {
+                const subject = this.value;
+                topicDropdown.innerHTML = '<option value="">-- Select Topic --</option>';
+                workDropdown.innerHTML = '<option value="">-- Select Work --</option>';
+                
+                if (!subject) {
+                    topicDropdown.disabled = true;
+                    workDropdown.disabled = true;
+                    return;
+                }
+                
+                topicDropdown.disabled = false;
+                const topics = getTopics(subject);
+                topics.forEach(topic => {
+                    const option = document.createElement('option');
+                    option.value = topic;
+                    option.textContent = topic;
+                    topicDropdown.appendChild(option);
+                });
+            });
+
+            topicDropdown.addEventListener('change', function() {
+                const subject = subjectDropdown.value;
+                const topic = this.value;
+                workDropdown.innerHTML = '<option value="">-- Select Work --</option>';
+                
+                if (!topic) {
+                    workDropdown.disabled = true;
+                    return;
+                }
+                
+                workDropdown.disabled = false;
+                const workItems = getWork(subject, topic);
+                workItems.forEach(work => {
+                    const option = document.createElement('option');
+                    option.value = work.id;
+                    option.textContent = work.work;
+                    workDropdown.appendChild(option);
+                });
+            });
+
+            workDropdown.addEventListener('change', function() {
+                if (this.value) {
+                    assignPackage(this.value);
+                }
+            });
+        }
+
+        // Add work when selected
+
+        function assignPackage(packageId) {
+            const formData = new FormData();
+            formData.append('action', 'assign');
+            formData.append('package_id', packageId);
+
+            fetch(window.location.pathname, {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok) {
+                        // Update left panel without full page reload
+                        updateAssignedList();
+                        
+                        // Clear dropdowns
+                        document.getElementById('subject-dropdown').value = '';
+                        document.getElementById('topic-dropdown').innerHTML = '<option value="">-- Select Topic --</option>';
+                        document.getElementById('work-dropdown').innerHTML = '<option value="">-- Select Work --</option>';
+                        document.getElementById('topic-dropdown').disabled = true;
+                        document.getElementById('work-dropdown').disabled = true;
+                        
+                        // Show success message
+                        showSuccess('Work assigned successfully!');
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    alert('An error occurred');
+                });
+        }
+
+        function removeAssignment(assignmentId) {
+            if (!confirm('Remove this assignment?')) return;
+
+            const formData = new FormData();
+            formData.append('action', 'remove');
+            formData.append('assignment_id', assignmentId);
+
+            fetch(window.location.pathname, {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok) {
+                        updateAssignedList();
+                        showSuccess('Work removed successfully!');
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(err => console.error('Error:', err));
+        }
+
+        // Show success message
+        function showSuccess(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success';
+            alertDiv.style.position = 'fixed';
+            alertDiv.style.top = '70px';
+            alertDiv.style.right = '15px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.style.width = 'auto';
+            alertDiv.style.minWidth = '300px';
+            alertDiv.textContent = '✓ ' + message;
+            document.body.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 3000);
+        }
+
+        // Handle checkbox selection and bulk delete
+        function setupCheckboxes() {
+            const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+            const assignedList = document.getElementById('assigned-list');
+            
+            // Add event listeners to all checkboxes
+            assignedList.addEventListener('change', function(e) {
+                if (e.target.classList.contains('work-checkbox')) {
+                    const checkedBoxes = assignedList.querySelectorAll('.work-checkbox:checked');
+                    bulkDeleteBtn.style.display = checkedBoxes.length > 0 ? 'block' : 'none';
+                }
+            });
+        }
+
+        function bulkDelete() {
+            const assignedList = document.getElementById('assigned-list');
+            const checkedBoxes = assignedList.querySelectorAll('.work-checkbox:checked');
+            
+            if (checkedBoxes.length === 0) {
+                alert('Please select items to delete');
+                return;
+            }
+            
+            if (!confirm(`Delete ${checkedBoxes.length} selected item(s)?`)) return;
+            
+            let deletionCount = 0;
+            const totalToDelete = checkedBoxes.length;
+            
+            // Delete each selected item
+            checkedBoxes.forEach(checkbox => {
+                const assignmentId = checkbox.value;
+                removeAssignmentSilent(assignmentId, () => {
+                    deletionCount++;
+                    if (deletionCount === totalToDelete) {
+                        // All deletions complete, refresh the list
+                        updateAssignedList();
+                        showSuccess(`${totalToDelete} item(s) deleted`);
+                    }
+                });
+            });
+        }
+
+        function removeAssignmentSilent(assignmentId, callback) {
+            const formData = new FormData();
+            formData.append('action', 'remove');
+            formData.append('assignment_id', assignmentId);
+
+            fetch(window.location.pathname, {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (callback) callback();
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    if (callback) callback();
+                });
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', function() {
+            initSubjects();
+            initializeDropdowns();
+            setupCheckboxes();
+            
+            // Add bulk delete button click handler
+            const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+            if (bulkDeleteBtn) {
+                bulkDeleteBtn.addEventListener('click', bulkDelete);
+            }
+        });
+    </script>
+</body>
+
+</html>

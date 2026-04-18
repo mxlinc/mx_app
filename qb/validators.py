@@ -29,4 +29,13 @@ def order_question_json(question_json, field_order=None):
         if field in question_json:
             ordered[field] = question_json[field]
     
+    # Special handling for stem to maintain field order
+    if "stem" in ordered:
+        stem_field_order = ["latex", "html", "feedback"]
+        ordered_stem = {}
+        for subfield in stem_field_order:
+            if subfield in ordered["stem"]:
+                ordered_stem[subfield] = ordered["stem"][subfield]
+        ordered["stem"] = ordered_stem
+    
     return ordered

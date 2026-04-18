@@ -23,7 +23,16 @@ MCQ_SCHEMA = {
             "required": ["latex", "html"],
             "properties": {
                 "latex": {"type": "string", "minLength": 1},
-                "html": {"type": "string", "minLength": 1}
+                "html": {"type": "string", "minLength": 1},
+                "feedback": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["latex", "html"],
+                    "properties": {
+                        "latex": {"type": "string", "minLength": 1},
+                        "html": {"type": "string", "minLength": 1}
+                    }
+                }
             }
         },
         "image": {
@@ -98,7 +107,16 @@ FILL_SCHEMA = {
             "required": ["latex", "html"],
             "properties": {
                 "latex": {"type": "string", "minLength": 1},
-                "html": {"type": "string", "minLength": 1}
+                "html": {"type": "string", "minLength": 1},
+                "feedback": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["latex", "html"],
+                    "properties": {
+                        "latex": {"type": "string", "minLength": 1},
+                        "html": {"type": "string", "minLength": 1}
+                    }
+                }
             }
         },
         "image": {
@@ -269,7 +287,16 @@ MR_SCHEMA = {
             "required": ["latex", "html"],
             "properties": {
                 "latex": {"type": "string", "minLength": 1},
-                "html": {"type": "string", "minLength": 1}
+                "html": {"type": "string", "minLength": 1},
+                "feedback": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["latex", "html"],
+                    "properties": {
+                        "latex": {"type": "string", "minLength": 1},
+                        "html": {"type": "string", "minLength": 1}
+                    }
+                }
             }
         },
         "image": {

@@ -57,6 +57,9 @@ def index():
     return redirect(url_for("lms.login"))
 
 
+
+
+
 # ==================== STUDENT HOME ==================== #
 
 @lms_bp.route('/studenthome')

@@ -115,8 +115,15 @@ class QuizMCQ {
         // Display per-option feedback
         this.displayPerOptionFeedback(correctOptionId);
 
+        // Check if answer is incorrect and display feedback if available
+        const isCorrect = this.selectedOption === correctOptionId;
+        if (!isCorrect && this.common.question.stem?.feedback?.html) {
+            // Display question-level feedback on wrong answer
+            this.common.showFeedback(this.common.question.stem.feedback.html, false);
+        }
+
         // Disable submit button on correct answer
-        if (this.selectedOption === correctOptionId) {
+        if (isCorrect) {
             const submitBtn = document.querySelector('[onclick*="checkAnswer"]');
             if (submitBtn) submitBtn.disabled = true;
         }
