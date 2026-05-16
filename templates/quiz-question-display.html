@@ -340,6 +340,41 @@
         }
     }
 
+    /* ── Landscape phone / small-tablet fix ─────────────────────────────────── */
+    /* Covers phones (~320-430px) and 7" tablets (~500-600px) in landscape.     */
+    /* overflow:hidden + min-height:550px clips content; this unlocks scrolling. */
+    @media (orientation: landscape) and (max-height: 600px) {
+        .quiz-question-display {
+            height: auto;
+            min-height: 100vh;
+        }
+
+        .top-band {
+            padding: 6px 12px;
+            margin-top: 4px;
+        }
+
+        .question-container {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 12px;
+        }
+
+        .question-block {
+            height: auto;
+            min-height: unset;
+            overflow-y: visible;
+            padding: 12px 16px 8px;
+        }
+
+        .button-row {
+            position: sticky;
+            bottom: 0;
+            padding: 8px 12px;
+            margin-bottom: 0;
+        }
+    }
+
     /* ── Calculator top-bar link ─────────────────────────────────────────────── */
     .calc-top-link {
         background: none;
