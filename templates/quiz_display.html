@@ -781,6 +781,7 @@
             <button class="delete-btn" id="deleteBtn">&#128465; Delete</button>
         </div>
         <div class="links">
+            <a href="#" id="nextTopLink" style="display:none">Next</a>
             <a href="#" id="editLink">Edit</a>
             <a href="#" id="duplicateLink">Duplicate</a>
             <a href="#" id="jsonLink">JSON</a>
@@ -853,15 +854,9 @@
                     const component = container._component;
                     if (!component) return;
 
-                    const answer = component.getAnswer();
-                    if (!answer) {
-                        component.handler?.showFeedback(false, 'Please provide an answer');
-                        return;
-                    }
+                    try { await component.submitAnswer(); } catch (e) { /* ignore */ }
 
-                    await component.submitAnswer();
-
-                    // Switch button to Next mode
+                    // Always switch button to Next mode
                     const currentId = document.getElementById('questionId').textContent.trim();
                     try {
                         const res = await fetch(`/question/api/next-id/${currentId}`);
@@ -886,15 +881,10 @@
                     const container = document.getElementById('questionContainer');
                     const component = container._component;
                     if (!component) return;
-                    const answer = component.getAnswer();
-                    if (!answer) {
-                        component.handler?.showFeedback(false, 'Please provide an answer');
-                        return;
-                    }
                     btn.disabled = true;
-                    await component.submitAnswer();
+                    try { await component.submitAnswer(); } catch (e) { /* ignore */ }
 
-                    // Switch button to Next mode
+                    // Always switch button to Next mode
                     const currentId = document.getElementById('questionId').textContent.trim();
                     try {
                         const res = await fetch(`/question/api/next-id/${currentId}`);
@@ -954,6 +944,13 @@
                     window.location.href = `/question/new`;
                 });
             }
+
+            // Next (top bar) — skip to next question without submitting
+            document.getElementById('nextTopLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                const nextId = e.currentTarget.dataset.nextId;
+                if (nextId) loadQuestion(nextId);
+            });
 
             // Edit button
             document.getElementById('editLink').addEventListener('click', (e) => {
@@ -1028,6 +1025,24 @@
         });
 
         // Function to load and render a question dynamically
+        async function updateTopNext(questionId) {
+            const btn = document.getElementById('nextTopLink');
+            if (!btn) return;
+            try {
+                const res = await fetch(`/question/api/next-id/${questionId}`);
+                const data = await res.json();
+                if (data.ok) {
+                    btn.textContent = `Next: ${data.next_id}`;
+                    btn.dataset.nextId = data.next_id;
+                    btn.style.display = '';
+                } else {
+                    btn.style.display = 'none';
+                }
+            } catch (e) {
+                btn.style.display = 'none';
+            }
+        }
+
         async function loadQuestion(questionId, pushState = true) {
             const container = document.getElementById('questionContainer');
             
@@ -1053,6 +1068,9 @@
                 submitBtn.dataset.mode = 'submit';
                 submitBtn.dataset.nextId = '';
                 submitBtn.disabled = false;
+
+                // Update top-bar next button (fire-and-forget)
+                updateTopNext(questionId);
 
                 // Clear and re-render
                 container.innerHTML = '';

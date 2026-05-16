@@ -83,14 +83,10 @@ class UnifiedQuestionComponent {
     async submitAnswer() {
         const answer = this.getAnswer();
 
-        if (!answer) {
-            this.handler.showFeedback(false, 'Please select an answer');
-            return false;
-        }
-
         // Algebra type uses an async two-step check (string match → sympy).
         // All other types use the synchronous isCorrect() path.
-        const isCorrect = this.handler.checkAsync
+        // Guard answer for checkAsync — null answer falls back to isAnswerCorrect() which returns false.
+        const isCorrect = (this.handler.checkAsync && answer)
             ? await this.handler.checkAsync(answer)
             : this.isAnswerCorrect();
 
