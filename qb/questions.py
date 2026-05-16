@@ -108,6 +108,36 @@ def get_display_question(question_id):
     })
 
 
+@question_bp.route("/api/delete/<int:question_id>", methods=["POST"])
+@login_required
+def delete_question(question_id):
+    """Delete a question and its associated image file from disk."""
+    import os
+    from config import QIMAGE_PATH
+
+    q = QBank.query.get(question_id)
+    if not q:
+        return jsonify({"ok": False, "error": "Question not found"}), 404
+
+    image_src = (q.json or {}).get("image", {}).get("src") if isinstance(q.json, dict) else None
+    if image_src:
+        if image_src.startswith("/qimage/"):
+            img_path = os.path.join(QIMAGE_PATH, image_src[len("/qimage/"):])
+        elif image_src.startswith("/static/qimage/"):
+            img_path = os.path.join(QIMAGE_PATH, image_src[len("/static/qimage/"):])
+        else:
+            img_path = None
+        if img_path and os.path.exists(img_path):
+            try:
+                os.remove(img_path)
+            except Exception:
+                pass
+
+    db.session.delete(q)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
 @question_bp.route("/api/next-id/<int:question_id>", methods=["GET"])
 @login_required
 def get_next_question_id(question_id):

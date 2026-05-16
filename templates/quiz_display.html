@@ -39,7 +39,24 @@
         .top-band .id-section {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
+        }
+
+        .delete-btn {
+            color: white;
+            font-size: 0.88em;
+            padding: 5px 11px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            background: #dc2626;
+            border: 1px solid #b91c1c;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+        }
+        .delete-btn:hover {
+            background: #b91c1c;
+            border-color: #991b1b;
         }
 
         .top-band .id-label {
@@ -760,15 +777,14 @@
         <div class="id-section">
             <span class="id-label">Question ID:</span>
             <span class="id-value" id="questionId">{{ question_id }}</span>
+            <button class="next-question-btn" id="adminCalcBtn">&#128425; Calculator</button>
+            <button class="delete-btn" id="deleteBtn">&#128465; Delete</button>
         </div>
         <div class="links">
             <a href="#" id="editLink">Edit</a>
             <a href="#" id="duplicateLink">Duplicate</a>
             <a href="#" id="jsonLink">JSON</a>
-            <a href="#" id="printLink">Print</a>
             <a href="#" id="newLink">New</a>
-            <button class="next-question-btn" id="nextQuestionBtn">Next: <span id="nextQuestionId">-</span></button>
-            <button class="next-question-btn" id="adminCalcBtn">&#128425; Calculator</button>
         </div>
     </div>
 
@@ -827,24 +843,46 @@
                 await loadQuestion(questionId);
                 
                 // Setup submit button
-                document.getElementById('submitBtn').addEventListener('click', async () => {
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.addEventListener('click', async () => {
+                    if (submitBtn.dataset.mode === 'next') {
+                        await loadQuestion(submitBtn.dataset.nextId);
+                        return;
+                    }
                     const container = document.getElementById('questionContainer');
                     const component = container._component;
                     if (!component) return;
-                    
+
                     const answer = component.getAnswer();
                     if (!answer) {
                         component.handler?.showFeedback(false, 'Please provide an answer');
                         return;
                     }
-                    
+
                     await component.submitAnswer();
+
+                    // Switch button to Next mode
+                    const currentId = document.getElementById('questionId').textContent.trim();
+                    try {
+                        const res = await fetch(`/question/api/next-id/${currentId}`);
+                        const data = await res.json();
+                        if (data.ok) {
+                            submitBtn.textContent = `Next: ${data.next_id}`;
+                            submitBtn.dataset.mode = 'next';
+                            submitBtn.dataset.nextId = data.next_id;
+                            submitBtn.disabled = false;
+                        }
+                    } catch (e) { /* leave as-is */ }
                 });
 
                 document.addEventListener('keydown', async (e) => {
                     if (e.key !== 'Enter') return;
                     const btn = document.getElementById('submitBtn');
                     if (!btn || btn.disabled || btn.style.display === 'none') return;
+                    if (btn.dataset.mode === 'next') {
+                        await loadQuestion(btn.dataset.nextId);
+                        return;
+                    }
                     const container = document.getElementById('questionContainer');
                     const component = container._component;
                     if (!component) return;
@@ -855,6 +893,19 @@
                     }
                     btn.disabled = true;
                     await component.submitAnswer();
+
+                    // Switch button to Next mode
+                    const currentId = document.getElementById('questionId').textContent.trim();
+                    try {
+                        const res = await fetch(`/question/api/next-id/${currentId}`);
+                        const data = await res.json();
+                        if (data.ok) {
+                            btn.textContent = `Next: ${data.next_id}`;
+                            btn.dataset.mode = 'next';
+                            btn.dataset.nextId = data.next_id;
+                            btn.disabled = false;
+                        }
+                    } catch (e) { /* leave as-is */ }
                 });
                 
                 // Show container
@@ -904,20 +955,6 @@
                 });
             }
 
-            // Navigation - Load question dynamically without page refresh
-            document.getElementById('nextQuestionBtn').addEventListener('click', async () => {
-                const currentId = document.getElementById('questionId').textContent;
-                try {
-                    const res = await fetch(`/question/api/next-id/${currentId}`);
-                    const data = await res.json();
-                    if (data.ok) {
-                        await loadQuestion(data.next_id);
-                    }
-                } catch (e) {
-                    console.error('Error loading next question:', e);
-                }
-            });
-
             // Edit button
             document.getElementById('editLink').addEventListener('click', (e) => {
                 e.preventDefault();
@@ -948,16 +985,26 @@
                 }
             });
 
-            // Print button
-            document.getElementById('printLink').addEventListener('click', (e) => {
-                e.preventDefault();
-                const id = document.getElementById('questionId').textContent;
-                window.location.href = `/question/print/${id}`;
-            });
-
             // Calculator button — always opens scientific calculator for admin
             document.getElementById('adminCalcBtn').addEventListener('click', () => {
                 calculatorController.open({ type: 'scientific', angleMode: 'degrees' });
+            });
+
+            // Delete button
+            document.getElementById('deleteBtn').addEventListener('click', async () => {
+                const id = document.getElementById('questionId').textContent.trim();
+                if (!confirm(`Delete question ${id} and its image (if any)? This cannot be undone.`)) return;
+                try {
+                    const res = await fetch(`/question/api/delete/${id}`, { method: 'POST' });
+                    const data = await res.json();
+                    if (data.ok) {
+                        window.location.href = '/quiz/questions';
+                    } else {
+                        alert('Delete failed: ' + (data.error || 'Unknown error'));
+                    }
+                } catch (e) {
+                    alert('Delete failed: ' + e.message);
+                }
             });
         }
 
@@ -1000,6 +1047,13 @@
                 
                 const question = data.question;
                 
+                // Reset submit button
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.textContent = 'SUBMIT';
+                submitBtn.dataset.mode = 'submit';
+                submitBtn.dataset.nextId = '';
+                submitBtn.disabled = false;
+
                 // Clear and re-render
                 container.innerHTML = '';
                 
@@ -1014,13 +1068,6 @@
                 // Store component on container for submit button access
                 container._component = component;
                 container._component.question = question;
-                
-                // Update next question button
-                const nextRes = await fetch(`/question/api/next-id/${questionId}`);
-                const nextData = await nextRes.json();
-                if (nextData.ok) {
-                    document.getElementById('nextQuestionId').textContent = nextData.next_id;
-                }
                 
                 // Scroll to top of container
                 container.scrollTop = 0;
