@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ quiz.title }} - Quiz Preview</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- MathJax for LaTeX rendering -->
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <style>
         * {
             margin: 0;
@@ -25,10 +23,12 @@
     <!-- Include the reusable question display component -->
     {% include "quiz-question-display.html" %}
 
-    <!-- Load type-specific handlers (used for consistent rendering across all modes) -->
-    <script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
+    <!-- Template-based question rendering system -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/question-templates.css') }}">
+    <script src="{{ url_for('static', filename='js/question-templates.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/template-handlers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/unified-question-component.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-calculator.js') }}"></script>
 
     <!-- Load the Quiz Controller -->
     <script src="{{ url_for('static', filename='js/quiz-controller.js') }}"></script>
@@ -42,16 +42,27 @@
             },
             svg: {
                 fontCache: 'global'
+            },
+            startup: {
+                pageReady: () => {
+                    return Promise.resolve();
+                }
+            },
+            options: {
+                processHtmlClass: 'math'
             }
         };
 
         // Quiz data passed from Flask
         const quizData = {
             id: {{ quiz.id }},
-            title: "{{ quiz.title }}",
+            title: "{{ (quiz.quiz_code + ': ') if quiz.quiz_code else '' }}{{ quiz.title }}",
             description: "{{ quiz.description or '' }}",
             questions: {{ questions|tojson }}
         };
+
+        // Check if in embedded mode (modal preview)
+        const isEmbedded = new URLSearchParams(window.location.search).get('embedded') === 'true';
 
         // Initialize Quiz Controller in preview mode
         function initializeQuizPreview() {
@@ -62,9 +73,15 @@
                 quizDescription: quizData.description,
                 questions: quizData.questions,
                 onClose: (mode) => {
-                    window.location.href = `/quiz/admin-return?from=${mode}`;
+                    if (isEmbedded) {
+                        // Close the parent modal
+                        window.parent.closePreviewModal();
+                    } else {
+                        window.location.href = `/quiz/admin-return?from=${mode}`;
+                    }
                 }
             });
+            controller.initialize();
         }
 
         // Initialize when DOM is ready

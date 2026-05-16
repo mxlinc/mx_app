@@ -156,6 +156,11 @@ x - y = 1
 
 ### 4. Text Formatting
 
+
+### Colour Text ####
+
+$\textcolor{blue}{My~Text~in~blue.}$
+
 #### Bold Text
 Use `\textbf{...}` inside math mode or wrap in `<b>` tags outside
 

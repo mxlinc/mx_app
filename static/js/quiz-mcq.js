@@ -6,7 +6,8 @@
 class QuizMCQ {
     constructor(common) {
         this.common = common || {};
-        this.selectedOption = null;
+        this.selectedOptionId = null;    // Store the ID for feedback display
+        this.selectedOption = null;      // Store the text/value for submission
     }
 
     /**
@@ -68,7 +69,19 @@ class QuizMCQ {
     attachEventListeners() {
         document.querySelectorAll('input[name="answer"]').forEach(input => {
             input.addEventListener('change', (e) => {
-                this.selectedOption = e.target.value;
+                // Store the option ID for feedback display
+                const optionId = e.target.value;
+                this.selectedOptionId = optionId;
+                
+                // Find the actual option object to get its text value for submission
+                const selectedOptionObj = this.common.question.input.options.find(opt => opt.id === optionId);
+                if (selectedOptionObj) {
+                    // Store the option's text/value for submission, not the ID
+                    this.selectedOption = selectedOptionObj.html || selectedOptionObj.latex || selectedOptionObj.text;
+                } else {
+                    this.selectedOption = optionId; // Fallback to ID if option not found
+                }
+                
                 this.common.clearFeedback();
                 // Clear per-option feedback indicators
                 document.querySelectorAll('.option-feedback-indicator').forEach(indicator => {
@@ -84,9 +97,9 @@ class QuizMCQ {
      */
     checkAnswer() {
         console.log('MCQ.checkAnswer() called');
-        if (!this.selectedOption) {
+        if (!this.selectedOptionId) {
             alert('Please select an option');
-            return;
+            return false;
         }
 
         // Determine correct option
@@ -116,17 +129,20 @@ class QuizMCQ {
         this.displayPerOptionFeedback(correctOptionId);
 
         // Check if answer is incorrect and display feedback if available
-        const isCorrect = this.selectedOption === correctOptionId;
-        if (!isCorrect && this.common.question.stem?.feedback?.html) {
+        this.isCorrect = this.selectedOptionId === correctOptionId;
+        if (!this.isCorrect && this.common.question.stem?.feedback?.html) {
             // Display question-level feedback on wrong answer
             this.common.showFeedback(this.common.question.stem.feedback.html, false);
         }
 
-        // Disable submit button on correct answer
-        if (isCorrect) {
-            const submitBtn = document.querySelector('[onclick*="checkAnswer"]');
-            if (submitBtn) submitBtn.disabled = true;
-        }
+        return true; // Answer was submitted successfully
+    }
+
+    /**
+     * Get whether the answer is correct
+     */
+    isAnswerCorrect() {
+        return this.isCorrect || false;
     }
 
     /**
@@ -145,7 +161,7 @@ class QuizMCQ {
                 optionDiv.classList.remove('incorrect-option');
                 indicator.innerHTML = '<span style="color: #4CAF50; font-size: 1.2em; margin-left: 12px; font-weight: bold;">✓</span>';
                 indicator.style.display = 'inline';
-            } else if (optionId === this.selectedOption) {
+            } else if (optionId === this.selectedOptionId) {
                 // Selected but incorrect - add red styling to the option itself
                 optionDiv.classList.add('incorrect-option');
                 optionDiv.classList.remove('correct-option');

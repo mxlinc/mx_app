@@ -5,7 +5,12 @@ git status
 git add .
 
 # commit with a message
-git commit -m "your"
+git commit -m "comment"
+
+
+git push origin qb
+
+
 
 # pull latest from remote (avoid conflicts)
 git pull origin main

@@ -3,8 +3,8 @@
 from jsonschema import ValidationError, validate
 from qb.validators import validate_question_json, order_question_json
 from qb.latex_utils import generate_latex_template, compile_latex_to_pdf
-from qb.handlers.common import save_image_from_data_url, latex_to_html, generate_question_html
-from models import QBank
+from qb.handlers.common import latex_to_html, generate_question_html
+from qb.db_utils import save_question_to_db
 from db import db
 import logging
 
@@ -74,6 +74,17 @@ class FILLHandler:
                         blank_copy['input_label']['html'] = latex_to_html(blank_copy['input_label']['latex'])
                     elif 'html' not in blank_copy['input_label']:
                         blank_copy['input_label']['html'] = blank_copy['input_label'].get('latex', '')
+                if 'label_after' in blank_copy:
+                    la = blank_copy['label_after']
+                    if isinstance(la, dict):
+                        la = dict(la)
+                    else:
+                        la = {'latex': str(la), 'html': ''}
+                    if 'latex' in la:
+                        la['html'] = latex_to_html(la['latex'])
+                    elif 'html' not in la:
+                        la['html'] = la.get('latex', '')
+                    blank_copy['label_after'] = la
                 blanks_list.append(blank_copy)
             question['input']['blanks'] = blanks_list
         
@@ -82,61 +93,30 @@ class FILLHandler:
     @staticmethod
     def save_question(data):
         """
-        Save FILL question to database.
+        Save FILL question to database using safe pattern.
         Returns (question, error) tuple.
         """
         try:
-            question_id = data.get('id')
-            
-            if question_id:
-                # ===== EDITING EXISTING =====
-                q = QBank.query.get(question_id)
-                if not q:
-                    return None, "Question not found"
-                q.type = data['type']
-                q.topic = data['topic']
-                q.subtopic = data['subtopic']
-                q.level = data['level']
-            else:
-                # ===== CREATE NEW: SKELETON FIRST TO GET ID =====
-                q = QBank(
-                    type=data['type'],
-                    topic=data['topic'],
-                    subtopic=data['subtopic'],
-                    level=data['level'],
-                    json={}
-                )
-                db.session.add(q)
-                db.session.flush()
-                question_id = q.id
-
-            # ===== HANDLE IMAGE =====
-            image_path = None
-            if 'image_data_url' in data and data['image_data_url']:
-                filename = f"{question_id}.png"
-                image_path = save_image_from_data_url(data['image_data_url'], filename, subdir="qimage")
-            elif question_id and q.json and q.json.get('image'):
-                image_path = q.json['image']['src']
-
-            # ===== BUILD COMPLETE QUESTION JSON =====
+            question_type = data['type']
+            topic = data['topic']
+            subtopic = data['subtopic']
+            level = data['level']
+            # Prepare question JSON
             question = FILLHandler.prepare_html(data['question'])
-            
-            if image_path:
-                question['image'] = {"src": image_path, "alt": ""}
-
-            question['id'] = question_id
             final_json = FILLHandler.order_json(question)
 
-            # ===== VALIDATE AGAINST SCHEMA =====
-            valid, error_msg = FILLHandler.validate(final_json)
+            q, error = save_question_to_db(question_type, topic, subtopic, level, final_json, data)
+
+            if error:
+                return None, error
+
+            # Validate after save (ID is now in q.json)
+            valid, error_msg = FILLHandler.validate(q.json)
             if not valid:
                 return None, error_msg
-
-            # ===== SAVE TO DATABASE =====
-            q.json = final_json
-            db.session.commit()
+            
             return q, None
-
+            
         except Exception as e:
             db.session.rollback()
             logger.exception("Error saving FILL question")
@@ -214,11 +194,16 @@ class FILLHandler:
             # Add blanks
             for idx, blank in enumerate(blanks):
                 label_latex = blank.get('input_label', {}).get('latex', f'Blank {idx + 1}')
+                label_after_latex = blank.get('label_after', {}).get('latex', '')
                 # Use a), b), c), etc. labeling
                 alpha_label = chr(97 + idx)  # 'a', 'b', 'c', etc.
-                
-                latex_doc += f"{alpha_label}) {label_latex}\n"
-                latex_doc += r"\vspace{0.15in}\noindent\underline{\hspace{5cm}}" + "\n\n"
+
+                if label_after_latex:
+                    # Inline: label _______ label_after
+                    latex_doc += f"{alpha_label}) {label_latex} " + r"\underline{\hspace{4cm}}" + f" {label_after_latex}\n\n"
+                else:
+                    latex_doc += f"{alpha_label}) {label_latex}\n"
+                    latex_doc += r"\vspace{0.15in}\noindent\underline{\hspace{5cm}}" + "\n\n"
             
             latex_doc += r"""}
 

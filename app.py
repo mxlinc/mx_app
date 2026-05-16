@@ -7,14 +7,13 @@ from flask_login import LoginManager
 from flask import send_from_directory
 
 # Import configuration and database
-from config import SECRET_KEY, DATABASE_URL, PACKAGE_DATA_PATH
+from config import SECRET_KEY, DATABASE_URL, PACKAGE_DATA_PATH, LATEX_RENDERER, QIMAGE_PATH
 from db import db
 from models import UserTable
 
 # Import blueprints
 from lms import lms_bp
-from qb import qb_bp
-from mm import mm_bp
+from qb import qb_bp, question_bp
 
 # Configure logging
 logging.basicConfig(
@@ -31,6 +30,11 @@ app.secret_key = SECRET_KEY
 # Configure SQLAlchemy
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,   # test connection before use; discard if dead
+    "pool_recycle": 1800,    # recycle connections after 30 min
+}
+app.config["LATEX_RENDERER"] = LATEX_RENDERER
 
 # Initialize database
 db.init_app(app)
@@ -65,14 +69,19 @@ def serve_pkg_files(pkg_name, filename):
     return send_from_directory(os.path.join(PACKAGE_DATA_PATH, pkg_name), filename)
 
 
+@app.route('/qimage/<filename>')
+def serve_qimage(filename):
+    return send_from_directory(QIMAGE_PATH, filename)
+
+
 # LMS Blueprint (Learning Management System)
 app.register_blueprint(lms_bp)
 
-# QB Blueprint (Question Bank)
-app.register_blueprint(qb_bp)
+# Question Blueprint
+app.register_blueprint(question_bp)
 
-# MM Blueprint (Montessori Materials)
-app.register_blueprint(mm_bp)
+# QB Blueprint (Question Bank / Quiz Management)
+app.register_blueprint(qb_bp)
 
 # ================== RUN ================== #
 

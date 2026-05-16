@@ -148,16 +148,18 @@ def generate_latex_template(question_data, question_id):
         try:
             image_path = question['image']['src']
             logger.info(f"Processing image for PDF. Original path: {image_path}")
-            
-            # Strip ./ prefix and static/ prefix
-            if image_path.startswith('./'):
-                image_path = image_path[2:]
-            if image_path.startswith('static/'):
-                image_path = image_path[7:]
-            
-            # Build absolute path to the image file
-            full_path = os.path.join(current_app.static_folder, image_path)
-            full_path = os.path.abspath(full_path)
+
+            from config import QIMAGE_PATH
+            if image_path.startswith('/qimage/'):
+                filename = image_path[len('/qimage/'):]
+                full_path = os.path.abspath(os.path.join(QIMAGE_PATH, filename))
+            else:
+                # Legacy /static/ paths
+                if image_path.startswith('./'):
+                    image_path = image_path[2:]
+                if image_path.startswith('static/'):
+                    image_path = image_path[7:]
+                full_path = os.path.abspath(os.path.join(current_app.static_folder, image_path))
             
             logger.info(f"Checking image at: {full_path}")
             logger.info(f"Image exists: {os.path.exists(full_path)}")
@@ -220,7 +222,9 @@ def compile_latex_to_pdf(latex_source):
             [pdflatex_cmd, '-interaction=nonstopmode', '-output-directory', temp_dir, tex_file],
             capture_output=True,
             timeout=30,
-            text=True
+            text=True,
+            encoding='utf-8',
+            errors='replace'
         )
         
         # Check for PDF

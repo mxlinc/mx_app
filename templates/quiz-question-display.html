@@ -1,67 +1,58 @@
 <!-- 
     Reusable Quiz Question Display Component
-    
-    Parameters (passed via data attributes):
-    - data-mode: 'single', 'preview', 'execution'
-    - data-question: JSON stringified question object
-    - data-current-index: Current question index (1-based)
-    - data-total-questions: Total number of questions
-    - data-can-jump: Boolean, whether dropdown navigation is available
-    - data-is-locked: Boolean, whether response is locked (post-submit in execution)
-    - data-previous-answer: User's answer (execution mode only, after submit)
+    Uses template-based rendering for consistent display across all contexts
 -->
 
-<div class="quiz-question-display" id="quizQuestionDisplay">
+<div class="quiz-question-display">
     <!-- Top Band -->
     <div class="top-band">
+      <div class="top-band-inner">
         <div class="quiz-info">
-            <div class="quiz-title" id="quizTitle"></div>
-            <div class="quiz-id" id="quizId"></div>
+            <span class="progress-text" id="progressText">Question 1 of 1</span>
+            <span class="question-id-badge" id="questionIdBadge"></span>
         </div>
-        <div class="progress-section">
-            <div class="progress-text" id="progressText">Question 1 of 1</div>
-            <!-- Question Jump Dropdown (Preview mode only) -->
-            <select id="questionJumpSelect" class="question-jump-select" style="display: none;">
-                <option value="">Jump to question...</option>
-            </select>
+        <div class="streak-badge" id="streakBadge" style="display:none;" aria-label="Correct streak">
+            <span id="streakFlames"></span>
+            <span id="streakCount"></span>
         </div>
+        <button type="button" id="calcBtn" class="calc-top-link" style="display:none;">Calculator</button>
+      </div>
     </div>
 
     <!-- Main Content -->
     <div class="question-container">
-        <!-- Question Block -->
-        <div class="question-block">
-            <div class="qa-grid">
-                <!-- Stem and Image Section -->
-                <div class="qa-left">
-                    <div class="stem-band">
-                        <div class="question-stem" id="stemContainer"></div>
-                    </div>
-                    <div class="question-image" id="imageContainer" style="display: none;">
-                        <img id="questionImage" alt="Question image">
-                    </div>
-                </div>
-
-                <!-- Options/Input Section -->
-                <div class="qa-right">
-                    <div class="options-band">
-                        <div class="options-section" id="optionsContainer"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Feedback Section (shown after submit) -->
-            <div class="feedback" id="feedbackContainer" style="display: none;"></div>
-
-            <!-- Button Row -->
-            <div class="button-row">
-                <div class="question-counter" id="questionCounter"></div>
-                <button type="button" class="submit-button" id="submitBtn">SUBMIT</button>
-                <button type="button" class="next-button" id="nextBtn" style="display: none;">NEXT</button>
-                <button type="button" class="close-button" id="closeBtn" style="display: none;">CLOSE</button>
+        <div class="question-block" id="questionContainer"></div>
+    </div>
+    
+    <!-- Completion Panel (shown after last question is answered, or quiz already complete) -->
+    <div id="completionPanel" class="completion-panel" style="display: none;">
+        <div class="completion-content">
+            <div class="completion-icon" id="completionIcon">&#10003;</div>
+            <h2 id="completionMessage">Thank you for completing the quiz!</h2>
+            <p id="completionScore" class="completion-score"></p>
+            <p id="completionRetake" class="completion-retake" style="display:none;">
+                If you want to retake the quiz you can do it on the
+                <a href="/student-new/submissions">Recent Submissions</a> page.
+            </p>
+            <div class="completion-actions">
+                <button type="button" class="close-button" id="completionCloseBtn">Close</button>
+                <button type="button" class="reset-button" id="completionResetBtn" style="display: none;">Reset &amp; Retake</button>
             </div>
         </div>
     </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="button-row">
+        <button type="button" class="submit-button" id="submitBtn">SUBMIT</button>
+        <button type="button" class="next-button" id="nextBtn" style="display: none;">NEXT</button>
+        <button type="button" class="close-button" id="closeBtn" style="display: none;">CLOSE</button>
+    </div>
+</div>
+
+<!-- Calculator Modal -->
+<div id="calcModal" style="display:none; position:fixed; inset:0; z-index:2000;
+     align-items:center; justify-content:center; background:rgba(0,0,0,0.45);">
+    <div id="calcContainer"></div>
 </div>
 
 <style>
@@ -69,410 +60,412 @@
         display: flex;
         flex-direction: column;
         height: 100vh;
-        background: #F7F6F3;
+        background: #FFFFFF;
         font-family: 'Poppins', sans-serif;
+        color: #1a1a1a;
     }
 
     .top-band {
-        background: #2F4A5C;
-        color: #FFFFFF;
-        padding: 12px 20px;
+        width: 100%;
+        max-width: 900px;
+        margin: 10px auto 0;
+        background: #F3F8FC;
+        color: #12324A;
+        padding: 10px 32px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
         flex-shrink: 0;
         z-index: 100;
+        border-bottom: 1px solid #C8DDEA;
+        box-sizing: border-box;
     }
+
+    .top-band-inner {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    /* ── Streak badge ──────────────────────────────────────────────────────── */
+    .streak-badge {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 11px 3px 9px;
+        border-radius: 20px;
+        background: #fff7e6;
+        border: 1.5px solid #f5a623;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: #c76a00;
+        user-select: none;
+        white-space: nowrap;
+        transition: opacity 0.25s;
+    }
+    .streak-badge.broken {
+        background: #fff0f3;
+        border-color: #e0607a;
+        color: #c0394e;
+    }
+    @keyframes streak-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(245,166,35,0.5); }
+        50%       { box-shadow: 0 0 0 7px rgba(245,166,35,0); }
+    }
+    @keyframes streak-shake {
+        0%, 100% { transform: translateX(0); }
+        20%       { transform: translateX(-3px) rotate(-1deg); }
+        40%       { transform: translateX(3px)  rotate(1deg); }
+        60%       { transform: translateX(-2px); }
+        80%       { transform: translateX(2px); }
+    }
+    @keyframes streak-rainbow {
+        0%   { border-color: #ff4e50; }
+        17%  { border-color: #f9d423; }
+        34%  { border-color: #43e97b; }
+        51%  { border-color: #4facfe; }
+        68%  { border-color: #a18cd1; }
+        85%  { border-color: #fccb90; }
+        100% { border-color: #ff4e50; }
+    }
+    .streak-badge.tier-2 { animation: streak-pulse  1.2s ease-in-out infinite; }
+    .streak-badge.tier-3 { animation: streak-shake  0.55s ease-in-out infinite; }
+    .streak-badge.tier-4 { animation: streak-rainbow 1.4s linear infinite; border-width: 2px; }
 
     .quiz-info {
         display: flex;
-        align-items: center;
         gap: 15px;
-    }
-
-    .quiz-title {
-        font-size: 1.1em;
-        font-weight: 600;
-    }
-
-    .quiz-id {
-        font-size: 0.9em;
-        opacity: 0.8;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 4px 10px;
-        border-radius: 4px;
-    }
-
-    .progress-section {
-        display: flex;
         align-items: center;
-        gap: 15px;
     }
 
     .progress-text {
-        font-size: 0.9em;
-        opacity: 0.9;
-        background: rgba(255, 255, 255, 0.2);
-        padding: 4px 12px;
-        border-radius: 20px;
-        white-space: nowrap;
+        font-size: 0.88em;
+        font-weight: 600;
+        color: #1F6FAE;
     }
 
-    .question-jump-select {
-        padding: 6px 10px;
+    .question-id-badge {
+        font-size: 0.72em;
+        color: #9ca3af;
+        font-weight: 400;
+        margin-left: 10px;
+        opacity: 0.85;
+    }
+
+    .completion-panel {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1000;
+    }
+
+    .completion-content {
+        text-align: center;
+        padding: 40px 60px;
+        background: #ffffff;
+        border-radius: 12px;
+        border: 1px solid #cfe0ed;
+        box-shadow: 0 6px 24px rgba(44,110,158,0.13);
+    }
+
+    .completion-icon {
+        font-size: 3em;
+        color: #2c6e9e;
+        margin-bottom: 16px;
+    }
+
+    .completion-content h2 {
+        font-size: 1.4em;
+        font-weight: 600;
+        color: #1a2d3d;
+        margin-bottom: 12px;
+    }
+
+    .completion-score {
+        font-size: 1.1em;
+        font-weight: 500;
+        color: #1a2d3d;
+        margin-bottom: 12px;
+    }
+
+    .completion-retake {
         font-size: 0.9em;
-        border-radius: 4px;
-        border: 1px solid #ccc;
-        background: white;
-        color: #333;
+        color: #6c8a9e;
+        margin-bottom: 24px;
+    }
+
+    .completion-retake a {
+        color: #2c6e9e;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    .completion-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+
+    .reset-button {
+        padding: 12px 24px;
+        font-size: 0.95em;
+        font-weight: 600;
+        background: #dc2626;
+        color: #FFFFFF;
+        border: none;
+        border-radius: 6px;
         cursor: pointer;
+        transition: background 0.2s;
         font-family: 'Poppins', sans-serif;
     }
 
-    .question-jump-select:hover {
-        border-color: #999;
-    }
+    .reset-button:hover { background: #b91c1c; }
 
     .question-container {
         flex: 1;
         overflow: hidden;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        justify-content: center;
-        padding: 12px 10px;
+        justify-content: flex-start;
+        padding: 0;
     }
 
     .question-block {
-        background: #EAF3EF;
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-        border: 1px solid #DDE7E2;
+        background: transparent;
         width: 100%;
         max-width: 900px;
-        height: 100%;
-        max-height: 100%;
+        height: 78vh;
+        min-height: 550px;
         display: flex;
         flex-direction: column;
-        padding: 20px;
-        overflow: auto;
-    }
-
-    .qa-grid {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        flex: 1;
-        min-height: 0;
-    }
-
-    .qa-left {
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-        flex-shrink: 0;
-    }
-
-    .stem-band {
-        background: #EAF3EF;
-        padding: 20px;
-        border-radius: 12px;
-        width: 100%;
-    }
-
-    .question-stem {
-        font-size: clamp(1em, 3vw, 1.3em);
-        font-weight: 500;
-        color: #1b3a6f;
-        margin-bottom: 12px;
-        line-height: 1.5;
-        flex-shrink: 0;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        word-break: break-word;
-        width: 100%;
-    }
-
-    .question-image {
-        margin-bottom: 12px;
-        text-align: center;
-        flex-shrink: 1;
         overflow: hidden;
-        min-height: 0;
-    }
-
-    .question-image img {
-        max-width: 100%;
-        max-height: 25vh;
-        object-fit: contain;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-
-    .qa-right {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        flex: 1;
-        min-height: 0;
-    }
-
-    .options-band {
-        background: #EAF3EF;
-        padding: 20px;
-        border-radius: 12px;
-        flex: 0 1 auto;
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-        justify-content: center;
-    }
-
-    .options-section {
-        flex: 0 1 auto;
-        overflow-y: auto;
-        margin: 0;
-        min-height: 0;
-        padding-left: 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        max-height: 50vh;
-    }
-
-    .options-section::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .options-section::-webkit-scrollbar-track {
-        background: #f0f0f0;
-        border-radius: 3px;
-    }
-
-    .options-section::-webkit-scrollbar-thumb {
-        background: #ccc;
-        border-radius: 3px;
-    }
-
-    .options-section::-webkit-scrollbar-thumb:hover {
-        background: #999;
-    }
-
-    .option {
-        margin-bottom: 10px;
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .option input[type="radio"],
-    .option input[type="checkbox"] {
-        width: 20px;
-        height: 20px;
-        margin-top: 3px;
-        cursor: pointer;
-        flex-shrink: 0;
-    }
-
-    .option label {
-        flex: 1;
-        font-size: clamp(0.9em, 2vw, 1.05em);
-        color: #333;
-        cursor: pointer;
-        padding: 8px;
-        border-radius: 6px;
-        transition: background 0.3s;
-        display: block;
-    }
-
-    .option:hover label {
-        background: #f5f5f5;
-    }
-
-    .option input[type="radio"]:checked + label,
-    .option input[type="checkbox"]:checked + label {
-        background: #e3f2fd;
-        font-weight: 600;
-    }
-
-    .option.correct-option label {
-        color: #1b5e20;
-        background: #c8e6c9;
-        font-weight: 700;
-        border: 2px solid #4caf50;
-    }
-
-    .option.incorrect-option label {
-        color: #b71c1c;
-        background: #ffcdd2;
-        font-weight: 700;
-        border: 2px solid #f44336;
-    }
-
-    .option input:disabled {
-        cursor: not-allowed;
-    }
-
-    .blank-input {
-        border: 1.5px solid #999 !important;
-        border-radius: 4px !important;
-        padding: 8px 10px !important;
-        font-size: 0.95em !important;
-        transition: border-color 0.3s, box-shadow 0.3s !important;
-        font-family: inherit !important;
-    }
-
-    .blank-input:focus {
-        outline: none;
-        border-color: #1b3a6f !important;
-        box-shadow: 0 0 0 3px rgba(27, 58, 111, 0.1) !important;
-    }
-
-    .blank-input:disabled {
-        background: #f0f0f0 !important;
-        cursor: not-allowed;
-    }
-
-    .blank-input.correct-answer {
-        background: #c8e6c9 !important;
-        border: 2px solid #4caf50 !important;
-        color: #1b5e20 !important;
-        font-weight: 700 !important;
-    }
-
-    .blank-input.incorrect-answer {
-        background: #ffcdd2 !important;
-        border: 2px solid #f44336 !important;
-        color: #b71c1c !important;
-        font-weight: 700 !important;
-    }
-
-    .feedback {
-        margin: 8px 0 0 0;
-        padding: 10px 12px;
-        border-radius: 6px;
-        font-size: clamp(0.9em, 2vw, 1em);
-        font-weight: 600;
-        max-height: 15vh;
-        overflow-y: auto;
-        flex-shrink: 0;
-    }
-
-    .feedback.correct {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-    }
-
-    .feedback.incorrect {
-        background: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
+        padding: 32px 40px 20px 40px;
     }
 
     .button-row {
         display: flex;
-        align-items: center;
+        gap: 16px;
         justify-content: flex-end;
-        gap: 12px;
-        padding: 10px 16px;
-        background: transparent;
-        border-radius: 8px;
-        margin-top: 12px;
+        padding: 12px 32px;
+        background: #F3F8FC;
+        border-top: 1px solid #C8DDEA;
         flex-shrink: 0;
-        line-height: 1;
-        height: fit-content;
-    }
-
-    .question-counter {
-        font-size: 0.9em;
-        color: #666;
-        white-space: nowrap;
-        flex-shrink: 0;
-        line-height: 1;
+        z-index: 50;
+        width: 100%;
+        max-width: 900px;
+        margin: 0 auto 12px auto;
+        box-sizing: border-box;
+        border-radius: 0 0 10px 10px;
     }
 
     .submit-button,
     .next-button,
     .close-button {
-        padding: 14px 36px;
-        font-size: clamp(0.9em, 1.5vw, 1em);
+        padding: 10px 28px;
+        font-size: 0.88em;
         font-weight: 600;
+        background: #1F6FAE;
         color: #FFFFFF;
         border: none;
         border-radius: 6px;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         font-family: 'Poppins', sans-serif;
-        flex-shrink: 0;
         white-space: nowrap;
-        line-height: 1;
-        margin: 0;
-        letter-spacing: 0.5px;
     }
 
-    .submit-button {
-        background: #4A6FA5;
-        box-shadow: 0 2px 8px rgba(74, 111, 165, 0.2);
-    }
-
-    .submit-button:hover:not(:disabled) {
-        background: #3F5F8E;
-        box-shadow: 0 4px 12px rgba(74, 111, 165, 0.3);
+    .submit-button:hover,
+    .next-button:hover,
+    .close-button:hover {
+        background: #174f7a;
+        box-shadow: 0 4px 12px rgba(31, 111, 174, 0.3);
         transform: translateY(-1px);
     }
 
-    .next-button {
-        background: #4A6FA5;
-        box-shadow: 0 2px 8px rgba(74, 111, 165, 0.2);
-    }
-
-    .next-button:hover {
-        background: #3F5F8E;
-        box-shadow: 0 4px 12px rgba(74, 111, 165, 0.3);
-        transform: translateY(-1px);
+    .submit-button:disabled,
+    .next-button:disabled,
+    .close-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
     }
 
     .close-button {
-        background: #667eea;
+        background: #2c6e9e;
     }
 
     .close-button:hover {
-        background: #5568d3;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-
-    .submit-button:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-        box-shadow: none;
-        transform: none;
+        background: #1a4f72;
     }
 
     @media (max-width: 768px) {
         .top-band {
-            flex-direction: column;
-            gap: 8px;
-            padding: 8px 12px;
-        }
-
-        .quiz-info {
-            width: 100%;
+            padding: 10px 12px;
             font-size: 0.9em;
         }
 
-        .progress-section {
-            width: 100%;
-            justify-content: space-between;
+        .quiz-title {
+            font-size: 1em;
+        }
+
+        .progress-text {
+            font-size: 0.85em;
+        }
+
+        .question-container {
+            padding: 12px;
+        }
+
+        .question-block {
+            padding: 20px 16px;
+            max-height: 75vh;
         }
 
         .button-row {
-            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 12px 0 12px;
+            max-width: calc(100% - 24px);
         }
 
-        .option {
-            margin-bottom: 0;
+        .submit-button,
+        .next-button,
+        .close-button {
+            padding: 10px 16px;
+            font-size: 0.9em;
         }
+    }
+
+    /* ── Calculator top-bar link ─────────────────────────────────────────────── */
+    .calc-top-link {
+        background: none;
+        border: none;
+        color: #f5c518;
+        font-weight: 700;
+        font-size: 0.88em;
+        font-family: 'Poppins', sans-serif;
+        cursor: pointer;
+        padding: 4px 6px;
+        letter-spacing: 0.02em;
+        text-decoration: none;
+        opacity: 0.95;
+        transition: opacity 0.15s;
+    }
+    .calc-top-link:hover { opacity: 1; text-decoration: underline; }
+
+    /* ── Calculator modal container ────────────────────────────────────────── */
+    #calcContainer {
+        background: #1e2a3a;
+        border-radius: 12px;
+        min-width: 260px;
+        max-width: 320px;
+        width: 90vw;
+        box-shadow: 0 8px 36px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .calc-titlebar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: #162233;
+        color: #ffffff;
+        font-size: 0.82em;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    .calc-x {
+        background: none;
+        border: none;
+        color: #8a9ab0;
+        cursor: pointer;
+        font-size: 0.95em;
+        padding: 2px 4px;
+        line-height: 1;
+        border-radius: 4px;
+        transition: color 0.15s;
+    }
+    .calc-x:hover { color: #ffffff; background: rgba(255,255,255,0.1); }
+
+    .calc-display-wrap {
+        background: #0f1923;
+        padding: 10px 14px 8px;
+        text-align: right;
+        min-height: 52px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        overflow: hidden;
+    }
+
+    .calc-display {
+        color: #ffffff;
+        font-size: 1.9em;
+        font-weight: 300;
+        word-break: break-all;
+        line-height: 1.15;
+        max-width: 100%;
+    }
+
+    .calc-pad {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1px;
+        background: #0a1018;
+    }
+
+    .calc-btn {
+        background: #1e2d3e;
+        color: #e8eef4;
+        border: none;
+        padding: 13px 6px;
+        font-size: 0.93em;
+        font-family: 'Poppins', sans-serif;
+        cursor: pointer;
+        transition: background 0.12s;
+        text-align: center;
+        user-select: none;
+    }
+    .calc-btn:hover  { background: #27394d; }
+    .calc-btn:active { background: #0f1923; }
+
+    /* Scientific / utility functions */
+    .calc-btn.calc-fn {
+        background: #1a2d40;
+        color: #b8cfe0;
+        font-size: 0.76em;
+    }
+    .calc-btn.calc-fn:hover { background: #233a52; }
+
+    /* Operator buttons */
+    .calc-btn.calc-op {
+        background: #2c6e9e;
+        color: #ffffff;
+        font-size: 1.05em;
+        font-weight: 600;
+    }
+    .calc-btn.calc-op:hover { background: #3a85b8; }
+
+    /* DEG / RAD toggle */
+    .calc-btn.calc-toggle {
+        background: #1d4f6a;
+        color: #7ecfef;
+        font-size: 0.74em;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
+    .calc-btn.calc-toggle:hover { background: #256080; }
+
+    @media (max-width: 480px) {
+        #calcContainer { min-width: unset; }
+        .calc-btn      { padding: 11px 4px; font-size: 0.85em; }
+        .calc-btn.calc-fn { font-size: 0.68em; }
     }
 </style>

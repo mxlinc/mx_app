@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign Quizzes to Users</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .assignment-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            border-left: 4px solid #007bff;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .multiselect-container {
+            position: relative;
+        }
+        .multiselect-box {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+            cursor: pointer;
+            min-height: 40px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+        .multiselect-box:focus-within {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        .tag {
+            background: #007bff;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .tag .remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .multiselect-input {
+            border: none;
+            outline: none;
+            flex: 1;
+            min-width: 150px;
+            padding: 5px 0;
+            font-size: 14px;
+        }
+        .dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .dropdown-list.show {
+            display: block;
+        }
+        .dropdown-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .dropdown-item:hover {
+            background: #f0f0f0;
+        }
+        .dropdown-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        /* Quiz Listing */
+        .filters-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr auto;
+            gap: 12px;
+            margin-bottom: 15px;
+            align-items: end;
+        }
+        @media (max-width: 900px) {
+            .filters-row { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 600px) {
+            .filters-row { grid-template-columns: 1fr; }
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .filter-group label {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Quiz Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #dee2e6;
+        }
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+        .checkbox-col {
+            width: 40px;
+        }
+        .checkbox-col input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Selection UI */
+        .selection-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .selection-info.show {
+            display: block;
+        }
+        .info-badge {
+            background: #007bff;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .clear-selection {
+            display: inline-block;
+            margin-left: 10px;
+            color: #007bff;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        /* Message */
+        .message {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .message.show {
+            display: block;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal.show {
+            display: flex;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+        .modal-header {
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .conflict-info {
+            background: #fff3cd;
+            padding: 15px;
+            border-left: 4px solid #ffc107;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .conflict-user {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .conflict-quizzes {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .conflict-quiz {
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .conflict-quiz:last-child {
+            border-bottom: none;
+        }
+        .conflict-quiz-id {
+            color: #666;
+            font-size: 12px;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .pagination a,
+        .pagination span {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            color: #007bff;
+        }
+        .pagination a:hover {
+            background: #f9f9f9;
+        }
+        .pagination .active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+        .pagination .disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📋 Assign Quizzes to Students</h1>
+
+        <!-- User Selection -->
+        <div class="assignment-section">
+            <div class="section-title">1. Select Students</div>
+            <div class="multiselect-container">
+                <div class="multiselect-box" id="userSelectBox">
+                    <input type="text" class="multiselect-input" id="userSearch" placeholder="Search by name or username...">
+                </div>
+                <div class="dropdown-list" id="userDropdown"></div>
+            </div>
+            <small style="color: #666; margin-top: 8px; display: block;">Select one or more students to assign quizzes</small>
+        </div>
+
+        <!-- Quiz Filters & Selection -->
+        <div class="assignment-section">
+            <div class="section-title">2. Select Quizzes</div>
+            
+            <!-- Filters -->
+            <div class="filters-row">
+                <div class="filter-group">
+                    <label>Topic</label>
+                    <select id="topicFilter">
+                        <option value="">All Topics</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Status</label>
+                    <select id="statusFilter">
+                        <option value="">All Statuses</option>
+                        <option value="draft">Draft</option>
+                        <option value="published">Published</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Title</label>
+                    <input type="text" id="titleSearch" placeholder="Search quiz title...">
+                </div>
+                <button class="btn btn-primary" onclick="loadQuizzes()">Apply Filters</button>
+            </div>
+
+            <!-- Selection Info -->
+            <div class="selection-info" id="selectionInfo">
+                <span class="info-badge" id="quizCountBadge">0 quizzes selected</span>
+                <span class="clear-selection" onclick="clearQuizSelection()">Clear</span>
+            </div>
+
+            <!-- Quiz Table -->
+            <div id="quizTableContainer" style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="checkbox-col"><input type="checkbox" id="selectAllQuizzes" onchange="toggleSelectAllQuizzes()"></th>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Topic</th>
+                            <th>Questions</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="quizTableBody">
+                        <tr><td colspan="6" class="loading">Loading quizzes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination" id="quizPagination"></div>
+        </div>
+
+        <!-- Messages -->
+        <div class="message" id="message"></div>
+
+        <!-- Assign Button -->
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="btn btn-success" onclick="assignQuizzes()" style="padding: 12px 30px; font-size: 16px;">
+                ✓ Assign Selected Quizzes
+            </button>
+        </div>
+    </div>
+
+    <!-- Conflict Modal -->
+    <div class="modal" id="conflictModal">
+        <div class="modal-content">
+            <div class="modal-header">⚠️ Assignment Conflicts</div>
+            <div class="conflict-info" id="conflictInfo"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="rejectConflict()">Skip This Student</button>
+                <button class="btn btn-primary" onclick="acceptConflict()">Keep These Assignments</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== STATE ====================
+        const state = {
+            selectedUsers: [],
+            selectedQuizzes: [],
+            allUsers: [],
+            currentPage: 1,
+            totalPages: 1,
+            conflicts: {},
+            conflictUsers: [],
+            currentConflictIndex: 0
+        };
+
+        // ==================== INITIALIZATION ====================
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadUsers();
+            await loadTopics();
+            await loadQuizzes();
+        });
+
+        // ==================== USER SELECTION ====================
+        async function loadUsers() {
+            try {
+                const response = await fetch('/quiz/api/users-for-assignment');
+                const data = await response.json();
+                if (data.ok) {
+                    state.allUsers = data.users;
+                    renderUserDropdown();
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        function renderUserDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            const searchTerm = document.getElementById('userSearch').value.toLowerCase();
+            
+            const filtered = state.allUsers.filter(u => 
+                u.full_name.toLowerCase().includes(searchTerm) ||
+                u.username.toLowerCase().includes(searchTerm)
+            );
+            
+            dropdown.innerHTML = filtered.map(u => `
+                <div class="dropdown-item">
+                    <input type="checkbox" 
+                           value="${u.id}"
+                           ${state.selectedUsers.includes(u.id) ? 'checked' : ''}
+                           onchange="toggleUser(${u.id})">
+                    <span>${u.full_name} (${u.username})</span>
+                </div>
+            `).join('');
+        }
+
+        function toggleUser(userId) {
+            const index = state.selectedUsers.indexOf(userId);
+            if (index > -1) {
+                state.selectedUsers.splice(index, 1);
+            } else {
+                state.selectedUsers.push(userId);
+            }
+            renderUserDropdown();
+            updateSelectionUI();
+        }
+
+        document.getElementById('userSearch').addEventListener('input', () => {
+            renderUserDropdown();
+        });
+
+        document.getElementById('userSelectBox').addEventListener('click', (e) => {
+            const dropdown = document.getElementById('userDropdown');
+            if (!e.target.closest('.dropdown-item')) {
+                dropdown.classList.toggle('show');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.multiselect-container')) {
+                document.getElementById('userDropdown').classList.remove('show');
+            }
+        });
+
+        // Update user tags display
+        function updateSelectionUI() {
+            const box = document.getElementById('userSelectBox');
+            const tags = state.selectedUsers.map(id => {
+                const user = state.allUsers.find(u => u.id === id);
+                return `<span class="tag">${user.full_name} <span class="remove" onclick="toggleUser(${id})">×</span></span>`;
+            }).join('');
+            
+            const input = box.querySelector('.multiselect-input');
+            box.innerHTML = tags + `<input type="text" class="multiselect-input" id="userSearch" placeholder="Search...">`;
+            document.getElementById('userSearch').addEventListener('input', () => renderUserDropdown());
+        }
+
+        // ==================== QUIZ LOADING & FILTERING ====================
+        async function loadTopics() {
+            try {
+                const response = await fetch('/quiz/api/topics');
+                const data = await response.json();
+                if (data.ok) {
+                    const select = document.getElementById('topicFilter');
+                    data.topics.forEach(topic => {
+                        const option = document.createElement('option');
+                        option.value = topic;
+                        option.textContent = topic;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading topics:', error);
+            }
+        }
+
+        async function loadQuizzes() {
+            const page = state.currentPage;
+            const topic = document.getElementById('topicFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const title = document.getElementById('titleSearch').value;
+            
+            const params = new URLSearchParams({
+                page,
+                ...(topic && { topic }),
+                ...(status && { status }),
+                ...(title && { title })
+            });
+            
+            try {
+                const response = await fetch(`/quiz/api/quizzes-page?${params}`);
+                const data = await response.json();
+                if (data.ok) {
+                    renderQuizTable(data.items);
+                    state.totalPages = data.pages;
+                    renderPagination();
+                }
+            } catch (error) {
+                console.error('Error loading quizzes:', error);
+            }
+        }
+
+        function renderQuizTable(quizzes) {
+            const tbody = document.getElementById('quizTableBody');
+            if (quizzes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="loading">No quizzes found</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = quizzes.map(quiz => `
+                <tr>
+                    <td class="checkbox-col">
+                        <input type="checkbox" 
+                               value="${quiz.id}"
+                               ${state.selectedQuizzes.includes(quiz.id) ? 'checked' : ''}
+                               onchange="toggleQuiz(${quiz.id})">
+                    </td>
+                    <td>${quiz.id}</td>
+                    <td>${quiz.title}</td>
+                    <td>${quiz.topic || '—'}</td>
+                    <td>${quiz.question_count}</td>
+                    <td><span class="badge" style="background: ${quiz.status === 'draft' ? '#ffc107' : '#28a745'}; color: white; padding: 4px 8px; border-radius: 3px; font-size: 12px;">${quiz.status}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination() {
+            const container = document.getElementById('quizPagination');
+            let html = '';
+            
+            if (state.currentPage > 1) {
+                html += `<a onclick="goToPage(${state.currentPage - 1})">← Previous</a>`;
+            }
+            
+            for (let i = 1; i <= state.totalPages; i++) {
+                if (i === state.currentPage) {
+                    html += `<span class="active">${i}</span>`;
+                } else if (i <= 5 || i > state.totalPages - 2) {
+                    html += `<a onclick="goToPage(${i})">${i}</a>`;
+                } else if (i === 6) {
+                    html += '<span>...</span>';
+                }
+            }
+            
+            if (state.currentPage < state.totalPages) {
+                html += `<a onclick="goToPage(${state.currentPage + 1})">Next →</a>`;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function goToPage(page) {
+            state.currentPage = page;
+            loadQuizzes();
+        }
+
+        function toggleQuiz(quizId) {
+            const index = state.selectedQuizzes.indexOf(quizId);
+            if (index > -1) {
+                state.selectedQuizzes.splice(index, 1);
+            } else {
+                state.selectedQuizzes.push(quizId);
+            }
+            updateQuizSelectionUI();
+        }
+
+        function toggleSelectAllQuizzes() {
+            const checkbox = document.getElementById('selectAllQuizzes');
+            const quizIds = Array.from(document.querySelectorAll('#quizTableBody input[type="checkbox"]')).map(cb => parseInt(cb.value));
+            
+            if (checkbox.checked) {
+                quizIds.forEach(id => {
+                    if (!state.selectedQuizzes.includes(id)) {
+                        state.selectedQuizzes.push(id);
+                    }
+                });
+            } else {
+                state.selectedQuizzes = state.selectedQuizzes.filter(id => !quizIds.includes(id));
+            }
+            updateQuizSelectionUI();
+        }
+
+        function updateQuizSelectionUI() {
+            const checkbox = document.getElementById('selectAllQuizzes');
+            const allQuizzes = Array.from(document.querySelectorAll('#quizTableBody input[type="checkbox"]'));
+            const checked = allQuizzes.filter(cb => cb.checked);
+            
+            checkbox.checked = checked.length === allQuizzes.length && allQuizzes.length > 0;
+            checkbox.indeterminate = checked.length > 0 && checked.length < allQuizzes.length;
+            
+            // Update selection info
+            const info = document.getElementById('selectionInfo');
+            const badge = document.getElementById('quizCountBadge');
+            badge.textContent = `${state.selectedQuizzes.length} quiz${state.selectedQuizzes.length !== 1 ? 'zes' : ''} selected`;
+            
+            if (state.selectedQuizzes.length > 0) {
+                info.classList.add('show');
+            } else {
+                info.classList.remove('show');
+            }
+        }
+
+        function clearQuizSelection() {
+            state.selectedQuizzes = [];
+            document.querySelectorAll('#quizTableBody input[type="checkbox"]').forEach(cb => cb.checked = false);
+            updateQuizSelectionUI();
+        }
+
+        // ==================== ASSIGNMENT ====================
+        async function assignQuizzes() {
+            if (state.selectedUsers.length === 0) {
+                showMessage('Please select at least one student', 'error');
+                return;
+            }
+            if (state.selectedQuizzes.length === 0) {
+                showMessage('Please select at least one quiz', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/quiz/api/assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_ids: state.selectedUsers,
+                        quiz_ids: state.selectedQuizzes
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.ok) {
+                    state.conflicts = result.conflicts;
+                    state.conflictUsers = Object.keys(result.conflicts).map(Number);
+                    state.currentConflictIndex = 0;
+                    
+                    showMessage(`✓ Successfully assigned ${result.created_count} quiz(zes)!`, 'success');
+                    
+                    if (state.conflictUsers.length > 0) {
+                        showConflictModal();
+                    } else {
+                        // Reset selections
+                        state.selectedQuizzes = [];
+                        updateQuizSelectionUI();
+                    }
+                } else {
+                    showMessage(result.error || 'Failed to assign quizzes', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error assigning quizzes', 'error');
+            }
+        }
+
+        // ==================== CONFLICT HANDLING ====================
+        function showConflictModal() {
+            if (state.currentConflictIndex >= state.conflictUsers.length) {
+                document.getElementById('conflictModal').classList.remove('show');
+                state.selectedQuizzes = [];
+                updateQuizSelectionUI();
+                showMessage('✓ All assignments processed!', 'success');
+                return;
+            }
+            
+            const userId = state.conflictUsers[state.currentConflictIndex];
+            const conflict = state.conflicts[userId];
+            
+            const info = document.getElementById('conflictInfo');
+            info.innerHTML = `
+                <div class="conflict-user">👤 ${conflict.user_full_name}</div>
+                <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                    The following quiz(zes) are already assigned to this student:
+                </div>
+                <div class="conflict-quizzes">
+                    ${conflict.quizzes.map(q => `
+                        <div class="conflict-quiz">
+                            <strong>${q.title}</strong>
+                            <div class="conflict-quiz-id">Quiz ID: ${q.id}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 10px; font-size: 13px; color: #666;">
+                    ${state.currentConflictIndex + 1} of ${state.conflictUsers.length} student(s)
+                </div>
+            `;
+            
+            document.getElementById('conflictModal').classList.add('show');
+        }
+
+        function acceptConflict() {
+            state.currentConflictIndex++;
+            showConflictModal();
+        }
+
+        function rejectConflict() {
+            state.currentConflictIndex++;
+            showConflictModal();
+        }
+
+        // ==================== UI HELPERS ====================
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = `message show ${type}`;
+            setTimeout(() => msg.classList.remove('show'), 5000);
+        }
+    </script>
+</body>
+</html>

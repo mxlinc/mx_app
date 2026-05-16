@@ -1,13 +1,12 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MCQ Question Display</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-    <!-- MathJax for LaTeX rendering -->
-    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Merriweather:wght@400;700&family=Lora:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
     <style>
         * {
             margin: 0;
@@ -17,15 +16,16 @@
 
         body {
             font-family: 'Poppins', sans-serif;
-            background: #F7F6F3;
+            background: #FFFFFF;
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
+            color: #1a1a1a;
         }
 
         .top-band {
-            background: #2F4A5C;
+            background: #1e3a5f;
             color: #FFFFFF;
             padding: 12px 20px;
             display: flex;
@@ -76,111 +76,140 @@
             border-color: white;
         }
 
+        .next-question-btn {
+            color: white;
+            text-decoration: none;
+            font-size: 0.95em;
+            padding: 6px 12px;
+            border-radius: 4px;
+            transition: all 0.3s;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 500;
+        }
+
+        .next-question-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: white;
+        }
+
         .container {
             flex: 1;
             overflow: hidden;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 12px 10px;
+            padding: 4px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in;
+        }
+
+        .container.loaded {
+            opacity: 1;
         }
 
         .question-block {
-            background: #EAF3EF;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
-            border: 1px solid #DDE7E2;
+            background: #FFFFFF;
+            border-radius: 0;
+            box-shadow: none;
+            border: none;
             width: 100%;
             max-width: 900px;
-            height: 100%;
-            max-height: 100%;
+            height: 78vh;
+            min-height: 550px;
             display: flex;
             flex-direction: column;
-            padding: 20px;
-            overflow: auto;
-        }
+            padding: 0;
+            overflow: hidden;
         }
 
+        /* === Three-Section Layout === */
+        /* Section 1: Question Stem */
         .qa-grid {
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            flex: 1;
-            min-height: 0;
+            height: 100%;
+            padding: 32px 40px;
+            gap: 0;
         }
 
         .qa-left {
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 0;
             flex-shrink: 0;
         }
 
         .stem-band {
-            background: #EAF3EF;
-            padding: 20px;
-            border-radius: 12px;
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
             width: 100%;
+            margin-bottom: 20px;
+            padding-bottom: 0;
+            flex-shrink: 0;
         }
 
-        .options-band {
-            background: #EAF3EF;
-            padding: 20px;
-            border-radius: 12px;
-            flex: 0 1 auto;
-            display: flex;
-            flex-direction: column;
+        /* Section 2: Image (if present) */
+        .question-image {
+            margin-bottom: 20px;
+            text-align: center;
+            flex-shrink: 1;
+            overflow: hidden;
             min-height: 0;
+            max-height: 25vh;
+            display: flex;
+            align-items: center;
             justify-content: center;
         }
 
-        .qa-right {
-            display: flex;
-            flex-direction: column;
-            gap: 0;
-            flex: 1;
-            min-height: 0;
+        .question-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
         }
 
+        /* Question stem styling */
         .question-stem {
-            font-size: clamp(1em, 3vw, 1.3em);
+            font-size: clamp(1.05em, 2.5vw, 1.25em);
             font-weight: 500;
-            color: #1b3a6f;
-            margin-bottom: 12px;
-            line-height: 1.5;
+            color: #1a1a1a;
+            line-height: 1.7;
             flex-shrink: 0;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
             width: 100%;
+            font-family: 'Lora', 'Merriweather', serif;
+            margin: 0;
+            padding: 0;
         }
 
-        .question-image {
-            margin-bottom: 12px;
-            text-align: center;
-            flex-shrink: 1;
-            overflow: hidden;
+        /* Section 3: Options/Answer Area (takes remaining space) */
+        .options-band {
+            background: transparent;
+            padding: 0;
+            border-radius: 0;
+            flex: 1;
             min-height: 0;
-        }
-
-        .question-image img {
-            max-width: 100%;
-            max-height: 25vh;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            margin-top: auto;
         }
 
         .options-section {
-            flex: 0 1 auto;
+            flex: 1;
             overflow-y: auto;
             margin: 0;
             min-height: 0;
-            padding-left: 20px;
+            padding-left: 0;
             display: flex;
             flex-direction: column;
-            gap: 8px;
-            max-height: 50vh;
+            gap: 12px;
         }
 
         .options-section::-webkit-scrollbar {
@@ -219,12 +248,14 @@
         .option label {
             flex: 1;
             font-size: clamp(0.9em, 2vw, 1.05em);
-            color: #333;
+            color: #1a1a1a;
             cursor: pointer;
-            padding: 8px;
-            border-radius: 6px;
+            padding: 12px 10px;
+            border-radius: 4px;
             transition: background 0.3s;
             display: block;
+            line-height: 1.6;
+            font-family: 'Lora', 'Merriweather', serif;
         }
 
         .option:hover label {
@@ -232,7 +263,7 @@
         }
 
         .option input[type="radio"]:checked + label {
-            background: #e3f2fd;
+            background: #e0e7ff;
             font-weight: 600;
         }
 
@@ -264,7 +295,7 @@
 
         .blank-input:focus {
             outline: none;
-            border-color: #1b3a6f !important;
+            border-color: #163058 !important;
             box-shadow: 0 0 0 3px rgba(27, 58, 111, 0.1) !important;
         }
 
@@ -278,6 +309,22 @@
 
         /* Incorrect blank input styling */
         .blank-input.incorrect-answer {
+            background: #ffcdd2 !important;
+            border: 2px solid #f44336 !important;
+            color: #b71c1c !important;
+            font-weight: 700 !important;
+        }
+
+        /* Correct FEVAL input styling */
+        .feval-input.correct-answer {
+            background: #c8e6c9 !important;
+            border: 2px solid #4caf50 !important;
+            color: #1b5e20 !important;
+            font-weight: 700 !important;
+        }
+
+        /* Incorrect FEVAL input styling */
+        .feval-input.incorrect-answer {
             background: #ffcdd2 !important;
             border: 2px solid #f44336 !important;
             color: #b71c1c !important;
@@ -316,14 +363,16 @@
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 12px;
-            padding: 10px 16px;
-            background: transparent;
-            border-radius: 8px;
-            margin-top: 12px;
+            gap: 16px;
+            padding: 12px 32px;
+            background: #F5F5F3;
+            border-top: 1px solid #E5E5E0;
             flex-shrink: 0;
-            line-height: 1;
-            height: fit-content;
+            z-index: 50;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto 12px auto;
+            box-sizing: border-box;
         }
 
         .question-counter {
@@ -338,7 +387,7 @@
             padding: 14px 36px;
             font-size: clamp(0.9em, 1.5vw, 1em);
             font-weight: 600;
-            background: #4A6FA5;
+            background: #1e4080;
             color: #FFFFFF;
             border: none;
             border-radius: 6px;
@@ -354,7 +403,7 @@
         }
 
         .submit-button:hover {
-            background: #3F5F8E;
+            background: #163058;
             box-shadow: 0 4px 12px rgba(74, 111, 165, 0.3);
             transform: translateY(-1px);
         }
@@ -428,7 +477,7 @@
         .json-modal-header h2 {
             font-size: 1.1em;
             margin: 0;
-            color: #1b3a6f;
+            color: #163058;
         }
 
         .json-modal-close {
@@ -569,9 +618,9 @@
             }
             .qa-grid.no-image .stem-band {
                 padding: 20px;
-                border-radius: 12px 12px 0 0;
-                background: #EAF3EF;
-                margin-bottom: -2px;
+                border-radius: 0;
+                background: transparent;
+                margin-bottom: 0;
             }
             .qa-grid.no-image .question-stem {
                 text-align: left;
@@ -583,9 +632,9 @@
                 min-height: 0;
             }
             .qa-grid.no-image .options-band {
-                background: #EAF3EF;
+                background: transparent;
                 padding: 0 20px 20px 20px;
-                border-radius: 0 0 12px 12px;
+                border-radius: 0;
             }
             .qa-grid.no-image .options-section {
                 grid-template-columns: 1fr;
@@ -601,6 +650,109 @@
                 margin-bottom: 0;
             }
         }
+
+
+    /* ── Calculator modal container ─────────────────────────────────────────── */
+    #calcContainer {
+        background: #1e2a3a;
+        border-radius: 12px;
+        width: 320px;
+        box-shadow: 0 8px 36px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    .calc-titlebar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: #162233;
+        color: #ffffff;
+        font-size: 0.82em;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+    }
+
+    .calc-x {
+        background: none;
+        border: none;
+        color: #8a9ab0;
+        cursor: pointer;
+        font-size: 0.95em;
+        padding: 2px 4px;
+        line-height: 1;
+        border-radius: 4px;
+        transition: color 0.15s;
+    }
+    .calc-x:hover { color: #ffffff; background: rgba(255,255,255,0.1); }
+
+    .calc-display-wrap {
+        background: #0f1923;
+        padding: 10px 14px 8px;
+        text-align: right;
+        min-height: 52px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        overflow: hidden;
+    }
+
+    .calc-display {
+        color: #ffffff;
+        font-size: 1.9em;
+        font-weight: 300;
+        word-break: break-all;
+        line-height: 1.15;
+        max-width: 100%;
+    }
+
+    .calc-pad {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1px;
+        background: #0a1018;
+    }
+
+    .calc-btn {
+        background: #1e2d3e;
+        color: #e8eef4;
+        border: none;
+        padding: 13px 6px;
+        font-size: 0.93em;
+        font-family: 'Poppins', sans-serif;
+        cursor: pointer;
+        transition: background 0.12s;
+        text-align: center;
+        user-select: none;
+    }
+    .calc-btn:hover  { background: #27394d; }
+    .calc-btn:active { background: #0f1923; }
+
+    .calc-btn.calc-fn {
+        background: #1a2d40;
+        color: #b8cfe0;
+        font-size: 0.76em;
+    }
+    .calc-btn.calc-fn:hover { background: #233a52; }
+
+    .calc-btn.calc-op {
+        background: #2c6e9e;
+        color: #ffffff;
+        font-size: 1.05em;
+        font-weight: 600;
+    }
+    .calc-btn.calc-op:hover { background: #3a85b8; }
+
+    .calc-btn.calc-toggle {
+        background: #1d4f6a;
+        color: #7ecfef;
+        font-size: 0.74em;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
+    .calc-btn.calc-toggle:hover { background: #256080; }
+
     </style>
 </head>
 <body>
@@ -611,33 +763,30 @@
         </div>
         <div class="links">
             <a href="#" id="editLink">Edit</a>
+            <a href="#" id="duplicateLink">Duplicate</a>
             <a href="#" id="jsonLink">JSON</a>
             <a href="#" id="printLink">Print</a>
             <a href="#" id="newLink">New</a>
+            <button class="next-question-btn" id="nextQuestionBtn">Next: <span id="nextQuestionId">-</span></button>
+            <button class="next-question-btn" id="adminCalcBtn">&#128425; Calculator</button>
         </div>
     </div>
 
     <div class="container">
-        <div class="question-block">
-            <div class="qa-grid">
-                <div class="qa-left">
-                    <div class="stem-band">
-                        <div class="question-stem" id="stemContainer"></div>
-                    </div>
-                    <div class="question-image" id="imageContainer" style="display: none;">
-                        <img id="questionImage" alt="Question image">
-                    </div>
-                </div>
-                <div class="qa-right">
-                    <div class="options-band">
-                        <div class="options-section" id="optionsContainer"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="feedback" id="feedbackContainer"></div>
-            <div class="button-row">
-                <button class="submit-button" id="submitBtn">SUBMIT</button>
-            </div>
+        <div class="question-block" id="questionContainer">
+            <!-- Template questions will be injected here -->
+        </div>
+    </div>
+
+    <!-- Bottom Action Bar -->
+    <div class="button-row">
+        <button class="submit-button" id="submitBtn">SUBMIT</button>
+    </div>
+
+    <!-- Calculator Modal -->
+    <div id="calcModal" style="display:none; position:fixed; inset:0; z-index:2000;
+         align-items:center; justify-content:center; background:rgba(0,0,0,0.45);">
+        <div id="calcContainer"></div>
     </div>
 
     <!-- JSON Modal -->
@@ -653,101 +802,234 @@
         </div>
     </div>
 
-    <!-- Load common quiz utilities -->
+    <!-- Template-based question rendering system -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/question-templates.css') }}">
+    <script src="{{ url_for('static', filename='js/question-templates.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/template-handlers.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/unified-question-component.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-calculator.js') }}"></script>
+
+    <!-- Common quiz utilities -->
     <script src="{{ url_for('static', filename='js/quiz-common.js') }}"></script>
-    
-    <!-- Load question type-specific handlers -->
-    <script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
 
     <script>
         /**
-         * Quiz Display Orchestrator
-         * Coordinates common functionality with type-specific handlers
+         * Unified Question Display
+         * Uses template-based rendering for consistent display across all contexts
          */
 
         async function initializeQuiz() {
-            console.log('initializeQuiz() called');
-            
             try {
-                // Fetch question data
-                const questionId = quizCommon.getQuestionId();
-                console.log('Question ID:', questionId);
+                // Get initial question ID
+                const questionId = document.getElementById('questionId').textContent;
                 
-                await quizCommon.fetchQuestion(questionId);
-                const question = quizCommon.question;
+                // Load the question
+                await loadQuestion(questionId);
                 
-                if (!question) {
-                    throw new Error('Failed to fetch question');
-                }
-                
-                // Render common elements (stem + image)
-                quizCommon.renderStem();
-                const hasImage = quizCommon.renderImage();
-                if (!hasImage) {
-                    quizCommon.setNoImageClass();
-                }
+                // Setup submit button
+                document.getElementById('submitBtn').addEventListener('click', async () => {
+                    const container = document.getElementById('questionContainer');
+                    const component = container._component;
+                    if (!component) return;
+                    
+                    const answer = component.getAnswer();
+                    if (!answer) {
+                        component.handler?.showFeedback(false, 'Please provide an answer');
+                        return;
+                    }
+                    
+                    await component.submitAnswer();
+                });
 
-                // Route to type-specific handler
-                const questionType = question.type || 'MCQ';
-                console.log('Question type:', questionType);
+                document.addEventListener('keydown', async (e) => {
+                    if (e.key !== 'Enter') return;
+                    const btn = document.getElementById('submitBtn');
+                    if (!btn || btn.disabled || btn.style.display === 'none') return;
+                    const container = document.getElementById('questionContainer');
+                    const component = container._component;
+                    if (!component) return;
+                    const answer = component.getAnswer();
+                    if (!answer) {
+                        component.handler?.showFeedback(false, 'Please provide an answer');
+                        return;
+                    }
+                    btn.disabled = true;
+                    await component.submitAnswer();
+                });
                 
-                switch (questionType.toUpperCase()) {
-                    case 'MCQ':
-                        quizMCQ = new QuizMCQ(quizCommon);
-                        quizMCQ.render();
-                        document.getElementById('submitBtn').addEventListener('click', () => quizMCQ.checkAnswer());
-                        break;
-                    
-                    case 'MR':
-                        quizMR = new QuizMR(quizCommon);
-                        quizMR.render();
-                        document.getElementById('submitBtn').addEventListener('click', () => quizMR.checkAnswer());
-                        break;
-                    
-                    case 'FILL':
-                        quizFill = new QuizFILL(quizCommon);
-                        quizFill.render();
-                        document.getElementById('submitBtn').addEventListener('click', () => quizFill.checkAnswer());
-                        break;
-                    
-                    // Future question types will be added here
-                    // case 'HOTSPOT':
-                    // case 'FB':
-                    // case 'MFB':
-                    
-                    default:
-                        throw new Error(`Unknown question type: ${questionType}`);
-                }
-
-                // Setup common navigation and JSON display
-                quizCommon.setupNavigation();
-
-                // Render MathJax
-                quizCommon.renderMathJax();
+                // Show container
+                document.querySelector('.container').classList.add('loaded');
                 
-                console.log('Quiz initialization completed');
-            } catch (e) {
-                console.error('Quiz initialization failed:', e);
-                document.getElementById('stemContainer').innerHTML = `<div style="background: red; color: white; padding: 10px;">Error: ${e.message}</div>`;
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('questionContainer').innerHTML = `<div class="template-error">${error.message}</div>`;
+                document.querySelector('.container').classList.add('loaded');
             }
         }
 
-        // Initialize when DOM is ready
-        console.log('Setting up quiz initialization...');
-        if (document.readyState === 'loading') {
-            window.addEventListener('DOMContentLoaded', initializeQuiz);
-        } else {
-            initializeQuiz();
+        // Start when ready - wait for all scripts to load
+        function waitForScripts() {
+            if (typeof QuestionTemplates === 'undefined' || typeof UnifiedQuestionComponent === 'undefined') {
+                // Scripts not loaded yet, try again in 50ms
+                setTimeout(waitForScripts, 50);
+            } else {
+                // All scripts loaded, start
+                initializeQuiz();
+            }
         }
 
-        // Print functionality
-        document.getElementById('printLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            const questionId = document.getElementById('questionId').textContent;
-            window.location.href = `/quiz/print/${questionId}`;
+        async function setupEventListeners() {
+            console.log('setupEventListeners called');
+            
+            // Duplicate button
+            const duplicateLink = document.getElementById('duplicateLink');
+            console.log('Duplicate link element:', duplicateLink);
+            if (duplicateLink) {
+                duplicateLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const id = document.getElementById('questionId').textContent;
+                    console.log('Duplicate clicked, question ID:', id);
+                    window.location.href = `/question/duplicate/${id}`;
+                });
+            }
+
+            // New button
+            const newLink = document.getElementById('newLink');
+            console.log('New link element:', newLink);
+            if (newLink) {
+                newLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('New button clicked');
+                    window.location.href = `/question/new`;
+                });
+            }
+
+            // Navigation - Load question dynamically without page refresh
+            document.getElementById('nextQuestionBtn').addEventListener('click', async () => {
+                const currentId = document.getElementById('questionId').textContent;
+                try {
+                    const res = await fetch(`/question/api/next-id/${currentId}`);
+                    const data = await res.json();
+                    if (data.ok) {
+                        await loadQuestion(data.next_id);
+                    }
+                } catch (e) {
+                    console.error('Error loading next question:', e);
+                }
+            });
+
+            // Edit button
+            document.getElementById('editLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('questionId').textContent;
+                window.location.href = `/question/edit/${id}`;
+            });
+
+            // JSON button
+            document.getElementById('jsonLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                const container = document.getElementById('questionContainer');
+                const component = container._component;
+                if (component && component.question) {
+                    document.getElementById('jsonContent').textContent = JSON.stringify(component.question, null, 2);
+                    document.getElementById('jsonModal').classList.add('show');
+                }
+            });
+
+            // Close JSON modal
+            document.getElementById('closeJsonBtn').addEventListener('click', () => {
+                document.getElementById('jsonModal').classList.remove('show');
+            });
+
+            // Close modal when clicking outside
+            document.getElementById('jsonModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('jsonModal')) {
+                    document.getElementById('jsonModal').classList.remove('show');
+                }
+            });
+
+            // Print button
+            document.getElementById('printLink').addEventListener('click', (e) => {
+                e.preventDefault();
+                const id = document.getElementById('questionId').textContent;
+                window.location.href = `/question/print/${id}`;
+            });
+
+            // Calculator button — always opens scientific calculator for admin
+            document.getElementById('adminCalcBtn').addEventListener('click', () => {
+                calculatorController.open({ type: 'scientific', angleMode: 'degrees' });
+            });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log('DOM loaded, setting up scripts and event listeners');
+                waitForScripts();
+                setupEventListeners();
+            });
+        } else {
+            console.log('DOM already loaded, setting up scripts and event listeners');
+            waitForScripts();
+            setupEventListeners();
+        }
+
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', (e) => {
+            if (e.state && e.state.questionId) {
+                loadQuestion(e.state.questionId, false);
+            }
         });
+
+        // Function to load and render a question dynamically
+        async function loadQuestion(questionId, pushState = true) {
+            const container = document.getElementById('questionContainer');
+            
+            try {
+                // Update ID display and URL
+                document.getElementById('questionId').textContent = questionId;
+                if (pushState) {
+                    history.pushState({ questionId }, '', `/question/display/${questionId}`);
+                }
+                
+                // Fetch question data
+                const response = await fetch(`/question/api/display/${questionId}`);
+                if (!response.ok) throw new Error('Failed to fetch question');
+                
+                const data = await response.json();
+                if (!data.ok || !data.question) throw new Error('Invalid question data');
+                
+                const question = data.question;
+                
+                // Clear and re-render
+                container.innerHTML = '';
+                
+                // Create and render new component
+                const component = new UnifiedQuestionComponent({
+                    question: question,
+                    container: container,
+                    readOnly: false
+                });
+                component.render();
+                
+                // Store component on container for submit button access
+                container._component = component;
+                container._component.question = question;
+                
+                // Update next question button
+                const nextRes = await fetch(`/question/api/next-id/${questionId}`);
+                const nextData = await nextRes.json();
+                if (nextData.ok) {
+                    document.getElementById('nextQuestionId').textContent = nextData.next_id;
+                }
+                
+                // Scroll to top of container
+                container.scrollTop = 0;
+            } catch (e) {
+                console.error('Error loading question:', e);
+                container.innerHTML = `<div style="padding: 20px; color: #c00;">Error loading question: ${e.message}</div>`;
+            }
+        }
+
     </script>
 </body>
 </html>

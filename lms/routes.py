@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 from db import db
-from models import UserTable, UserWorks, MXWorks, MXWorkPacks, EmailMessage, DonePacks, ContactSubmission
+from models import UserTable, UserWorks, MXWorks, MXWorkPacks, EmailMessage, DonePacks, ContactSubmission, Video, AUnit, Quiz, MyWorkList, UserStreak
 from lms.utils import parse_email_content, update_work_with_result
 
 logger = logging.getLogger(__name__)
@@ -35,6 +35,12 @@ def login():
                 return redirect(url_for("lms.teacher_home"))
             elif user.user_role == "admin":
                 return redirect(url_for("lms.admin_home"))
+            elif user.user_role == "admin_new":
+                return redirect(url_for("lms.admin_home_new"))
+            elif user.user_role == "student_new":
+                return redirect(url_for("lms.student_home_new"))
+            elif user.user_role == "new":
+                return redirect(url_for("lms.student_home_inactive"))
             else:
                 flash("Unknown role. Contact admin.", "danger")
         else:
@@ -112,6 +118,39 @@ def student_home():
         'student_home.html',
         full_name=current_user.full_name,
         grouped=filtered_data
+    )
+
+
+@lms_bp.route('/home')
+@login_required
+def student_home_inactive():
+    """Home page for inactive students - shows assigned quizzes."""
+    from models import UserQuiz, Quiz
+    
+    # Get all quizzes assigned to this user
+    user_quizzes = db.session.query(UserQuiz, Quiz).join(
+        Quiz, UserQuiz.quiz_id == Quiz.id
+    ).filter(
+        UserQuiz.user_id == current_user.id
+    ).all()
+    
+    quizzes = []
+    for user_quiz, quiz in user_quizzes:
+        quizzes.append({
+            'user_quiz_id': user_quiz.id,
+            'quiz_id': quiz.id,
+            'title': quiz.title,
+            'status': user_quiz.status,
+            'score': user_quiz.score,
+            'result_summary': user_quiz.result_summary,
+            'started_at': user_quiz.started_at,
+            'completed_at': user_quiz.completed_at
+        })
+    
+    return render_template(
+        'student_home_inactive.html',
+        full_name=current_user.full_name,
+        quizzes=quizzes
     )
 
 
@@ -982,3 +1021,739 @@ def process_assignment():
             "success": False,
             "message": f"❌ Error processing pack {pack_id} for {student}: {str(e)}"
         })
+
+
+# ==================== NEW LMS (admin_new / student_new) ==================== #
+
+@lms_bp.route('/admin-new')
+@login_required
+def admin_home_new():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return "Forbidden", 403
+    return render_template("admin_new.html")
+
+
+@lms_bp.route('/student-new')
+@login_required
+def student_home_new():
+    if current_user.user_role not in ('student_new', 'new'):
+        return "Forbidden", 403
+
+    from collections import defaultdict
+
+    username = current_user.username
+
+    # ── 1. Fetch ALL work rows for this student ────────────────────────────
+    all_rows = MyWorkList.query.filter_by(user=username).all()
+
+    # Per-unit quiz progress (all statuses, for progress bar)
+    from collections import defaultdict as _dd
+    q_progress = _dd(lambda: {'total': 0, 'done': 0})
+    for _r in all_rows:
+        if _r.item_code.startswith('Q-'):
+            q_progress[_r.au_name]['total'] += 1
+            if _r.status == 'done':
+                q_progress[_r.au_name]['done'] += 1
+
+    # Achievement stats
+    total_done      = sum(1 for _r in all_rows if _r.status == 'done')
+    total_remaining = sum(1 for _r in all_rows if _r.status == 'assigned')
+    streak_row = UserStreak.query.get(current_user.id)
+    stats = {'done': total_done, 'remaining': total_remaining, 'streak': streak_row.streak if streak_row else 0}
+
+    if not all_rows:
+        return render_template("student_new.html", units=[],
+                               student_name=current_user.full_name or username,
+                               stats=stats)
+
+    # Keep only: assigned quizzes + all videos (videos have no completion state)
+    work_rows = [
+        r for r in all_rows
+        if r.item_code.startswith('V-')
+        or (r.item_code.startswith('Q-') and r.status == 'assigned')
+    ]
+
+    # ── 2. Determine au_name ordering from a_unit table ────────────────────
+    au_names = list({row.au_name for row in work_rows})
+    unit_rows = (AUnit.query
+                 .filter(AUnit.au_name.in_(au_names))
+                 .order_by(AUnit.au_id)
+                 .all())
+
+    ordered_au_names = [u.au_name for u in unit_rows]
+    for name in au_names:
+        if name not in ordered_au_names:
+            ordered_au_names.append(name)
+
+    # Map au_name → item-code position from au_content
+    au_content_order = {}
+    for unit in unit_rows:
+        codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
+        au_content_order[unit.au_name] = {code: i for i, code in enumerate(codes)}
+
+    # ── 3. Group and sort work rows ────────────────────────────────────────
+    work_by_unit = defaultdict(list)
+    for row in work_rows:
+        work_by_unit[row.au_name].append(row)
+
+    for au_name in work_by_unit:
+        order = au_content_order.get(au_name, {})
+        work_by_unit[au_name].sort(key=lambda r: order.get(r.item_code, 9999))
+
+    # ── 4. Build item lookup maps ──────────────────────────────────────────
+    q_codes = {r.item_code for rows in work_by_unit.values() for r in rows if r.item_code.startswith('Q-')}
+    v_codes = {r.item_code for rows in work_by_unit.values() for r in rows if r.item_code.startswith('V-')}
+
+    quiz_titles  = {}
+    quiz_ids     = {}
+    quiz_total_q = {}
+    if q_codes:
+        for q in Quiz.query.filter(Quiz.quiz_code.in_(q_codes)).all():
+            quiz_titles[q.quiz_code]  = q.title
+            quiz_ids[q.quiz_code]     = q.id
+            quiz_total_q[q.quiz_code] = q.question_count or 0
+
+    video_names = {}
+    if v_codes:
+        for v in Video.query.filter(Video.lesson_code.in_(v_codes)).all():
+            video_names[v.lesson_code] = v.display_name
+
+    # ── 5. Assemble template-ready structure ───────────────────────────────
+    # Only show a unit if it has at least one assigned quiz; videos ride along.
+    units = []
+    for au_name in ordered_au_names:
+        rows = work_by_unit.get(au_name, [])
+        if not rows:
+            continue
+        has_assigned_quiz = any(
+            r.item_code.startswith('Q-') and r.status == 'assigned'
+            for r in rows
+        )
+        if not has_assigned_quiz:
+            continue
+        items = []
+        for row in rows:
+            if row.item_code.startswith('Q-'):
+                items.append({
+                    'code':    row.item_code,
+                    'type':    'quiz',
+                    'name':    quiz_titles.get(row.item_code, row.item_code),
+                    'url':     None,
+                    'quiz_id': quiz_ids.get(row.item_code),
+                    'views':   row.views or 0,
+                    'answered': row.questions_answered or 0,
+                    'total_q': quiz_total_q.get(row.item_code, 0),
+                })
+            elif row.item_code.startswith('V-'):
+                items.append({
+                    'code':  row.item_code,
+                    'type':  'video',
+                    'name':  video_names.get(row.item_code, row.item_code),
+                    'url':   row.item_detail,
+                    'views': row.views or 0,
+                })
+            else:
+                items.append({'code': row.item_code, 'type': 'unknown',
+                              'name': row.item_code, 'url': None, 'views': row.views or 0})
+        prog = q_progress[au_name]
+        units.append({'au_name': au_name, 'work_items': items,
+                      'done_q': prog['done'], 'total_q': prog['total']})
+
+    return render_template("student_new.html", units=units,
+                           student_name=current_user.full_name or username,
+                           user_id=current_user.id,
+                           stats=stats)
+
+
+@lms_bp.route('/student-new/mark-viewed', methods=['POST'])
+@login_required
+def student_mark_viewed():
+    if current_user.user_role not in ('student_new', 'new'):
+        return jsonify(ok=False), 403
+    item_code = (request.get_json(silent=True) or {}).get('item_code', '')
+    if not item_code:
+        return jsonify(ok=False), 400
+    row = MyWorkList.query.filter_by(user=current_user.username, item_code=item_code).first()
+    if row:
+        row.views = (row.views or 0) + 1
+        db.session.commit()
+    return jsonify(ok=True)
+
+
+@lms_bp.route('/student-new/submissions')
+@login_required
+def student_submissions():
+    if current_user.user_role not in ('student_new', 'new'):
+        return "Forbidden", 403
+
+    username = current_user.username
+
+    done_rows = (MyWorkList.query
+                 .filter_by(user=username, status='done')
+                 .filter(MyWorkList.item_code.like('Q-%'))
+                 .order_by(MyWorkList.last_updated.desc())
+                 .all())
+
+    q_codes = [r.item_code for r in done_rows]
+    quiz_titles = {}
+    quiz_ids    = {}
+    if q_codes:
+        for q in Quiz.query.filter(Quiz.quiz_code.in_(q_codes)).all():
+            quiz_titles[q.quiz_code] = q.title
+            quiz_ids[q.quiz_code]    = q.id
+
+    submissions = [
+        {
+            'code':      r.item_code,
+            'name':      quiz_titles.get(r.item_code, r.item_code),
+            'au_name':   r.au_name,
+            'score':     r.score or '—',
+            'incorrect': r.incorrect or '—',
+            'quiz_id':   quiz_ids.get(r.item_code),
+        }
+        for r in done_rows
+    ]
+
+    return render_template("student_submissions.html",
+                           submissions=submissions,
+                           user_id=current_user.id,
+                           student_name=current_user.full_name or username)
+
+
+# ==================== VIDEOS ==================== #
+
+@lms_bp.route('/videos/list')
+@login_required
+def lesson_list():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return "Forbidden", 403
+    videos = Video.query.order_by(Video.broad_area, Video.display_name).all()
+    # Group by broad_area
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for video in videos:
+        grouped[video.broad_area or 'Uncategorised'].append(video)
+    # Sort keys, put Uncategorised last
+    areas = sorted(grouped.keys(), key=lambda k: (k == 'Uncategorised', k))
+    return render_template("lesson_list.html", grouped=grouped, areas=areas)
+
+
+# ==================== ASSIGNMENT UNITS ==================== #
+
+@lms_bp.route('/units/options', methods=['GET'])
+@login_required
+def units_options():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False}), 403
+    areas  = sorted(set(r.au_area  for r in AUnit.query.with_entities(AUnit.au_area).distinct()  if r.au_area))
+    topics = sorted(set(r.au_topic for r in AUnit.query.with_entities(AUnit.au_topic).distinct() if r.au_topic))
+    levels = sorted(set(r.au_level for r in AUnit.query.with_entities(AUnit.au_level).distinct() if r.au_level))
+    return jsonify({'ok': True, 'areas': areas, 'topics': topics, 'levels': levels})
+
+
+@lms_bp.route('/units/create', methods=['POST'])
+@login_required
+def units_create():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data = request.get_json(force=True)
+    au_name  = (data.get('au_name') or '').strip()
+    au_area  = (data.get('au_area') or '').strip()
+    au_topic = (data.get('au_topic') or '').strip()
+    au_level = (data.get('au_level') or '').strip()[:2]
+    if not au_name:
+        return jsonify({'ok': False, 'error': 'au_name is required'}), 400
+    unit = AUnit(
+        au_name=au_name,
+        au_area=au_area or None,
+        au_topic=au_topic or None,
+        au_level=au_level or None,
+        au_content=None,
+    )
+    db.session.add(unit)
+    db.session.commit()
+    return jsonify({'ok': True, 'au_id': unit.au_id})
+
+
+@lms_bp.route('/units/by-area', methods=['GET'])
+@login_required
+def units_by_area():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False}), 403
+    area = request.args.get('area', '').strip()
+    q = AUnit.query.filter_by(au_area=area).order_by(AUnit.au_name).all() if area else []
+    units = [{'au_id': u.au_id, 'au_name': u.au_name, 'au_content': u.au_content or ''} for u in q]
+    return jsonify({'ok': True, 'units': units})
+
+
+@lms_bp.route('/units/add-videos', methods=['POST'])
+@login_required
+def units_add_videos():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data   = request.get_json(force=True)
+    au_id  = data.get('au_id')
+    codes  = [c.strip() for c in (data.get('codes') or []) if c.strip()]
+    if not au_id or not codes:
+        return jsonify({'ok': False, 'error': 'au_id and codes are required'}), 400
+    unit = AUnit.query.get(au_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Unit not found'}), 404
+    existing = [c for c in (unit.au_content or '').split('|') if c]
+    existing_set = set(existing)
+    new_codes = [c for c in codes if c not in existing_set]
+    unit.au_content = '|'.join(existing + new_codes)
+    db.session.commit()
+    return jsonify({'ok': True, 'au_content': unit.au_content})
+
+
+@lms_bp.route('/units/list')
+@login_required
+def units_list():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return "Forbidden", 403
+    units = AUnit.query.order_by(AUnit.au_area, AUnit.au_name).all()
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for u in units:
+        grouped[u.au_area or 'Uncategorised'].append(u)
+    areas = sorted(grouped.keys(), key=lambda k: (k == 'Uncategorised', k))
+    return render_template('units_list.html', grouped=grouped, areas=areas)
+
+
+@lms_bp.route('/units/<int:au_id>/content', methods=['GET'])
+@login_required
+def units_content(au_id):
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False}), 403
+    unit = AUnit.query.get(au_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Not found'}), 404
+    codes = [c for c in (unit.au_content or '').split('|') if c]
+    # Build lookup maps
+    video_map = {v.lesson_code: v.display_name for v in Video.query.filter(Video.lesson_code.in_(codes)).all()}
+    quiz_map  = {q.quiz_code:   q.title         for q in Quiz.query.filter(Quiz.quiz_code.in_(codes)).all()}
+    items = []
+    for code in codes:
+        if code.startswith('V-'):
+            name  = video_map.get(code)
+            found = name is not None
+            items.append({'code': code, 'name': name or code, 'found': found, 'type': 'video'})
+        elif code.startswith('Q-'):
+            name  = quiz_map.get(code)
+            found = name is not None
+            items.append({'code': code, 'name': name or code, 'found': found, 'type': 'quiz'})
+        else:
+            items.append({'code': code, 'name': code, 'found': False, 'type': 'unknown'})
+    return jsonify({'ok': True, 'au_name': unit.au_name, 'items': items})
+
+
+@lms_bp.route('/units/<int:au_id>/save-content', methods=['POST'])
+@login_required
+def units_save_content(au_id):
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    unit = AUnit.query.get(au_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Not found'}), 404
+    data  = request.get_json(force=True)
+    codes = [c.strip() for c in (data.get('codes') or []) if c.strip()]
+    unit.au_content = '|'.join(codes)
+    db.session.commit()
+    return jsonify({'ok': True, 'au_content': unit.au_content})
+
+
+# ==================== UNIT ASSIGNMENT ==================== #
+
+@lms_bp.route('/unit/assign')
+@login_required
+def unit_assign_page():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return redirect(url_for('lms.admin_home_new'))
+    return render_template('unit_assign.html')
+
+
+@lms_bp.route('/unit/api/users', methods=['GET'])
+@login_required
+def unit_assign_users():
+    """Students eligible for unit assignment (role = student_new)."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    users = (UserTable.query
+             .filter_by(user_role='student_new')
+             .order_by(UserTable.full_name)
+             .all())
+    return jsonify({'ok': True, 'users': [
+        {'id': u.id, 'full_name': u.full_name or u.username, 'username': u.username}
+        for u in users
+    ]})
+
+
+@lms_bp.route('/unit/api/units', methods=['GET'])
+@login_required
+def unit_assign_list():
+    """All assignment units for the assignment picker."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    units = AUnit.query.order_by(AUnit.au_area, AUnit.au_name).all()
+    return jsonify({'ok': True, 'units': [
+        {
+            'au_id':      u.au_id,
+            'au_name':    u.au_name,
+            'au_area':    u.au_area  or '—',
+            'au_topic':   u.au_topic or '',
+            'au_level':   u.au_level or '',
+            'item_count': len([c for c in (u.au_content or '').split('|') if c]),
+        }
+        for u in units
+    ]})
+
+
+@lms_bp.route('/unit/api/assign', methods=['POST'])
+@login_required
+def unit_assign_submit():
+    """Batch-assign selected units to selected students.
+
+    Creates one my_work_list row per item code per student.
+    Silently skips rows where (user, au_name, item_code) already exists.
+    """
+    import json as _json
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    data     = request.get_json(force=True)
+    user_ids = data.get('user_ids', [])
+    au_ids   = data.get('au_ids',   [])
+
+    if not user_ids or not au_ids:
+        return jsonify({'ok': False, 'error': 'user_ids and au_ids are required'}), 400
+
+    # Pre-fetch records
+    users = {u.id: u for u in UserTable.query.filter(UserTable.id.in_(user_ids)).all()}
+    units = {u.au_id: u for u in AUnit.query.filter(AUnit.au_id.in_(au_ids)).all()}
+
+    # Collect all item codes across selected units
+    all_codes = set()
+    for unit in units.values():
+        for c in (unit.au_content or '').split('|'):
+            if c.strip():
+                all_codes.add(c.strip())
+
+    quiz_codes  = {c for c in all_codes if c.startswith('Q-')}
+    video_codes = {c for c in all_codes if c.startswith('V-')}
+
+    # Build lookup: code → item_detail string
+    quiz_detail  = {}
+    for q in Quiz.query.filter(Quiz.quiz_code.in_(quiz_codes)).all():
+        quiz_detail[q.quiz_code] = _json.dumps(q.questions_json) if q.questions_json is not None else None
+
+    video_detail = {}
+    for v in Video.query.filter(Video.lesson_code.in_(video_codes)).all():
+        video_detail[v.lesson_code] = f'https://mx-app-mm.onrender.com/packages/advanced/{v.file_name}'
+
+    created = 0
+    skipped = 0
+
+    try:
+        for user_id in user_ids:
+            user = users.get(user_id)
+            if not user:
+                continue
+            username = user.username
+
+            for au_id in au_ids:
+                unit = units.get(au_id)
+                if not unit:
+                    continue
+                codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
+
+                for code in codes:
+                    exists = MyWorkList.query.filter_by(
+                        user=username, au_name=unit.au_name, item_code=code
+                    ).first()
+                    if exists:
+                        skipped += 1
+                        continue
+
+                    if code.startswith('Q-'):
+                        detail = quiz_detail.get(code)
+                    elif code.startswith('V-'):
+                        detail = video_detail.get(code)
+                    else:
+                        detail = None
+
+                    db.session.add(MyWorkList(
+                        user=username,
+                        au_name=unit.au_name,
+                        item_code=code,
+                        item_detail=detail,
+                        views=0,
+                        status='assigned',
+                        user_id=user_id,
+                    ))
+                    created += 1
+
+        db.session.commit()
+        msg = f'Assigned {created} item(s).'
+        if skipped:
+            msg += f' Skipped {skipped} already-assigned item(s).'
+        logger.info('Unit assignment: created=%s skipped=%s by admin=%s', created, skipped, current_user.username)
+        return jsonify({'ok': True, 'created': created, 'skipped': skipped, 'message': msg})
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+# ==================== FINE TUNE (NEW SYSTEM) ==================== #
+
+@lms_bp.route('/unit/assign-finetune', methods=['GET'])
+@login_required
+def unit_finetune_page():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return "Forbidden", 403
+    students = (UserTable.query
+                .filter(UserTable.user_role == 'student_new',
+                        UserTable.can_assign_work == True)
+                .order_by(UserTable.full_name)
+                .all())
+    return render_template('unit_finetune.html', students=students)
+
+
+@lms_bp.route('/unit/api/finetune-work', methods=['GET'])
+@login_required
+def unit_finetune_work():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    student_id = request.args.get('student_id', type=int)
+    if not student_id:
+        return jsonify({'ok': False, 'error': 'student_id required'}), 400
+
+    student = UserTable.query.get(student_id)
+    if not student:
+        return jsonify({'ok': False, 'error': 'Student not found'}), 404
+
+    all_rows = MyWorkList.query.filter_by(user=student.username).all()
+    if not all_rows:
+        return jsonify({'ok': True, 'units': []})
+
+    q_codes = {r.item_code for r in all_rows if r.item_code.startswith('Q-')}
+    v_codes = {r.item_code for r in all_rows if r.item_code.startswith('V-')}
+
+    quiz_info = {}
+    if q_codes:
+        for q in Quiz.query.filter(Quiz.quiz_code.in_(q_codes)).all():
+            quiz_info[q.quiz_code] = {'title': q.title, 'quiz_id': q.id}
+
+    video_info = {}
+    if v_codes:
+        for v in Video.query.filter(Video.lesson_code.in_(v_codes)).all():
+            video_info[v.lesson_code] = v.display_name
+
+    from collections import defaultdict
+    rows_by_unit = defaultdict(list)
+    for row in all_rows:
+        rows_by_unit[row.au_name].append(row)
+
+    au_names = list(rows_by_unit.keys())
+    unit_rows = (AUnit.query
+                 .filter(AUnit.au_name.in_(au_names))
+                 .order_by(AUnit.au_id)
+                 .all())
+    ordered_names = [u.au_name for u in unit_rows]
+    for name in au_names:
+        if name not in ordered_names:
+            ordered_names.append(name)
+
+    au_content_order = {}
+    for unit in unit_rows:
+        codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
+        au_content_order[unit.au_name] = {code: i for i, code in enumerate(codes)}
+
+    units = []
+    for au_name in ordered_names:
+        rows = rows_by_unit.get(au_name, [])
+        if not rows:
+            continue
+        order = au_content_order.get(au_name, {})
+        rows.sort(key=lambda r: order.get(r.item_code, 9999))
+
+        items = []
+        for row in rows:
+            if row.item_code.startswith('Q-'):
+                info = quiz_info.get(row.item_code, {})
+                items.append({
+                    'id': row.id,
+                    'item_code': row.item_code,
+                    'type': 'quiz',
+                    'display_name': info.get('title', row.item_code),
+                    'link': f"/quiz/{info['quiz_id']}/preview" if info.get('quiz_id') else None,
+                    'status': row.status or 'assigned',
+                    'score': row.score,
+                    'incorrect': row.incorrect,
+                    'views': row.views or 0,
+                    'questions_answered': row.questions_answered or 0,
+                })
+            elif row.item_code.startswith('V-'):
+                items.append({
+                    'id': row.id,
+                    'item_code': row.item_code,
+                    'type': 'video',
+                    'display_name': video_info.get(row.item_code, row.item_code),
+                    'link': row.item_detail,
+                    'status': row.status or 'assigned',
+                    'score': None,
+                    'incorrect': None,
+                    'views': row.views or 0,
+                    'questions_answered': 0,
+                })
+            else:
+                items.append({
+                    'id': row.id,
+                    'item_code': row.item_code,
+                    'type': 'other',
+                    'display_name': row.item_code,
+                    'link': None,
+                    'status': row.status or 'assigned',
+                    'score': None,
+                    'incorrect': None,
+                    'views': row.views or 0,
+                    'questions_answered': 0,
+                })
+        units.append({'au_name': au_name, 'items': items})
+
+    return jsonify({'ok': True, 'units': units})
+
+
+@lms_bp.route('/unit/api/finetune-status', methods=['POST'])
+@login_required
+def unit_finetune_status():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    data = request.get_json(silent=True) or {}
+    row_id = data.get('row_id')
+    new_status = data.get('status', '').lower()
+
+    if not row_id:
+        return jsonify({'ok': False, 'error': 'row_id required'}), 400
+    if new_status not in ('assigned', 'done', 'future', 'expired'):
+        return jsonify({'ok': False, 'error': 'Invalid status'}), 400
+
+    row = MyWorkList.query.get(row_id)
+    if not row:
+        return jsonify({'ok': False, 'error': 'Row not found'}), 404
+
+    row.status = new_status
+    row.last_updated = datetime.utcnow()
+    db.session.commit()
+    logger.info('Finetune status: row_id=%s status=%s by admin=%s', row_id, new_status, current_user.username)
+    return jsonify({'ok': True})
+
+
+@lms_bp.route('/student-new/preview/<int:user_id>', methods=['GET'])
+@login_required
+def student_preview(user_id):
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return "Forbidden", 403
+
+    from collections import defaultdict
+
+    student = UserTable.query.get(user_id)
+    if not student:
+        return "Student not found", 404
+
+    username = student.username
+    all_rows = MyWorkList.query.filter_by(user=username).all()
+
+    q_progress = defaultdict(lambda: {'total': 0, 'done': 0})
+    for r in all_rows:
+        if r.item_code.startswith('Q-'):
+            q_progress[r.au_name]['total'] += 1
+            if r.status == 'done':
+                q_progress[r.au_name]['done'] += 1
+
+    total_done = sum(1 for r in all_rows if r.status == 'done')
+    total_remaining = sum(1 for r in all_rows if r.status == 'assigned')
+    streak_row = UserStreak.query.get(user_id)
+    stats = {'done': total_done, 'remaining': total_remaining, 'streak': streak_row.streak if streak_row else 0}
+    preview_banner = f"Preview — viewing as: {student.full_name or username}"
+
+    if not all_rows:
+        return render_template("student_new.html", units=[],
+                               student_name=student.full_name or username,
+                               stats=stats, preview_banner=preview_banner)
+
+    # Preview shows only what the student sees: assigned items only
+    work_rows = [r for r in all_rows if r.status == 'assigned']
+
+    au_names = list({row.au_name for row in work_rows})
+    unit_rows = (AUnit.query
+                 .filter(AUnit.au_name.in_(au_names))
+                 .order_by(AUnit.au_id)
+                 .all())
+    ordered_au_names = [u.au_name for u in unit_rows]
+    for name in au_names:
+        if name not in ordered_au_names:
+            ordered_au_names.append(name)
+
+    au_content_order = {}
+    for unit in unit_rows:
+        codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
+        au_content_order[unit.au_name] = {code: i for i, code in enumerate(codes)}
+
+    work_by_unit = defaultdict(list)
+    for row in work_rows:
+        work_by_unit[row.au_name].append(row)
+    for au_name in work_by_unit:
+        order = au_content_order.get(au_name, {})
+        work_by_unit[au_name].sort(key=lambda r: order.get(r.item_code, 9999))
+
+    q_codes = {r.item_code for rows in work_by_unit.values() for r in rows if r.item_code.startswith('Q-')}
+    v_codes = {r.item_code for rows in work_by_unit.values() for r in rows if r.item_code.startswith('V-')}
+
+    quiz_titles, quiz_ids, quiz_total_q = {}, {}, {}
+    if q_codes:
+        for q in Quiz.query.filter(Quiz.quiz_code.in_(q_codes)).all():
+            quiz_titles[q.quiz_code] = q.title
+            quiz_ids[q.quiz_code] = q.id
+            quiz_total_q[q.quiz_code] = q.question_count or 0
+
+    video_names = {}
+    if v_codes:
+        for v in Video.query.filter(Video.lesson_code.in_(v_codes)).all():
+            video_names[v.lesson_code] = v.display_name
+
+    units = []
+    for au_name in ordered_au_names:
+        rows = work_by_unit.get(au_name, [])
+        if not rows:
+            continue
+        items = []
+        for row in rows:
+            if row.item_code.startswith('Q-'):
+                items.append({'code': row.item_code, 'type': 'quiz',
+                              'name': quiz_titles.get(row.item_code, row.item_code),
+                              'url': None, 'quiz_id': quiz_ids.get(row.item_code),
+                              'views': row.views or 0,
+                              'answered': row.questions_answered or 0,
+                              'total_q': quiz_total_q.get(row.item_code, 0)})
+            elif row.item_code.startswith('V-'):
+                items.append({'code': row.item_code, 'type': 'video',
+                              'name': video_names.get(row.item_code, row.item_code),
+                              'url': row.item_detail, 'views': row.views or 0})
+            else:
+                items.append({'code': row.item_code, 'type': 'unknown',
+                              'name': row.item_code, 'url': None, 'views': row.views or 0})
+        prog = q_progress[au_name]
+        units.append({'au_name': au_name, 'work_items': items,
+                      'done_q': prog['done'], 'total_q': prog['total']})
+
+    return render_template("student_new.html", units=units,
+                           student_name=student.full_name or username,
+                           user_id=user_id, stats=stats,
+                           preview_banner=preview_banner)
+
+

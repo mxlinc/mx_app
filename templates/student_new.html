@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}My Work – MX Learning{% endblock %}
+
+{% block head_extra %}
+  <style>
+    /* Page-specific: subtle dot-grid background */
+    body {
+      background-image:
+        radial-gradient(circle, rgba(31,111,174,0.055) 1px, transparent 1px),
+        radial-gradient(circle, rgba(34,166,166,0.04) 1px, transparent 1px);
+      background-size: 38px 38px, 76px 76px;
+      background-position: 0 0, 19px 19px;
+    }
+    .item-progress-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #1f6fae;
+      background: rgba(31,111,174,0.1);
+      border: 1px solid rgba(31,111,174,0.25);
+      border-radius: 10px;
+      padding: 1px 7px;
+      margin-left: auto;
+      white-space: nowrap;
+    }
+  </style>
+{% endblock %}
+
+{% block body %}
+
+  {% if preview_banner is defined and preview_banner %}
+  <div style="background:#fff3cd;color:#856404;text-align:center;padding:0.45rem 1rem;font-weight:600;font-size:0.88rem;border-bottom:2px solid #ffc107;">
+    &#128065; {{ preview_banner }}
+  </div>
+  {% endif %}
+
+  <div class="user-bar">
+    <span class="welcome-text">Welcome back, <span class="student-name">{{ student_name }}</span> 👋</span>
+    <div class="nav-links">
+      <a class="btn-nav" href="{{ url_for('lms.student_submissions') }}">Recent Submissions</a>
+      <a class="btn-nav-outline" href="{{ url_for('lms.logout') }}">Sign Out</a>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- Achievement stats -->
+    <div class="stats-row">
+      <div class="stat-card teal">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value">{{ stats.done }}</div>
+        <div class="stat-label">Total Quizzes Done</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value">{{ stats.remaining }}</div>
+        <div class="stat-label">Remaining this Week</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-value">{{ stats.streak }}</div>
+        <div class="stat-label">Correct Streak</div>
+      </div>
+    </div>
+
+    {% if not units %}
+      <div class="empty-state">
+        <div class="icon">📖</div>
+        <p>No work assigned yet. Check back soon!</p>
+      </div>
+    {% else %}
+    {% for unit in units %}
+    {% set uid = loop.index %}
+    <div class="unit-card">
+      <div class="unit-card-header" data-bs-toggle="collapse" data-bs-target="#unit-{{ uid }}" aria-expanded="true">
+        <span class="unit-title">{{ unit.au_name }}</span>
+        <span class="unit-meta">{{ unit.work_items|length }} item{{ 's' if unit.work_items|length != 1 }}</span>
+        <span class="unit-chevron">▼</span>
+      </div>
+      {% if unit.total_q > 0 %}
+      <div class="unit-progress">
+        <div class="progress-label">
+          <span>Quiz progress</span>
+          <span>{{ unit.done_q }} of {{ unit.total_q }} done</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" style="width: {{ (unit.done_q / unit.total_q * 100) | round | int }}%"></div>
+        </div>
+      </div>
+      {% endif %}
+      <div class="unit-body collapse show" id="unit-{{ uid }}">
+        {% for item in unit.work_items %}
+          {% set unread_cls = 'item-unread' if item.views == 0 else '' %}
+          {% if item.type == 'quiz' %}
+          <a class="item-row item-quiz {{ unread_cls }}" href="/quiz/execute?user={{ user_id }}&quiz={{ item.quiz_id }}"
+             data-mark-viewed="{{ item.code }}">
+            <span class="item-badge badge-quiz">📝</span>
+            <span class="item-name"><span class="item-code-tag">{{ item.code }}</span> : {{ item.name }}</span>
+            {% if item.answered > 0 and item.answered < item.total_q %}
+            <span class="item-progress-badge" title="Quiz in progress">In Progress ({{ item.total_q - item.answered }} remaining)</span>
+            {% endif %}
+            <span class="item-arrow">›</span>
+          </a>
+          {% elif item.type == 'video' %}
+          <a class="item-row item-video {{ unread_cls }}" href="{{ item.url }}" target="_blank" rel="noopener"
+             data-mark-viewed="{{ item.code }}">
+            <span class="item-badge badge-video">🎥</span>
+            <span class="item-name"><span class="item-code-tag">{{ item.code }}</span> : {{ item.name }}</span>
+            <span class="item-arrow">›</span>
+          </a>
+          {% else %}
+          <div class="item-row {{ unread_cls }}">
+            <span class="item-badge badge-sheet">📄</span>
+            <span class="item-name"><span class="item-code-tag">{{ item.code }}</span> : {{ item.name }}</span>
+            <span class="item-arrow">›</span>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    document.querySelectorAll('.unit-card-header').forEach(function(hdr) {
+      var targetId = hdr.getAttribute('data-bs-target');
+      var target = document.querySelector(targetId);
+      if (!target) return;
+      target.addEventListener('hide.bs.collapse', function() { hdr.classList.add('collapsed'); });
+      target.addEventListener('show.bs.collapse', function() { hdr.classList.remove('collapsed'); });
+    });
+
+    document.querySelectorAll('[data-mark-viewed]').forEach(function(el) {
+      el.addEventListener('click', function() {
+        var code = el.dataset.markViewed;
+        el.classList.remove('item-unread');
+        navigator.sendBeacon('/student-new/mark-viewed',
+          new Blob([JSON.stringify({item_code: code})], {type: 'application/json'}));
+      });
+    });
+  </script>
+{% endblock %}

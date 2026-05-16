@@ -2,9 +2,8 @@
 
 from qb.validators import validate_question_json, order_question_json
 from qb.latex_utils import generate_latex_template, compile_latex_to_pdf
-from qb.handlers.common import save_image_from_data_url, generate_question_html
-from models import QBank
-from db import db
+from qb.handlers.common import generate_question_html
+from qb.db_utils import save_question_to_db
 
 
 class MCQHandler:
@@ -27,56 +26,33 @@ class MCQHandler:
     
     @staticmethod
     def save_question(data):
-        """Save MCQ question to database."""
-        if data.get('id'):
-            # ===== EDITING EXISTING =====
-            q = QBank.query.get(data['id'])
-            if not q:
-                return None, "Question not found"
-            q.type = data['type']
-            q.topic = data['topic']
-            q.subtopic = data['subtopic']
-            q.level = data['level']
-            question_id = q.id
-        else:
-            # ===== CREATE NEW: SKELETON FIRST TO GET ID =====
-            q = QBank(
-                type=data['type'],
-                topic=data['topic'],
-                subtopic=data['subtopic'],
-                level=data['level'],
-                json={}
-            )
-            db.session.add(q)
-            db.session.flush()
-            question_id = q.id
+        """Save MCQ question to database using safe pattern."""
+        try:
+            question_type = data['type']
+            topic = data['topic']
+            subtopic = data['subtopic']
+            level = data['level']
+            # Prepare question JSON
+            question = MCQHandler.prepare_html(data['question'])
+            final_json = MCQHandler.order_json(question)
 
-        # ===== HANDLE IMAGE =====
-        image_path = None
-        if 'image_data_url' in data and data['image_data_url']:
-            filename = f"{question_id}.png"
-            image_path = save_image_from_data_url(data['image_data_url'], filename, subdir="qimage")
-        elif data.get('id') and q.json and q.json.get('image'):
-            image_path = q.json['image']['src']
+            q, error = save_question_to_db(question_type, topic, subtopic, level, final_json, data)
 
-        # ===== BUILD COMPLETE QUESTION JSON =====
-        question = MCQHandler.prepare_html(data['question'])
-        
-        if image_path:
-            question['image'] = {"src": image_path, "alt": ""}
-
-        question['id'] = question_id
-        final_json = MCQHandler.order_json(question)
-
-        # ===== VALIDATE =====
-        valid, error_msg = MCQHandler.validate(final_json)
-        if not valid:
-            return None, error_msg
-
-        # ===== SAVE =====
-        q.json = final_json
-        db.session.commit()
-        return q, None
+            if error:
+                return None, error
+            
+            # Validate after save (ID is now in q.json)
+            valid, error_msg = MCQHandler.validate(q.json)
+            if not valid:
+                return None, error_msg
+            
+            return q, None
+            
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.exception("Error saving MCQ question")
+            return None, str(e)
     
     @staticmethod
     def generate_pdf(question_data, question_id):

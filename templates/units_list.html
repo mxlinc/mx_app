@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+{% block title %}Assignment Units{% endblock %}
+
+{% block head_extra %}
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <style>
+    /* Page-specific: accordion overrides */
+    .accordion-button:not(.collapsed) { background: var(--c-primary-lt); color: var(--c-primary); }
+    .accordion-button { font-weight: 600; }
+    .area-count { font-size: 0.8rem; font-weight: 400; color: var(--c-text-sm); margin-left: 0.5rem; }
+
+    .unit-row {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.55rem 0.6rem; border-bottom: 1px solid var(--c-border);
+      cursor: pointer; transition: background 0.15s;
+    }
+    .unit-row:last-child { border-bottom: none; }
+    .unit-row:hover { background: var(--c-primary-xlt); border-radius: 4px; }
+    .unit-name  { font-size: 0.93rem; font-weight: 500; color: var(--c-primary); flex: 1; }
+    .unit-meta  { font-size: 0.8rem; color: var(--c-text-sm); }
+    .badge-level { background: var(--c-primary); color: #fff; border-radius: 4px; padding: 0.1rem 0.45rem; font-size: 0.75rem; font-weight: 600; }
+    .unit-count { font-size: 0.78rem; color: var(--c-text-sm); white-space: nowrap; }
+
+    /* Page-specific: modal */
+    #cu-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1040; }
+    #cu-modal {
+      display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:#fff; border-radius:10px; padding:1.75rem;
+      width:min(560px,95vw); max-height:85vh; overflow-y:auto;
+      box-shadow:0 8px 32px rgba(0,0,0,0.18); z-index:1050;
+    }
+    #cu-modal h2 { font-size:1.1rem; font-weight:600; color:var(--c-primary); margin:0 0 0.25rem; }
+    #cu-modal .subtitle { font-size:0.82rem; color:var(--c-text-sm); margin-bottom:1rem; }
+
+    /* Page-specific: sortable list */
+    #cu-item-list { list-style:none; padding:0; margin:0; min-height:40px; }
+    .cu-item {
+      display:flex; align-items:center; gap:0.6rem;
+      background:#f8fbfd; border:1px solid var(--c-border);
+      border-radius:6px; padding:0.5rem 0.65rem; margin-bottom:0.45rem;
+      cursor:grab; user-select:none;
+    }
+    .cu-item:active { cursor:grabbing; }
+    .cu-item.sortable-ghost { opacity:0.4; background:var(--c-primary-lt); }
+    .cu-drag-handle { color:var(--c-text-sm); font-size:1rem; flex-shrink:0; }
+    .cu-item-label { flex:1; font-size:0.88rem; }
+    .cu-item-label .code { font-weight:600; color:var(--c-primary); }
+    .cu-item-label .name { color:var(--c-text); }
+    .cu-item-label .warn { color:var(--c-error); font-size:0.8rem; }
+    .cu-badge-v { background:rgba(31,111,174,0.12); color:var(--c-primary); border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
+    .cu-badge-q { background:rgba(34,166,166,0.12); color:#189e8a; border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
+    .cu-badge-u { background:#f0e68c55; color:#8a7a00; border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
+    .cu-remove { background:none; border:none; color:var(--c-error); cursor:pointer; font-size:1rem; padding:0 0.2rem; line-height:1; flex-shrink:0; }
+    .cu-remove:hover { color:#922b21; }
+    .cu-empty { text-align:center; color:var(--c-text-sm); font-size:0.88rem; padding:1.5rem 0; }
+    .cu-footer { display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem; border-top:1px solid var(--c-border); padding-top:1rem; }
+    .cu-btn-cancel { padding:0.5rem 1.25rem; border:1px solid var(--c-border); border-radius:6px; background:#fff; cursor:pointer; font-size:0.95rem; }
+    .cu-btn-save   { padding:0.5rem 1.25rem; border:none; border-radius:6px; background:var(--c-primary); color:#fff; font-weight:600; cursor:pointer; font-size:0.95rem; }
+    .cu-btn-save:disabled { opacity:0.6; cursor:default; }
+
+    .page-header { background: var(--c-surface); border-bottom: 1px solid var(--c-border); padding: 1.25rem 2rem; }
+    .page-header h1 { font-size: 1.5rem; font-weight: 600; color: var(--c-primary); margin: 0; }
+    .page-header p  { color: var(--c-text-sm); margin: 0.25rem 0 0; font-size: 0.9rem; }
+  </style>
+{% endblock %}
+
+{% block nav %}
+  <nav class="top-nav">
+    <a class="brand" href="#">&#127979; MathXcel Admin</a>
+    <div class="nav-links">
+      <a href="{{ url_for('lms.admin_home_new') }}">Dashboard</a>
+      <a href="{{ url_for('lms.logout') }}">Sign Out</a>
+    </div>
+  </nav>
+{% endblock %}
+
+{% block body %}
+  <div class="page-header">
+    <h1>Assignment Units</h1>
+    <p>Click a unit to view and reorder its content.</p>
+  </div>
+
+  <div class="main-content">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <a href="{{ url_for('lms.admin_home_new') }}" class="btn btn-sm btn-outline-secondary">&larr; Dashboard</a>
+    </div>
+
+    {% if not areas %}
+      <p class="text-muted">No units found. Create one from the Dashboard.</p>
+    {% endif %}
+
+    <div class="accordion" id="unitsAccordion">
+      {% for area in areas %}
+      {% set area_id = loop.index %}
+      <div class="accordion-item border mb-2 rounded shadow-sm">
+        <h2 class="accordion-header" id="heading-{{ area_id }}">
+          <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+            data-bs-toggle="collapse" data-bs-target="#collapse-{{ area_id }}"
+            aria-expanded="{{ 'true' if loop.first else 'false' }}">
+            {{ area }}
+            <span class="area-count">({{ grouped[area]|length }} unit{{ 's' if grouped[area]|length != 1 }})</span>
+          </button>
+        </h2>
+        <div id="collapse-{{ area_id }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+             data-bs-parent="#unitsAccordion">
+          <div class="accordion-body p-2">
+            {% for unit in grouped[area] %}
+            <div class="unit-row" onclick="openUnit({{ unit.au_id }}, '{{ unit.au_name|e }}')">
+              <span class="unit-name">{{ unit.au_name }}</span>
+              {% if unit.au_topic %}<span class="unit-meta">{{ unit.au_topic }}</span>{% endif %}
+              {% if unit.au_level %}<span class="badge-level">{{ unit.au_level }}</span>{% endif %}
+              <span class="unit-count">
+                {% set cnt = (unit.au_content or '').split('|')|select|list|length %}
+                {{ cnt }} item{{ 's' if cnt != 1 }}
+              </span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div><!-- /.main-content -->
+
+  <!-- Content modal -->
+  <div id="cu-backdrop"></div>
+  <div id="cu-modal" role="dialog" aria-modal="true" aria-labelledby="cu-title">
+    <h2 id="cu-title">Unit Content</h2>
+    <p class="subtitle">Drag to reorder &middot; click ✕ to remove</p>
+    <div id="cu-error" style="display:none;color:var(--c-error);font-size:0.85rem;margin-bottom:0.75rem;"></div>
+    <ul id="cu-item-list"></ul>
+    <p id="cu-empty" class="cu-empty" style="display:none;">No content yet.</p>
+    <div class="cu-footer">
+      <button class="cu-btn-cancel" onclick="closeUnit()">Cancel</button>
+      <button class="cu-btn-save" id="cu-save-btn" onclick="saveUnit()">Save Order</button>
+    </div>
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    let currentAuId = null;
+    let sortable = null;
+
+    function openUnit(auId, auName) {
+      currentAuId = auId;
+      document.getElementById('cu-title').textContent = auName;
+      document.getElementById('cu-item-list').innerHTML = '';
+      document.getElementById('cu-empty').style.display = 'none';
+      document.getElementById('cu-error').style.display = 'none';
+      document.getElementById('cu-save-btn').disabled = true;
+
+      document.getElementById('cu-backdrop').style.display = 'block';
+      document.getElementById('cu-modal').style.display = 'block';
+
+      fetch(`/units/${auId}/content`)
+        .then(r => r.json())
+        .then(data => {
+          if (!data.ok) { showCuError(data.error || 'Failed to load content.'); return; }
+          renderItems(data.items);
+          document.getElementById('cu-save-btn').disabled = false;
+        })
+        .catch(() => showCuError('Network error loading content.'));
+    }
+
+    function renderItems(items) {
+      const list = document.getElementById('cu-item-list');
+      list.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        document.getElementById('cu-empty').style.display = 'block';
+        return;
+      }
+      document.getElementById('cu-empty').style.display = 'none';
+
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.className = 'cu-item';
+        li.dataset.code = item.code;
+
+        const badgeClass = item.type === 'video' ? 'cu-badge-v' : item.type === 'quiz' ? 'cu-badge-q' : 'cu-badge-u';
+        const badgeLabel = item.type === 'video' ? 'V' : item.type === 'quiz' ? 'Q' : '?';
+        const warnHtml   = item.found ? '' : ' <span class="warn">&#9888; not found</span>';
+
+        li.innerHTML = `
+          <span class="cu-drag-handle">&#8597;</span>
+          <span class="${badgeClass}">${badgeLabel}</span>
+          <span class="cu-item-label">
+            <span class="code">${item.code}</span>: <span class="name">${escHtml(item.name)}</span>${warnHtml}
+          </span>
+          <button class="cu-remove" title="Remove" onclick="removeItem(this)">&#10005;</button>
+        `;
+        list.appendChild(li);
+      });
+
+      // Init / reinit SortableJS
+      if (sortable) sortable.destroy();
+      sortable = Sortable.create(list, { animation: 150, ghostClass: 'sortable-ghost', handle: '.cu-drag-handle' });
+    }
+
+    function removeItem(btn) {
+      const li = btn.closest('.cu-item');
+      li.remove();
+      if (document.querySelectorAll('.cu-item').length === 0) {
+        document.getElementById('cu-empty').style.display = 'block';
+      }
+    }
+
+    function saveUnit() {
+      const codes = [...document.querySelectorAll('.cu-item')].map(li => li.dataset.code);
+      const btn = document.getElementById('cu-save-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      fetch(`/units/${currentAuId}/save-content`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ codes })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          closeUnit();
+          location.reload();   // refresh item counts
+        } else {
+          showCuError(data.error || 'Save failed.');
+        }
+      })
+      .catch(() => showCuError('Network error. Please try again.'))
+      .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Save Order';
+      });
+    }
+
+    function closeUnit() {
+      document.getElementById('cu-backdrop').style.display = 'none';
+      document.getElementById('cu-modal').style.display = 'none';
+      currentAuId = null;
+    }
+
+    function showCuError(msg) {
+      const el = document.getElementById('cu-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    document.getElementById('cu-backdrop').addEventListener('click', closeUnit);
+  </script>
+{% endblock %}

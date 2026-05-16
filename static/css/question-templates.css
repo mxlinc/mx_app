@@ -1,0 +1,631 @@
+/**
+ * Question Templates CSS
+ * Unified styling for all question types - SINGLE SOURCE OF TRUTH
+ * Ensures identical rendering everywhere
+ */
+
+/* ===== BASE QUESTION STRUCTURE ===== */
+.template-question {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 0;
+    margin: 0;
+}
+
+/* Question stem (the actual question text) */
+.template-stem {
+    font-family: 'Lora', 'Merriweather', serif;
+    font-size: clamp(1.05rem, 2.5vw, 1.25rem);
+    line-height: 1.7;
+    color: var(--c-text, #1a2d3d);
+    margin: 0;
+    padding: 0;
+}
+
+/* Question image (if present) */
+.template-image {
+    width: 100%;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.template-image img {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+/* ===== MCQ/MR SHARED STYLES ===== */
+.template-options-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0;
+    flex: 1;
+}
+
+.template-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0;
+}
+
+.template-radio,
+.template-checkbox {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: var(--c-primary, #4c51bf);
+}
+
+.template-option-label {
+    font-family: 'Lora', 'Merriweather', serif;
+    font-size: clamp(0.95rem, 1.8vw, 1.05rem);
+    color: var(--c-text, #1a2d3d);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+    margin: 0;
+}
+
+.template-option-label:hover {
+    background: var(--c-primary-xlt, rgba(76, 81, 191, 0.07));
+}
+
+.template-radio:checked + .template-option-label,
+.template-checkbox:checked + .template-option-label {
+}
+
+/* ===== MCQ SPECIFIC ===== */
+.template-mcq-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ===== MR SPECIFIC ===== */
+.template-mr-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* ===== FILL SPECIFIC ===== */
+.template-blanks-container {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    margin: 12px 0;
+}
+
+.template-blank-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* Inline variant: label — input — label_after on one wrapped line */
+.template-blank-wrapper.template-blank-inline {
+    align-items: baseline;
+    gap: 8px;
+}
+
+.template-blank-label-after {
+    font-family: 'Lora', 'Merriweather', serif;
+    font-size: clamp(1.05rem, 2.5vw, 1.25rem);
+    color: #1a1a1a;
+    font-weight: 500;
+    flex-shrink: 0;
+    line-height: 1.7;
+}
+
+.template-blank-label {
+    font-family: 'Lora', 'Merriweather', serif;
+    font-size: clamp(1.05rem, 2.5vw, 1.25rem);
+    color: #1a1a1a;
+    font-weight: 500;
+    flex-shrink: 0;
+    line-height: 1.7;
+}
+
+.template-blank-input {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    padding: 10px 12px;
+    border: 2px solid var(--c-border, #cfe0ed);
+    border-radius: 4px;
+    background: var(--c-bg, #f4f8fb);
+    color: var(--c-text, #1a2d3d);
+    transition: border-color 0.2s ease;
+    width: 180px;
+    -moz-appearance: textfield;
+}
+.template-blank-input::-webkit-outer-spin-button,
+.template-blank-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.blank-feedback-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.blank-feedback-icon {
+    font-size: 1.2em;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.blank-feedback-icon.correct  { color: #4caf50; }
+.blank-feedback-icon.incorrect { color: #f44336; }
+
+.blank-correct-hint {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.9em;
+    color: #12324A;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.blank-correct-value {
+    background: #c8f0c8;
+    color: #1a5c1a;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 4px;
+}
+
+/* Inline fraction inside feedback hint */
+.hint-fraction {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+    vertical-align: middle;
+    margin: 0 2px;
+}
+.hint-fraction-num,
+.hint-fraction-den {
+    font-size: 0.85em;
+    line-height: 1.2;
+}
+.hint-fraction-bar {
+    width: 100%;
+    min-width: 14px;
+    height: 1.5px;
+    background: currentColor;
+    margin: 1px 0;
+}
+
+.template-blank-input:focus {
+    outline: none;
+    border-color: #4a7ba7;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(74, 123, 167, 0.1);
+}
+
+/* Fraction widget */
+.template-fraction-input {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    border: 2px solid var(--c-border, #cfe0ed);
+    border-radius: 6px;
+    padding: 6px 10px;
+    background: var(--c-bg, #f4f8fb);
+    transition: border-color 0.2s ease;
+}
+
+.template-fraction-num,
+.template-fraction-den {
+    width: 80px;
+    text-align: center;
+    border: none;
+    background: transparent;
+    font-family: 'Poppins', sans-serif;
+    font-size: 1rem;
+    color: var(--c-text, #1a2d3d);
+    padding: 4px 2px;
+    outline: none;
+    -moz-appearance: textfield;
+}
+
+.template-fraction-num::-webkit-outer-spin-button,
+.template-fraction-num::-webkit-inner-spin-button,
+.template-fraction-den::-webkit-outer-spin-button,
+.template-fraction-den::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.template-fraction-bar {
+    width: 100%;
+    height: 2px;
+    background: #555;
+    margin: 2px 0;
+    border-radius: 1px;
+}
+
+.template-fraction-input:focus-within {
+    border-color: #4a7ba7;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(74, 123, 167, 0.1);
+}
+
+.template-fraction-input.correct-answer {
+    border-color: #4caf50;
+    background: #f1f8f1;
+}
+
+.template-fraction-input.incorrect-answer {
+    border-color: #f44336;
+    background: #fff5f5;
+}
+
+/* ===== OHS SPECIFIC (On Hotspot) ===== */
+.template-ohs-container {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+    margin: 12px 0;
+}
+
+.template-ohs-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+}
+
+.template-ohs-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: crosshair;
+}
+
+@keyframes ohs-pulse {
+    0%   { transform: scale(1);   opacity: 0.65; }
+    80%  { transform: scale(2.1); opacity: 0.1;  }
+    100% { transform: scale(2.3); opacity: 0;    }
+}
+.ohs-pulse-ring {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ohs-pulse 1.4s ease-out infinite;
+}
+
+/* ===== FEVAL SPECIFIC (Function Evaluation) ===== */
+.template-feval-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin: 12px 0;
+}
+
+.template-feval-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    background: #f5f5f2;
+    border-radius: 4px;
+    border-left: 4px solid var(--c-primary, #4c51bf);
+}
+
+.template-feval-input {
+    font-family: 'Lora', 'Merriweather', serif;
+    font-size: 0.95rem;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.template-feval-answer {
+    font-family: 'Poppins', monospace;
+    font-size: 0.9rem;
+    padding: 8px 10px;
+    border: 2px solid #d0d0c8;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1a1a1a;
+    transition: border-color 0.2s ease;
+}
+
+.template-feval-answer:focus {
+    outline: none;
+    border-color: var(--c-primary, #4c51bf);
+    box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.12);
+}
+
+/* ===== ERROR STATE ===== */
+.template-error {
+    padding: 16px;
+    background: #ffe6e6;
+    border: 1px solid #ff6b6b;
+    border-radius: 4px;
+    color: #c92a2a;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+}
+
+/* ===== FEEDBACK STYLES ===== */
+.template-feedback {
+    padding: 12px 16px;
+    border-radius: 4px;
+    margin: 12px 0;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.95rem;
+}
+
+.template-feedback.correct {
+    background: #e7f5e9;
+    color: #2d7a4f;
+    border-left: 4px solid #51cf66;
+}
+
+.template-feedback.incorrect {
+    background: none;
+    color: #7b1a1a;
+    border: none;
+    font-style: italic;
+}
+
+/* ===== QUESTION BLOCK PANEL LAYOUT =====
+   Canonical layout for .question-block container.
+   This is the SINGLE SOURCE OF TRUTH — do not duplicate in templates.
+*/
+.question-block > .template-question {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 32px 40px;
+    gap: 20px;
+}
+
+.question-block .template-stem {
+    flex-shrink: 0;
+    font-size: clamp(1.05em, 2.5vw, 1.25em);
+    font-weight: 500;
+    color: #1a1a1a;
+    line-height: 1.7;
+    font-family: 'Lora', 'Merriweather', serif;
+    margin: 0;
+    padding: 0;
+}
+
+.question-block .template-image {
+    flex-shrink: 1;
+    max-height: 25vh;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0;
+    padding: 0;
+}
+
+.question-block .template-image img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.question-block .template-options-container,
+.question-block .template-blanks-container,
+.question-block .template-feval-container {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 8px;
+}
+
+.question-block .template-options-container::-webkit-scrollbar,
+.question-block .template-blanks-container::-webkit-scrollbar,
+.question-block .template-feval-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.question-block .template-options-container::-webkit-scrollbar-thumb,
+.question-block .template-blanks-container::-webkit-scrollbar-thumb,
+.question-block .template-feval-container::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 3px;
+}
+
+.question-block .template-options-container::-webkit-scrollbar-thumb:hover,
+.question-block .template-blanks-container::-webkit-scrollbar-thumb:hover,
+.question-block .template-feval-container::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+.question-block .template-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0;
+    padding: 12px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.question-block .template-option:hover {
+    background: rgba(74, 123, 167, 0.05);
+}
+
+.question-block .template-option.correct-option {
+    background: #c8e6c9;
+    border-radius: 6px;
+}
+
+.question-block .template-option.correct-option .template-option-label {
+    color: #1b5e20;
+    font-weight: 700;
+}
+
+.question-block .template-option.incorrect-option {
+    background: #ffcdd2;
+    border-radius: 6px;
+}
+
+.question-block .template-option.incorrect-option .template-option-label {
+    color: #b71c1c;
+}
+
+.option-feedback-icon {
+    font-size: 1.2em;
+    font-weight: bold;
+    flex-shrink: 0;
+    min-width: 1.4em;
+    text-align: center;
+}
+
+.template-option.correct-option .option-feedback-icon {
+    color: #4caf50;
+}
+
+.template-option.incorrect-option .option-feedback-icon {
+    color: #f44336;
+}
+
+.question-block .template-option-label {
+    font-family: 'Lora', 'Merriweather', serif;
+    font-size: clamp(0.95rem, 1.8vw, 1.05rem);
+    color: #1a1a1a;
+    cursor: pointer;
+    line-height: 1.6;
+    margin: 0;
+    padding: 0;
+}
+
+.question-block .template-blank-input {
+    border: 1.5px solid #ccc;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 0.95em;
+    font-family: 'Poppins', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.question-block .template-blank-input:focus {
+    outline: none;
+    border-color: var(--c-primary, #4c51bf);
+    box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.1);
+}
+
+/* ===== INPUT CORRECT / INCORRECT STATES (FILL, FEVAL) ===== */
+.template-blank-input.correct-answer,
+.template-feval-answer.correct-answer {
+    border-color: #4caf50;
+    background: #f1f8f1;
+}
+
+.template-blank-input.incorrect-answer,
+.template-feval-answer.incorrect-answer {
+    border-color: #f44336;
+    background: #fff5f5;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .template-question {
+        gap: 16px;
+    }
+
+    .template-stem {
+        font-size: 0.95rem;
+    }
+
+    .template-options-container,
+    .template-blanks-container,
+    .template-feval-container {
+        gap: 10px;
+    }
+}
+
+/* ===== ALGEBRA SPECIFIC ===== */
+.template-algebra-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.template-algebra-input {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px 14px;
+    font-size: 1rem;
+    font-family: 'Poppins', monospace;
+    border: 2px solid #d0d0c8;
+    border-radius: 8px;
+    background: #fff;
+    color: #1a1a1a;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.template-algebra-input:focus,
+.template-algebra-container.focused .template-algebra-input {
+    border-color: var(--c-primary, #4c51bf);
+    box-shadow: 0 0 0 3px rgba(76, 81, 191, 0.12);
+}
+
+.template-algebra-input.correct-answer {
+    border-color: #4caf50;
+    background: #f1f8f1;
+}
+
+.template-algebra-input.incorrect-answer {
+    border-color: #f44336;
+    background: #fff5f5;
+}
+
+.template-algebra-hint {
+    margin: 0;
+    font-size: 0.82rem;
+    color: #888;
+    font-family: 'Poppins', sans-serif;
+}
+
+.template-algebra-hint code {
+    background: #f5f5f5;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.9em;
+}
+
+/* Inline layout (with label_after) reuses fill's .template-blank-inline — constrain width */
+.template-blank-inline .template-algebra-input {
+    width: 160px;
+    max-width: 200px;
+}
+
+.question-block .template-algebra-container {
+    flex: 1;
+    min-height: 0;
+}

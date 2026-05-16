@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assign Units to Students</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        h1 { color: #333; margin-top: 0; }
+
+        .assignment-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            border-left: 4px solid #2c6e9e;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        /* ---- Multiselect (student picker) ---- */
+        .multiselect-container { position: relative; }
+        .multiselect-box {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            background: white;
+            cursor: pointer;
+            min-height: 40px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            align-items: center;
+        }
+        .multiselect-box:focus-within { border-color: #2c6e9e; box-shadow: 0 0 0 3px rgba(44,110,158,0.12); }
+        .tag {
+            background: #2c6e9e;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .tag .remove { cursor: pointer; font-weight: bold; }
+        .multiselect-input { border: none; outline: none; flex: 1; min-width: 150px; padding: 5px 0; font-size: 14px; }
+        .dropdown-list {
+            position: absolute;
+            top: 100%; left: 0; right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            border-radius: 0 0 4px 4px;
+        }
+        .dropdown-list.show { display: block; }
+        .dropdown-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+        .dropdown-item:hover { background: #f0f0f0; }
+        .dropdown-item input[type="checkbox"] { margin-right: 8px; }
+
+        /* ---- Unit table filters ---- */
+        .filters-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 12px;
+            margin-bottom: 15px;
+            align-items: end;
+        }
+        @media (max-width: 700px) { .filters-row { grid-template-columns: 1fr; } }
+        .filter-group { display: flex; flex-direction: column; }
+        .filter-group label { font-size: 13px; font-weight: 600; margin-bottom: 5px; color: #333; }
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .filter-group input:focus,
+        .filter-group select:focus { outline: none; border-color: #2c6e9e; box-shadow: 0 0 0 3px rgba(44,110,158,0.12); }
+
+        /* ---- Buttons ---- */
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .btn-primary   { background: #2c6e9e; color: white; }
+        .btn-primary:hover { background: #1a4f73; }
+        .btn-success   { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        .btn:disabled  { opacity: 0.6; cursor: not-allowed; }
+
+        /* ---- Unit Table ---- */
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        thead { background: #f8f9fa; border-bottom: 2px solid #dee2e6; }
+        th    { padding: 12px; text-align: left; font-weight: 600; color: #333; }
+        td    { padding: 12px; border-bottom: 1px solid #dee2e6; font-size: 0.93em; }
+        tbody tr:hover { background: #f4f8fb; }
+        .checkbox-col { width: 40px; }
+        .checkbox-col input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+
+        .badge-level {
+            background: #2c6e9e;
+            color: white;
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: 0.78em;
+            font-weight: 600;
+        }
+        .item-count {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1565c0;
+            border-radius: 10px;
+            padding: 2px 9px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        /* ---- Selection info ---- */
+        .selection-info {
+            background: #e7f3ff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .selection-info.show { display: block; }
+        .info-badge {
+            background: #2c6e9e;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .clear-selection { display: inline-block; margin-left: 10px; color: #2c6e9e; cursor: pointer; text-decoration: underline; }
+
+        /* ---- Messages ---- */
+        .message {
+            padding: 14px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            display: none;
+            font-size: 15px;
+        }
+        .message.show  { display: block; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        /* ---- Loading ---- */
+        .loading { text-align: center; padding: 20px; color: #666; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📚 Assign Units to Students</h1>
+
+    <!-- ========== 1. SELECT STUDENTS ========== -->
+    <div class="assignment-section">
+        <div class="section-title">1. Select Students</div>
+        <div class="multiselect-container">
+            <div class="multiselect-box" id="userSelectBox">
+                <input type="text" class="multiselect-input" id="userSearch" placeholder="Search by name or username...">
+            </div>
+            <div class="dropdown-list" id="userDropdown"></div>
+        </div>
+        <small style="color:#666;margin-top:8px;display:block;">Select one or more students to assign units to</small>
+    </div>
+
+    <!-- ========== 2. SELECT UNITS ========== -->
+    <div class="assignment-section">
+        <div class="section-title">2. Select Units</div>
+
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Filter by Area</label>
+                <select id="areaFilter" onchange="filterUnits()">
+                    <option value="">All Areas</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Search by Name</label>
+                <input type="text" id="nameSearch" placeholder="Search unit name..." oninput="filterUnits()">
+            </div>
+            <button class="btn btn-primary" onclick="filterUnits()">Apply</button>
+        </div>
+
+        <div class="selection-info" id="selectionInfo">
+            <span class="info-badge" id="unitCountBadge">0 units selected</span>
+            <span class="clear-selection" onclick="clearUnitSelection()">Clear</span>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="checkbox-col">
+                            <input type="checkbox" id="selectAllUnits" onchange="toggleSelectAll()">
+                        </th>
+                        <th>Area</th>
+                        <th>Unit Name</th>
+                        <th>Topic</th>
+                        <th>Level</th>
+                        <th>Items</th>
+                    </tr>
+                </thead>
+                <tbody id="unitTableBody">
+                    <tr><td colspan="6" class="loading">Loading units…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========== MESSAGE + BUTTON ========== -->
+    <div class="message" id="message"></div>
+
+    <div style="text-align:center;margin-top:20px;">
+        <button class="btn btn-success" id="assignBtn" onclick="assignUnits()" style="padding:12px 36px;font-size:16px;">
+            ✓ Assign Selected Units
+        </button>
+    </div>
+</div>
+
+<script>
+// ==================== STATE ====================
+const state = {
+    selectedUsers: [],
+    selectedUnits: [],   // au_id array
+    allUsers: [],
+    allUnits: [],
+    visibleUnits: [],    // filtered view
+};
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', async () => {
+    await Promise.all([loadUsers(), loadUnits()]);
+});
+
+// ==================== STUDENTS ====================
+async function loadUsers() {
+    try {
+        const r = await fetch('/unit/api/users');
+        const d = await r.json();
+        if (d.ok) {
+            state.allUsers = d.users;
+            renderUserDropdown();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function renderUserDropdown() {
+    const dropdown = document.getElementById('userDropdown');
+    const term     = document.getElementById('userSearch').value.toLowerCase();
+    const filtered = state.allUsers.filter(u =>
+        u.full_name.toLowerCase().includes(term) ||
+        u.username.toLowerCase().includes(term)
+    );
+    dropdown.innerHTML = filtered.map(u => `
+        <div class="dropdown-item">
+            <input type="checkbox"
+                   value="${u.id}"
+                   ${state.selectedUsers.includes(u.id) ? 'checked' : ''}
+                   onchange="toggleUser(${u.id})">
+            <span>${u.full_name} (${u.username})</span>
+        </div>
+    `).join('');
+}
+
+function toggleUser(userId) {
+    const idx = state.selectedUsers.indexOf(userId);
+    if (idx > -1) state.selectedUsers.splice(idx, 1);
+    else          state.selectedUsers.push(userId);
+    renderUserDropdown();
+    updateUserTags();
+}
+
+document.getElementById('userSearch').addEventListener('input', renderUserDropdown);
+
+document.getElementById('userSelectBox').addEventListener('click', e => {
+    if (!e.target.closest('.dropdown-item'))
+        document.getElementById('userDropdown').classList.toggle('show');
+});
+
+document.addEventListener('click', e => {
+    if (!e.target.closest('.multiselect-container'))
+        document.getElementById('userDropdown').classList.remove('show');
+});
+
+function updateUserTags() {
+    const box  = document.getElementById('userSelectBox');
+    const tags = state.selectedUsers.map(id => {
+        const u = state.allUsers.find(u => u.id === id);
+        return `<span class="tag">${u.full_name} <span class="remove" onclick="toggleUser(${id})">×</span></span>`;
+    }).join('');
+    box.innerHTML = tags + `<input type="text" class="multiselect-input" id="userSearch" placeholder="Search…">`;
+    document.getElementById('userSearch').addEventListener('input', renderUserDropdown);
+}
+
+// ==================== UNITS ====================
+async function loadUnits() {
+    try {
+        const r = await fetch('/unit/api/units');
+        const d = await r.json();
+        if (d.ok) {
+            state.allUnits = d.units;
+            // Populate area dropdown
+            const areas = [...new Set(d.units.map(u => u.au_area).filter(Boolean))].sort();
+            const sel   = document.getElementById('areaFilter');
+            areas.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a; opt.textContent = a;
+                sel.appendChild(opt);
+            });
+            state.visibleUnits = [...state.allUnits];
+            renderUnitTable();
+        }
+    } catch (e) {
+        console.error(e);
+        document.getElementById('unitTableBody').innerHTML =
+            '<tr><td colspan="6" class="loading">Failed to load units.</td></tr>';
+    }
+}
+
+function filterUnits() {
+    const area = document.getElementById('areaFilter').value.toLowerCase();
+    const name = document.getElementById('nameSearch').value.toLowerCase();
+    state.visibleUnits = state.allUnits.filter(u =>
+        (!area || u.au_area.toLowerCase() === area) &&
+        (!name || u.au_name.toLowerCase().includes(name))
+    );
+    renderUnitTable();
+}
+
+function renderUnitTable() {
+    const tbody = document.getElementById('unitTableBody');
+    if (state.visibleUnits.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="loading">No units found.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = state.visibleUnits.map(u => `
+        <tr>
+            <td class="checkbox-col">
+                <input type="checkbox"
+                       value="${u.au_id}"
+                       ${state.selectedUnits.includes(u.au_id) ? 'checked' : ''}
+                       onchange="toggleUnit(${u.au_id})">
+            </td>
+            <td>${escHtml(u.au_area)}</td>
+            <td><strong>${escHtml(u.au_name)}</strong></td>
+            <td>${escHtml(u.au_topic)}</td>
+            <td>${u.au_level ? `<span class="badge-level">${escHtml(u.au_level)}</span>` : '—'}</td>
+            <td><span class="item-count">${u.item_count}</span></td>
+        </tr>
+    `).join('');
+
+    // Sync select-all checkbox state
+    const allCheckboxes = [...document.querySelectorAll('#unitTableBody input[type="checkbox"]')];
+    const checkedCount  = allCheckboxes.filter(cb => state.selectedUnits.includes(parseInt(cb.value))).length;
+    const selectAll     = document.getElementById('selectAllUnits');
+    selectAll.checked       = checkedCount > 0 && checkedCount === allCheckboxes.length;
+    selectAll.indeterminate = checkedCount > 0 && checkedCount < allCheckboxes.length;
+}
+
+function toggleUnit(auId) {
+    const idx = state.selectedUnits.indexOf(auId);
+    if (idx > -1) state.selectedUnits.splice(idx, 1);
+    else          state.selectedUnits.push(auId);
+    renderUnitTable();
+    updateUnitSelectionInfo();
+}
+
+function toggleSelectAll() {
+    const checked  = document.getElementById('selectAllUnits').checked;
+    const visible  = state.visibleUnits.map(u => u.au_id);
+    if (checked) {
+        visible.forEach(id => { if (!state.selectedUnits.includes(id)) state.selectedUnits.push(id); });
+    } else {
+        state.selectedUnits = state.selectedUnits.filter(id => !visible.includes(id));
+    }
+    renderUnitTable();
+    updateUnitSelectionInfo();
+}
+
+function updateUnitSelectionInfo() {
+    const info  = document.getElementById('selectionInfo');
+    const badge = document.getElementById('unitCountBadge');
+    const n     = state.selectedUnits.length;
+    badge.textContent = `${n} unit${n !== 1 ? 's' : ''} selected`;
+    info.classList.toggle('show', n > 0);
+}
+
+function clearUnitSelection() {
+    state.selectedUnits = [];
+    renderUnitTable();
+    updateUnitSelectionInfo();
+}
+
+// ==================== ASSIGN ====================
+async function assignUnits() {
+    if (state.selectedUsers.length === 0) {
+        showMessage('Please select at least one student.', 'error'); return;
+    }
+    if (state.selectedUnits.length === 0) {
+        showMessage('Please select at least one unit.', 'error'); return;
+    }
+
+    const btn = document.getElementById('assignBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Assigning…';
+    hideMessage();
+
+    try {
+        const r = await fetch('/unit/api/assign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                user_ids: state.selectedUsers,
+                au_ids:   state.selectedUnits,
+            }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+            showMessage(`✓ ${d.message}`, 'success');
+            clearUnitSelection();
+        } else {
+            showMessage(d.error || 'Assignment failed.', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        showMessage('Network error. Please try again.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '✓ Assign Selected Units';
+    }
+}
+
+// ==================== HELPERS ====================
+function showMessage(msg, type) {
+    const el = document.getElementById('message');
+    el.textContent = msg;
+    el.className   = `message show ${type}`;
+}
+
+function hideMessage() {
+    document.getElementById('message').className = 'message';
+}
+
+function escHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>

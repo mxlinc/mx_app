@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lessons</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --color-primary:    #2c6e9e;
+      --color-primary-lt: #d6eaf8;
+      --color-accent:     #3a9e6e;
+      --color-bg:         #f4f8fb;
+      --color-surface:    #ffffff;
+      --color-text:       #1a2d3d;
+      --color-muted:      #6c8a9e;
+      --color-border:     #cfe0ed;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      min-height: 100vh;
+    }
+
+    .top-nav {
+      background: var(--color-primary);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .top-nav .brand { color: #fff; font-size: 1.1rem; font-weight: 600; text-decoration: none; }
+    .top-nav .nav-links a { color: rgba(255,255,255,0.85); text-decoration: none; margin-left: 1.25rem; font-size: 0.9rem; }
+    .top-nav .nav-links a:hover { color: #fff; }
+
+    .page-header {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: 1.25rem 2rem;
+    }
+    .page-header h1 { font-size: 1.5rem; font-weight: 600; color: var(--color-primary); margin: 0; }
+    .page-header p  { color: var(--color-muted); margin: 0.25rem 0 0; font-size: 0.9rem; }
+
+    .main-content { padding: 2rem; max-width: 1000px; margin: 0 auto; }
+
+    .accordion-button:not(.collapsed) { background: var(--color-primary-lt); color: var(--color-primary); }
+    .accordion-button { font-weight: 600; }
+    .area-count { font-size: 0.8rem; font-weight: 400; color: var(--color-muted); margin-left: 0.5rem; }
+
+    .lesson-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--color-border); }
+    .lesson-row:last-child { border-bottom: none; }
+    .lesson-row:hover { background: var(--color-primary-lt); border-radius: 4px; }
+    .lesson-row a { color: var(--color-primary); font-size: 0.93rem; text-decoration: none; }
+    .lesson-row a:hover { text-decoration: underline; }
+
+    /* Sticky Add-to-Unit toolbar */
+    #add-to-unit-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--color-primary);
+      color: #fff;
+      padding: 0.85rem 2rem;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1050;
+      box-shadow: 0 -2px 12px rgba(0,0,0,0.15);
+    }
+    #add-to-unit-bar.visible { display: flex; }
+    #add-to-unit-bar .selection-info { font-size: 0.95rem; }
+    #add-to-unit-bar .bar-actions { display: flex; gap: 0.75rem; }
+    #btn-add-to-unit { background: #fff; color: var(--color-primary); border: none; padding: 0.5rem 1.25rem; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    #btn-clear-sel   { background: transparent; color: rgba(255,255,255,0.8); border: 1px solid rgba(255,255,255,0.4); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <nav class="top-nav">
+    <a class="brand" href="#">&#127979; MathXcel Admin</a>
+    <div class="nav-links">
+      <a href="{{ url_for('lms.admin_home_new') }}">Dashboard</a>
+      <a href="{{ url_for('lms.logout') }}">Sign Out</a>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <h1>Lessons</h1>
+    <p>Browse lessons by area. Select one or more to add to an Assignment Unit.</p>
+  </div>
+
+  <div class="main-content pb-5">
+
+    <!-- Select-all / deselect-all -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <a href="{{ url_for('lms.admin_home_new') }}" class="btn btn-sm btn-outline-secondary">&larr; Dashboard</a>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-primary" id="btn-select-all">Select All</button>
+        <button class="btn btn-sm btn-outline-secondary" id="btn-deselect-all">Deselect All</button>
+      </div>
+    </div>
+
+    <div class="accordion" id="lessonsAccordion">
+      {% for area in areas %}
+      {% set area_id = loop.index %}
+      <div class="accordion-item border mb-2 rounded shadow-sm">
+        <h2 class="accordion-header" id="heading-{{ area_id }}">
+          <button class="accordion-button {% if not loop.first %}collapsed{% endif %}" type="button"
+            data-bs-toggle="collapse" data-bs-target="#collapse-{{ area_id }}"
+            aria-expanded="{{ 'true' if loop.first else 'false' }}"
+            aria-controls="collapse-{{ area_id }}">
+            {{ area }}
+            <span class="area-count">({{ grouped[area]|length }} lesson{{ 's' if grouped[area]|length != 1 }})</span>
+          </button>
+        </h2>
+        <div id="collapse-{{ area_id }}" class="accordion-collapse collapse {% if loop.first %}show{% endif %}"
+          aria-labelledby="heading-{{ area_id }}" data-bs-parent="#lessonsAccordion">
+          <div class="accordion-body p-2">
+            {% for lesson in grouped[area] %}
+            <div class="lesson-row">
+              <input class="form-check-input lesson-cb flex-shrink-0" type="checkbox"
+                value="{{ lesson.id }}"
+                data-code="{{ lesson.lesson_code }}"
+                data-name="{{ lesson.display_name }}"
+                id="lesson-{{ lesson.id }}" />
+              <label for="lesson-{{ lesson.id }}" class="flex-grow-1 mb-0" style="cursor:pointer;">
+                <a href="https://mx-app-mm.onrender.com/packages/advanced/{{ lesson.file_name }}"
+                   target="_blank" rel="noopener">{{ lesson.lesson_code }}: {{ lesson.display_name }}</a>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+  </div>
+
+  <!-- Add-to-Unit Modal -->
+  <div id="atu-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1040;"></div>
+  <div id="atu-modal" role="dialog" aria-modal="true" aria-labelledby="atu-title"
+       style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+              background:#fff;border-radius:10px;padding:2rem;width:min(520px,95vw);
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1050;">
+    <h2 id="atu-title" style="font-size:1.15rem;font-weight:600;color:var(--color-primary);margin:0 0 1.25rem;">
+      Add to Assignment Unit
+    </h2>
+    <div id="atu-error" style="display:none;color:#c0392b;font-size:0.88rem;margin-bottom:0.75rem;"></div>
+
+    <!-- Selected videos summary -->
+    <div style="margin-bottom:1rem;background:var(--color-primary-lt);border-radius:6px;padding:0.65rem 0.85rem;font-size:0.88rem;">
+      <strong>Selected:</strong> <span id="atu-selected-list"></span>
+    </div>
+
+    <!-- Area dropdown -->
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Area</label>
+      <select id="atu-area" onchange="atuLoadUnits()"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+        <option value="">— select area —</option>
+      </select>
+    </div>
+
+    <!-- Unit Name dropdown -->
+    <div style="margin-bottom:0.75rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Unit</label>
+      <select id="atu-unit" onchange="atuShowContent()"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+        <option value="">— select unit —</option>
+      </select>
+    </div>
+
+    <!-- Existing content preview -->
+    <div id="atu-existing-wrap" style="display:none;margin-bottom:1.25rem;font-size:0.85rem;color:var(--color-muted);">
+      <strong>Current content:</strong>
+      <div id="atu-existing" style="margin-top:0.3rem;word-break:break-all;"></div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+      <button onclick="atuClose()"
+              style="padding:0.5rem 1.25rem;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;font-size:0.95rem;">
+        Cancel
+      </button>
+      <button id="atu-save-btn" onclick="atuSave()" disabled
+              style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:var(--color-primary);color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;opacity:0.6;">
+        Add to Unit
+      </button>
+    </div>
+  </div>
+
+  <!-- Sticky Add-to-Unit bar -->
+  <div id="add-to-unit-bar">
+    <span class="selection-info"><span id="sel-count">0</span> lesson(s) selected</span>
+    <div class="bar-actions">
+      <button id="btn-clear-sel" type="button">Clear</button>
+      <button id="btn-add-to-unit" type="button">Add to Unit</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const bar      = document.getElementById('add-to-unit-bar');
+    const selCount = document.getElementById('sel-count');
+
+    function updateBar() {
+      const checked = document.querySelectorAll('.lesson-cb:checked');
+      const n = checked.length;
+      selCount.textContent = n;
+      bar.classList.toggle('visible', n > 0);
+    }
+
+    document.querySelectorAll('.lesson-cb').forEach(cb => cb.addEventListener('change', updateBar));
+
+    document.getElementById('btn-select-all').addEventListener('click', () => {
+      document.querySelectorAll('.lesson-cb').forEach(cb => cb.checked = true);
+      updateBar();
+    });
+
+    document.getElementById('btn-deselect-all').addEventListener('click', () => {
+      document.querySelectorAll('.lesson-cb').forEach(cb => cb.checked = false);
+      updateBar();
+    });
+
+    document.getElementById('btn-clear-sel').addEventListener('click', () => {
+      document.querySelectorAll('.lesson-cb').forEach(cb => cb.checked = false);
+      updateBar();
+    });
+
+    // ── Add-to-Unit modal ──────────────────────────────────────────
+    let atuUnitsData = [];   // cache units returned for selected area
+
+    document.getElementById('btn-add-to-unit').addEventListener('click', () => {
+      const selected = [...document.querySelectorAll('.lesson-cb:checked')];
+      if (!selected.length) return;
+
+      // Show selected codes in summary line
+      const codes = selected.map(cb => cb.dataset.code).filter(Boolean);
+      document.getElementById('atu-selected-list').textContent = codes.join(', ');
+
+      // Reset dropdowns & state
+      document.getElementById('atu-area').innerHTML = '<option value="">— select area —</option>';
+      document.getElementById('atu-unit').innerHTML = '<option value="">— select unit —</option>';
+      document.getElementById('atu-existing-wrap').style.display = 'none';
+      document.getElementById('atu-error').style.display = 'none';
+      atuSetSaveEnabled(false);
+      atuUnitsData = [];
+
+      // Load areas from /units/options
+      fetch('/units/options')
+        .then(r => r.json())
+        .then(data => {
+          const sel = document.getElementById('atu-area');
+          (data.areas || []).forEach(a => {
+            const o = document.createElement('option');
+            o.value = o.textContent = a;
+            sel.appendChild(o);
+          });
+        });
+
+      // Show modal
+      document.getElementById('atu-backdrop').style.display = 'block';
+      document.getElementById('atu-modal').style.display = 'block';
+    });
+
+    function atuLoadUnits() {
+      const area = document.getElementById('atu-area').value;
+      const unitSel = document.getElementById('atu-unit');
+      unitSel.innerHTML = '<option value="">— select unit —</option>';
+      document.getElementById('atu-existing-wrap').style.display = 'none';
+      atuSetSaveEnabled(false);
+      atuUnitsData = [];
+      if (!area) return;
+
+      fetch('/units/by-area?area=' + encodeURIComponent(area))
+        .then(r => r.json())
+        .then(data => {
+          atuUnitsData = data.units || [];
+          atuUnitsData.forEach(u => {
+            const o = document.createElement('option');
+            o.value = u.au_id;
+            o.textContent = u.au_name;
+            unitSel.appendChild(o);
+          });
+        });
+    }
+
+    function atuShowContent() {
+      const auId = document.getElementById('atu-unit').value;
+      const wrap = document.getElementById('atu-existing-wrap');
+      const div  = document.getElementById('atu-existing');
+      if (!auId) { wrap.style.display = 'none'; atuSetSaveEnabled(false); return; }
+      const unit = atuUnitsData.find(u => String(u.au_id) === String(auId));
+      if (unit) {
+        div.textContent = unit.au_content || '(empty)';
+        wrap.style.display = 'block';
+        atuSetSaveEnabled(true);
+      }
+    }
+
+    function atuSetSaveEnabled(enabled) {
+      const btn = document.getElementById('atu-save-btn');
+      btn.disabled = !enabled;
+      btn.style.opacity = enabled ? '1' : '0.6';
+    }
+
+    function atuClose() {
+      document.getElementById('atu-backdrop').style.display = 'none';
+      document.getElementById('atu-modal').style.display = 'none';
+    }
+
+    function atuSave() {
+      const auId = document.getElementById('atu-unit').value;
+      if (!auId) return;
+      const codes = [...document.querySelectorAll('.lesson-cb:checked')]
+                      .map(cb => cb.dataset.code).filter(Boolean);
+      const btn = document.getElementById('atu-save-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+
+      fetch('/units/add-videos', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ au_id: parseInt(auId), codes })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          atuClose();
+          document.querySelectorAll('.lesson-cb').forEach(cb => cb.checked = false);
+          updateBar();
+        } else {
+          const errEl = document.getElementById('atu-error');
+          errEl.textContent = data.error || 'An error occurred.';
+          errEl.style.display = 'block';
+        }
+      })
+      .catch(() => {
+        const errEl = document.getElementById('atu-error');
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Add to Unit';
+        atuSetSaveEnabled(true);
+      });
+    }
+
+    document.getElementById('atu-backdrop').addEventListener('click', atuClose);
+  </script>
+</body>
+</html>

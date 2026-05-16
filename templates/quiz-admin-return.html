@@ -124,10 +124,10 @@
 <body>
     <div class="container">
         <div class="icon">✓</div>
-        <h1>Quiz Complete!</h1>
+        <h1 id="pageTitle">Quiz Complete!</h1>
         
         <div class="message">
-            <p>You have successfully completed the quiz.</p>
+            <p id="pageMessage">You have successfully completed the quiz.</p>
         </div>
 
         <div class="mode-info" id="modeInfo"></div>
@@ -138,7 +138,7 @@
         </div>
 
         <div class="footer">
-            <p>You can now review your results or create a new quiz.</p>
+            <p id="pageFooter">You can now review your results or create a new quiz.</p>
         </div>
     </div>
 
@@ -147,11 +147,28 @@
             window.history.back();
         }
 
-        // Display mode information
+        // Display mode information and user_quiz_id
         const urlParams = new URLSearchParams(window.location.search);
         const from = urlParams.get('from') || 'unknown';
-        const modeText = from === 'preview' ? 'Quiz Preview' : 'Quiz Execution';
-        document.getElementById('modeInfo').innerHTML = `<strong>Mode:</strong> ${modeText}`;
+        const userQuizId = urlParams.get('user_quiz_id');
+        const status = urlParams.get('status') || 'normal';
+        
+        // Handle already_completed status (retake attempt)
+        if (status === 'already_completed') {
+            document.getElementById('pageTitle').textContent = 'Quiz Already Completed';
+            document.getElementById('pageMessage').textContent = 'This quiz has already been completed. Retakes are not allowed.';
+            document.getElementById('pageFooter').textContent = 'Please navigate to view other available quizzes.';
+            document.querySelector('.icon').textContent = '⚠️';
+        }
+        
+        const modeText = from === 'execution' ? 'Execution (Stored)' : 'Preview (Ephemeral)';
+        let modeHtml = `<strong>Mode:</strong> ${modeText}`;
+        
+        if (userQuizId) {
+            modeHtml += `<br><strong>Quiz Session ID:</strong> ${userQuizId}`;
+        }
+        
+        document.getElementById('modeInfo').innerHTML = modeHtml;
     </script>
 </body>
 </html>

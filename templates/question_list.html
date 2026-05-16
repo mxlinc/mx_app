@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question Bank</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .header {
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .filter-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 15px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            min-width: 200px;
+        }
+
+        .filter-group select:focus,
+        .filter-group input:focus {
+            outline: none;
+            border-color: #4c51bf;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.95em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-search {
+            background: #4c51bf;
+            color: white;
+        }
+
+        .btn-search:hover {
+            background: #3730a3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn-reset {
+            background: #ecf0f1;
+            color: #333;
+        }
+
+        .btn-reset:hover {
+            background: #d5dbdb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4c51bf;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .table-section {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h2 {
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .table-info {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        th {
+            padding: 15px 12px;
+            text-align: left;
+            font-weight: 700;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        td {
+            padding: 15px 12px;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 0.95em;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+            transition: background 0.2s;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .id-cell {
+            font-weight: 600;
+            color: #4c51bf;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .id-cell:hover {
+            text-decoration: underline;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .type-mcq {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .type-fill {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .type-mr {
+            background: #fce4ec;
+            color: #c2185b;
+        }
+
+        .type-ohs {
+            background: #e0f2f1;
+            color: #00796b;
+        }
+
+        .stem-cell,
+        .input-cell {
+            color: #666;
+            font-size: 0.9em;
+            max-width: 300px;
+            word-break: break-word;
+        }
+
+        .empty-state {
+            padding: 60px 20px;
+            text-align: center;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.3em;
+            margin-bottom: 10px;
+            color: #666;
+        }
+
+        .pagination {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            border: 1px solid #e0e0e0;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #e8e8e8;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-btn.active {
+            background: #4c51bf;
+            color: white;
+            border-color: #4c51bf;
+        }
+
+        .pagination-info {
+            margin: 0 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .error-message {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            color: #c62828;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .selection-bar {
+            background: #e3f2fd;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .selection-bar.show {
+            display: flex;
+        }
+
+        .selection-info {
+            font-weight: 600;
+            color: #1976d2;
+        }
+
+        .btn-create-quiz {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-create-quiz:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-delete:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+        }
+
+        .btn-resync {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-resync:hover {
+            background: #e65100;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+        }
+
+        .btn-resync:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .checkbox-col {
+            width: 50px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .modal-header p {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .close-btn {
+            float: right;
+            font-size: 1.5em;
+            color: #999;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #4c51bf;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 25px;
+        }
+
+        .btn-cancel {
+            background: #ecf0f1;
+            color: #333;
+        }
+
+        .btn-cancel:hover {
+            background: #d5dbdb;
+        }
+
+        .btn-create {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-create:hover {
+            background: #45a049;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .filter-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group select,
+            .filter-group input {
+                min-width: 100%;
+            }
+
+            .filter-buttons {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            .table-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .table-wrapper {
+                font-size: 0.9em;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+
+            .pagination {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
+    </style>
+    <!-- MathJax for LaTeX rendering -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h1>📚 Question Bank</h1>
+                <p>Browse and manage all quiz questions</p>
+            </div>
+            <div style="padding-top: 8px;">
+                <button class="btn-resync" id="resyncBtn" onclick="runResync()" title="Rebuild quiz snapshots for all recently edited questions">🔄 Re-sync Quizzes <span id="resyncCount"></span></button>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="selection-bar" id="selectionBar">
+            <div class="selection-info">
+                <span id="selectedCount">0</span> question(s) selected
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn-create-quiz" onclick="openCreateQuizModal()">📝 Create Quiz</button>
+                <button class="btn-create-quiz" style="background:#2e7d32" onclick="generateSheet()">📄 Generate Sheet</button>
+                <button class="btn-delete" onclick="deleteSelectedQuestions()">🗑️ Delete</button>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-group">
+                <label for="topicFilter">Filter by Topic</label>
+                <select id="topicFilter">
+                    <option value="">All Topics</option>
+                </select>
+            </div>
+            <div class="filter-buttons">
+                <button class="btn-search" onclick="loadQuestions(1)">Search</button>
+                <button class="btn-reset" onclick="resetFilters()">Reset</button>
+            </div>
+            <div class="filter-group" style="align-self:center;">
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;font-size:0.9em;white-space:nowrap;">
+                    <input type="checkbox" id="unusedFilter" checked onchange="loadQuestions(1)" style="width:18px;height:18px;">
+                    Show Unused Only
+                </label>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px; color: #666;">Loading questions...</p>
+        </div>
+
+        <div class="table-section" id="tableSection" style="display: none;">
+            <div class="table-header">
+                <h2>Questions</h2>
+                <div class="table-info">
+                    <span id="recordInfo"></span>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="checkbox-col">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                            </th>
+                            <th style="width: 80px;">ID</th>
+                            <th style="width: 80px;">Type</th>
+                            <th style="width: 150px;">Topic</th>
+                            <th>Question (Stem)</th>
+                            <th>Input Details</th>
+                            <th style="width: 140px;">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="questionsTable">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" id="pagination"></div>
+        </div>
+
+        <div class="empty-state" id="emptyState" style="display: none;">
+            <div class="empty-state-icon">📭</div>
+            <h3>No questions found</h3>
+            <p>Try adjusting your filters or create new questions</p>
+        </div>
+    </div>
+
+    <!-- Create Quiz Modal -->
+    <div class="modal" id="createQuizModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="close-btn" onclick="closeCreateQuizModal()">&times;</button>
+                <h2>Create New Quiz</h2>
+                <p id="modalQuestionsInfo"></p>
+            </div>
+            <form onsubmit="submitCreateQuiz(event)">
+                <div class="form-group">
+                    <label for="quizTitle">Quiz Title *</label>
+                    <input type="text" id="quizTitle" placeholder="e.g., Algebra Basics" required>
+                </div>
+                <div class="form-group">
+                    <label for="quizDescription">Description</label>
+                    <textarea id="quizDescription" placeholder="Enter quiz description (optional)"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="quizTopic">Topic</label>
+                    <input type="text" id="quizTopic" placeholder="e.g., Algebra">
+                </div>
+                <div class="form-group">
+                    <label for="quizSubtopic">Subtopic</label>
+                    <input type="text" id="quizSubtopic" placeholder="e.g., Linear Equations">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeCreateQuizModal()">Cancel</button>
+                    <button type="submit" class="btn-create">Create Quiz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        let totalPages = 1;
+        let selectedQuestions = new Set();
+        let isLoadingPage = false; // Flag to prevent onchange during page load
+
+        // Read ids from URL if present (e.g. navigated from quiz list)
+        const _urlIds = new URLSearchParams(window.location.search).get('ids') || '';
+
+        // Load topics on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTopics();
+            loadQuestions(1);
+            loadResyncCount();
+        });
+
+        function loadResyncCount() {
+            fetch('/quiz/api/resync-quizzes/count')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('resyncCount');
+                    const btn = document.getElementById('resyncBtn');
+                    if (data.ok && data.pending > 0) {
+                        badge.textContent = `(${data.pending} pending)`;
+                        btn.disabled = false;
+                    } else {
+                        badge.textContent = '';
+                        btn.disabled = true;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function runResync() {
+            const btn = document.getElementById('resyncBtn');
+            btn.disabled = true;
+            btn.textContent = '🔄 Syncing...';
+
+            fetch('/quiz/api/resync-quizzes', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.synced > 0) {
+                        showSuccess(data.message);
+                        // Brief visible confirmation before the badge clears
+                        const errorDiv = document.getElementById('errorMessage');
+                        errorDiv.style.background = '#e8f5e9';
+                        errorDiv.style.borderLeftColor = '#4caf50';
+                        errorDiv.style.color = '#2e7d32';
+                        errorDiv.textContent = data.message;
+                        errorDiv.classList.add('show');
+                        setTimeout(() => {
+                            errorDiv.classList.remove('show');
+                            errorDiv.style.background = '';
+                            errorDiv.style.borderLeftColor = '';
+                            errorDiv.style.color = '';
+                        }, 4000);
+                    }
+                    if (data.failed && data.failed.length > 0) {
+                        showError(`Re-sync failed for question IDs: ${data.failed.join(', ')}`);
+                    }
+                    btn.textContent = '🔄 Re-sync Quizzes ';
+                    loadResyncCount();
+                })
+                .catch(() => {
+                    showError('Re-sync request failed. Please try again.');
+                    btn.textContent = '🔄 Re-sync Quizzes ';
+                    loadResyncCount();
+                });
+        }
+
+        function loadTopics() {
+            fetch('/quiz/api/topics')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.ok) {
+                        const select = document.getElementById('topicFilter');
+                        const currentValue = select.value;
+                        
+                        // Clear existing options except the first one
+                        while (select.options.length > 1) {
+                            select.remove(1);
+                        }
+                        
+                        // Add topics
+                        data.topics.forEach(topic => {
+                            const option = document.createElement('option');
+                            option.value = topic;
+                            option.textContent = topic;
+                            select.appendChild(option);
+                        });
+                        
+                        // Restore previous selection
+                        select.value = currentValue;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading topics:', error);
+                    showError('Failed to load topics');
+                });
+        }
+
+        function loadQuestions(page) {
+            currentPage = page;
+            const topic = document.getElementById('topicFilter').value;
+            const unused = document.getElementById('unusedFilter').checked;
+            
+            showLoading(true);
+            hideError();
+            isLoadingPage = true; // Set flag to prevent onchange during load
+
+            let url = `/question/api/page?page=${page}`;
+            if (_urlIds) {
+                url += `&ids=${encodeURIComponent(_urlIds)}`;
+            } else if (topic) {
+                url += `&topic=${encodeURIComponent(topic)}`;
+            }
+            if (unused && !_urlIds) url += `&unused=1`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    showLoading(false);
+                    
+                    if (data.ok) {
+                        if (data.items.length === 0) {
+                            showEmptyState();
+                        } else {
+                            renderTable(data);
+                            renderPagination(data);
+                            document.getElementById('tableSection').style.display = 'block';
+                            document.getElementById('emptyState').style.display = 'none';
+                            
+                            const start = (page - 1) * 50 + 1;
+                            const end = Math.min(page * 50, data.total);
+                            document.getElementById('recordInfo').textContent = 
+                                `Showing ${start} to ${end} of ${data.total} questions`;
+                        }
+                    } else {
+                        showError(data.error || 'Failed to load questions');
+                    }
+                    
+                    // Clear flag after page is loaded
+                    isLoadingPage = false;
+                })
+                .catch(error => {
+                    showLoading(false);
+                    console.error('Error:', error);
+                    showError('Failed to load questions. Please try again.');
+                    isLoadingPage = false;
+                });
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('questionsTable');
+            tbody.innerHTML = '';
+
+            data.items.forEach(question => {
+                const row = document.createElement('tr');
+                
+                const typeClass = `type-${question.type.toLowerCase()}`;
+                const typeBadge = `<span class="type-badge ${typeClass}">${question.type}</span>`;
+                
+                // Check if this question is in the selectedQuestions set
+                const isSelected = selectedQuestions.has(question.id);
+                console.log(`Question ${question.id}: isSelected=${isSelected}, selectedSet=${Array.from(selectedQuestions)}`);
+                
+                row.innerHTML = `
+                    <td class="checkbox-col">
+                        <input type="checkbox" 
+                               value="${question.id}" 
+                               ${isSelected ? 'checked' : ''} 
+                               onchange="updateSelectedQuestions()">
+                    </td>
+                    <td>
+                        <a href="/question/display/${question.id}" class="id-cell" title="View question">
+                            ${question.id}
+                        </a>
+                    </td>
+                    <td>${typeBadge}</td>
+                    <td><strong>${question.topic}</strong></td>
+                    <td class="stem-cell" title="${question.stem}">${question.stem}</td>
+                    <td class="input-cell" title="${question.input}">${question.input}</td>
+                    <td>${question.created_at}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+            
+            // Trigger MathJax to render LaTeX in the stem cells
+            // Use setTimeout to give the DOM time to settle before rendering
+            setTimeout(() => {
+                if (window.MathJax && window.MathJax.typesetPromise) {
+                    MathJax.typesetPromise()
+                        .catch(err => console.log('MathJax error:', err));
+                }
+            }, 50);
+            
+            console.log('Table rendered. Current selections:', selectedQuestions);
+        }
+
+        function updateSelectedQuestions() {
+            // Skip during page load to prevent clearing selections
+            if (isLoadingPage) {
+                return;
+            }
+            
+            // Only touch IDs visible on this page — preserve other pages' selections
+            const checkboxes = document.querySelectorAll('#questionsTable input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                const id = parseInt(checkbox.value);
+                if (checkbox.checked) {
+                    selectedQuestions.add(id);
+                } else {
+                    selectedQuestions.delete(id);
+                }
+            });
+            
+            updateSelectionUI();
+        }
+
+        function toggleSelectAll(checkbox) {
+            const checkboxes = document.querySelectorAll('#questionsTable input[type="checkbox"]');
+            checkboxes.forEach(cb => {
+                cb.checked = checkbox.checked;
+            });
+            updateSelectedQuestions();
+        }
+
+        function updateSelectionUI() {
+            const count = selectedQuestions.size;
+            const selectionBar = document.getElementById('selectionBar');
+            
+            if (count === 0) {
+                selectionBar.classList.remove('show');
+                document.getElementById('selectAllCheckbox').checked = false;
+            } else {
+                selectionBar.classList.add('show');
+                document.getElementById('selectedCount').textContent = count;
+            }
+        }
+
+        function generateSheet() {
+            if (selectedQuestions.size === 0) {
+                showError('Please select at least one question');
+                return;
+            }
+            const ids = Array.from(selectedQuestions).join(',');
+            window.location.href = `/question/generate-sheet?ids=${ids}`;
+        }
+
+        function openCreateQuizModal() {
+            console.log('openCreateQuizModal called. Selected:', selectedQuestions);
+            if (selectedQuestions.size === 0) {
+                showError('Please select at least one question');
+                return;
+            }
+            
+            document.getElementById('modalQuestionsInfo').textContent = 
+                `Creating quiz with ${selectedQuestions.size} question(s)`;
+            document.getElementById('createQuizModal').classList.add('show');
+        }
+
+        function closeCreateQuizModal() {
+            document.getElementById('createQuizModal').classList.remove('show');
+            // Reset form
+            document.getElementById('quizTitle').value = '';
+            document.getElementById('quizDescription').value = '';
+            document.getElementById('quizTopic').value = '';
+            document.getElementById('quizSubtopic').value = '';
+        }
+
+        function submitCreateQuiz(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('quizTitle').value.trim();
+            if (!title) {
+                showError('Quiz title is required');
+                return;
+            }
+            
+            const data = {
+                title: title,
+                description: document.getElementById('quizDescription').value.trim(),
+                topic: document.getElementById('quizTopic').value.trim(),
+                subtopic: document.getElementById('quizSubtopic').value.trim(),
+                question_ids: Array.from(selectedQuestions)
+            };
+            
+            console.log('Submitting quiz creation:', data);
+            console.log('Selected questions:', selectedQuestions);
+            
+            // Show loading state
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Creating...';
+            submitBtn.disabled = true;
+            
+            fetch('/quiz/api/create-quiz', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                
+                if (result.ok) {
+                    closeCreateQuizModal();
+                    showSuccess(`Quiz "${data.title}" created!`);
+                    selectedQuestions.clear();
+                    updateSelectionUI();
+                    setTimeout(() => {
+                        window.location.href = `/quiz/list`;
+                    }, 1000);
+                } else {
+                    showError(result.error || 'Failed to create quiz');
+                }
+            })
+            .catch(error => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                console.error('Error:', error);
+                showError('Failed to create quiz. Please try again.');
+            });
+        }
+
+        function renderPagination(data) {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            totalPages = data.pages;
+
+            if (data.pages === 1) {
+                pagination.innerHTML = `<div class="pagination-info">1 page</div>`;
+                return;
+            }
+
+            // Previous button
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'pagination-btn';
+            prevBtn.textContent = '← Previous';
+            prevBtn.disabled = !data.has_prev;
+            prevBtn.onclick = () => loadQuestions(currentPage - 1);
+            pagination.appendChild(prevBtn);
+
+            // Page numbers
+            pagination.appendChild(createPaginationInfo());
+
+            // Generate page buttons (show current page and neighbors)
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(data.pages, currentPage + 2);
+
+            if (startPage > 1) {
+                const firstBtn = createPageButton(1, 1 === currentPage);
+                pagination.appendChild(firstBtn);
+                
+                if (startPage > 2) {
+                    const dots = document.createElement('span');
+                    dots.className = 'pagination-info';
+                    dots.textContent = '...';
+                    pagination.appendChild(dots);
+                }
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                const btn = createPageButton(i, i === currentPage);
+                pagination.appendChild(btn);
+            }
+
+            if (endPage < data.pages) {
+                if (endPage < data.pages - 1) {
+                    const dots = document.createElement('span');
+                    dots.className = 'pagination-info';
+                    dots.textContent = '...';
+                    pagination.appendChild(dots);
+                }
+                
+                const lastBtn = createPageButton(data.pages, data.pages === currentPage);
+                pagination.appendChild(lastBtn);
+            }
+
+            // Next button
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'pagination-btn';
+            nextBtn.textContent = 'Next →';
+            nextBtn.disabled = !data.has_next;
+            nextBtn.onclick = () => loadQuestions(currentPage + 1);
+            pagination.appendChild(nextBtn);
+        }
+
+        function createPageButton(pageNum, isActive) {
+            const btn = document.createElement('button');
+            btn.className = `pagination-btn ${isActive ? 'active' : ''}`;
+            btn.textContent = pageNum;
+            btn.onclick = () => loadQuestions(pageNum);
+            return btn;
+        }
+
+        function createPaginationInfo() {
+            const info = document.createElement('div');
+            info.className = 'pagination-info';
+            info.textContent = `Page ${currentPage} of ${totalPages}`;
+            return info;
+        }
+
+        function resetFilters() {
+            document.getElementById('topicFilter').value = '';
+            document.getElementById('unusedFilter').checked = true;
+            loadQuestions(1);
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').classList.toggle('show', show);
+        }
+
+        function showEmptyState() {
+            document.getElementById('tableSection').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'block';
+            showLoading(false);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        function showSuccess(message) {
+            // You could replace this with a better notification
+            console.log('Success:', message);
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('show');
+        }
+
+        function deleteSelectedQuestions() {
+            if (selectedQuestions.size === 0) {
+                showError('Please select at least one question');
+                return;
+            }
+            
+            const count = selectedQuestions.size;
+            const message = count === 1 
+                ? 'Are you sure you want to delete this question? This action cannot be undone.'
+                : `Are you sure you want to delete ${count} questions? This action cannot be undone.`;
+            
+            if (!confirm(message)) {
+                return;
+            }
+            
+            const data = {
+                question_ids: Array.from(selectedQuestions)
+            };
+            
+            console.log('Deleting questions:', data);
+            
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = 'Deleting...';
+            errorDiv.classList.add('show');
+            
+            fetch('/question/api/delete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                hideError();
+                
+                if (result.ok) {
+                    showError(`Successfully deleted ${result.deleted_count} question(s)`);
+                    selectedQuestions.clear();
+                    updateSelectionUI();
+                    setTimeout(() => {
+                        loadQuestions(currentPage);
+                    }, 1000);
+                } else {
+                    showError(result.error || 'Failed to delete questions');
+                }
+            })
+            .catch(error => {
+                hideError();
+                console.error('Error:', error);
+                showError('Failed to delete questions. Please try again.');
+            });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('createQuizModal');
+            if (event.target === modal) {
+                closeCreateQuizModal();
+            }
+        }
+    </script>
+</body>
+</html>

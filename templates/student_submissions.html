@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Recent Submissions – MX Learning{% endblock %}
+
+{% block head_extra %}
+  <style>
+    /* Dot-grid background — matches student_new */
+    body {
+      background-image:
+        radial-gradient(circle, rgba(31,111,174,0.055) 1px, transparent 1px),
+        radial-gradient(circle, rgba(34,166,166,0.04) 1px, transparent 1px);
+      background-size: 38px 38px, 76px 76px;
+      background-position: 0 0, 19px 19px;
+    }
+
+    /* Column-specific styles */
+    .td-code     { font-weight: 700; color: var(--c-primary-dk); white-space: nowrap; }
+    .td-unit     { color: var(--c-text-sm); font-size: 0.82rem; }
+    .td-score    { font-weight: 700; color: var(--c-accent); white-space: nowrap; }
+    .td-incorrect { color: var(--c-text); font-size: 0.88rem; }
+    .td-incorrect.all-correct { color: var(--c-accent); font-weight: 600; }
+
+    /* Retake button */
+    .btn-retake {
+      background: transparent;
+      color: var(--c-primary);
+      border: 1.5px solid var(--c-primary);
+      border-radius: var(--radius-sm);
+      padding: 0.25rem 0.65rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-retake:hover     { background: var(--c-primary); color: #fff; }
+    .btn-retake:disabled  { opacity: 0.5; cursor: default; }
+  </style>
+{% endblock %}
+
+{% block body %}
+
+  <div class="user-bar">
+    <span class="welcome-text">Recent Submissions for <span class="student-name">{{ student_name }}</span></span>
+    <div class="nav-links">
+      <a class="btn-nav" href="{{ url_for('lms.student_home_new') }}">&#8592; My Work</a>
+      <a class="btn-nav-outline" href="{{ url_for('lms.logout') }}">Sign Out</a>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    {% if not submissions %}
+      <div class="empty-state">
+        <div class="icon">&#128203;</div>
+        <p>No completed quizzes yet. Finish a quiz to see your results here!</p>
+      </div>
+    {% else %}
+
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Quiz</th>
+          <th>Unit</th>
+          <th>Score</th>
+          <th>Incorrect</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in submissions %}
+        <tr id="row-{{ loop.index }}">
+          <td class="td-code">{{ s.code }}</td>
+          <td class="td-name">{{ s.name }}</td>
+          <td class="td-unit">{{ s.au_name }}</td>
+          <td class="td-score">{{ s.score }}</td>
+          <td class="td-incorrect {% if s.incorrect == 'All Correct' %}all-correct{% endif %}">{{ s.incorrect }}</td>
+          <td>
+            {% if s.quiz_id %}
+            <button class="btn-retake"
+                    data-quiz-id="{{ s.quiz_id }}"
+                    data-user-id="{{ user_id }}"
+                    data-row="row-{{ loop.index }}"
+                    onclick="resetAndRetake(this)">
+              Reset &amp; Retake
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% endif %}
+  </div>
+
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    async function resetAndRetake(btn) {
+      btn.disabled = true;
+      btn.textContent = 'Resetting…';
+      const quizId = btn.dataset.quizId;
+      const userId = btn.dataset.userId;
+      try {
+        const res = await fetch('/quiz/api/reset-execution', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ quiz_id: parseInt(quizId), user_id: parseInt(userId) }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          window.location.href = `/quiz/execute?user=${userId}&quiz=${quizId}`;
+        } else {
+          alert('Reset failed: ' + (data.error || 'Unknown error'));
+          btn.disabled = false;
+          btn.textContent = 'Reset & Retake';
+        }
+      } catch (err) {
+        alert('Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Reset & Retake';
+      }
+    }
+  </script>
+{% endblock %}

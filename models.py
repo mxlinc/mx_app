@@ -12,7 +12,7 @@ class UserTable(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, unique=True)
     full_name = db.Column(db.String)
-    user_role = db.Column(db.String)   # admin / teacher / student
+    user_role = db.Column(db.String)   # admin / teacher / student_new / student
     password_hash = db.Column(db.String)  # for demo only, use hashing in prod
     is_active = db.Column(db.Boolean, default=True)
     # Controls whether the user should appear on assignment lists
@@ -98,6 +98,38 @@ class ContactSubmission(db.Model):
     sms_sent_at = db.Column(db.DateTime)
 
 
+class Video(db.Model):
+    __tablename__ = 'videos'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    id           = db.Column(db.Integer, primary_key=True)
+    lesson_code  = db.Column(db.String(10))
+    last_updated = db.Column(db.DateTime, server_default=db.func.now())
+    file_name    = db.Column(db.String(255), nullable=False)
+    display_name = db.Column(db.String(255), nullable=False)
+    broad_area   = db.Column(db.String(100))
+
+
+class AUnit(db.Model):
+    __tablename__ = 'a_unit'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    au_id        = db.Column(db.Integer, primary_key=True)
+    au_area      = db.Column(db.String(100))
+    au_name      = db.Column(db.String(255), nullable=False)
+    au_topic     = db.Column(db.String(255))
+    au_level     = db.Column(db.String(2))
+    au_content   = db.Column(db.Text)
+    last_updated = db.Column(db.DateTime, server_default=db.func.now())
+
+
+class FormatHelper(db.Model):
+    __tablename__ = 'format_helper'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    id             = db.Column(db.Integer, primary_key=True)
+    item           = db.Column(db.String(100), nullable=False)
+    latex_snippet  = db.Column(db.Text, nullable=False)
+    sort_order     = db.Column(db.Integer, default=0, nullable=False)
+
+
 class QBank(db.Model):
     __tablename__ = 'q_bank'
     __table_args__ = {'schema': CURRENT_SCHEMA}
@@ -109,6 +141,7 @@ class QBank(db.Model):
     level = db.Column(db.String(1))
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
+    sync_required = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
 
 
 class Quiz(db.Model):
@@ -117,69 +150,63 @@ class Quiz(db.Model):
     __table_args__ = {'schema': CURRENT_SCHEMA}
     
     id = db.Column(db.Integer, primary_key=True)
+    quiz_code = db.Column(db.String(10))
     title = db.Column(db.String(300), nullable=False)
     description = db.Column(db.Text)
     topic = db.Column(db.String(100))
     subtopic = db.Column(db.String(100))
     question_ids = db.Column(db.String(5000))  # Comma-separated question IDs from q_bank
     question_count = db.Column(db.Integer, default=0)
+    questions_json = db.Column(db.JSON)        # Pre-baked HTML question list; rebuilt on save/question-edit
+    status = db.Column(db.String(20), default='draft')  # 'draft' or 'published'
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
 
 
-class UserQuiz(db.Model):
-    """User quiz execution tracking - stores user attempts and responses."""
-    __tablename__ = 'user_quiz'
+
+class QuizExecution(db.Model):
+    """Per-question answer record for a quiz session."""
+    __tablename__ = 'quiz_execution'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('user_id', 'quiz_id', 'question_id'),
+        {'schema': CURRENT_SCHEMA},
+    )
+
+    user_id           = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.user_table.id', ondelete='CASCADE'), nullable=False)
+    quiz_id           = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.quiz.id',       ondelete='CASCADE'), nullable=False)
+    question_id       = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.q_bank.id',     ondelete='CASCADE'), nullable=False)
+    question_sequence = db.Column(db.Integer, nullable=False)
+    user_answer       = db.Column(db.String)
+    correct_answer    = db.Column(db.String)
+    is_correct        = db.Column(db.Boolean)
+    created_at        = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at        = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+
+class MyWorkList(db.Model):
+    """Student work queue — one row per assigned item (quiz or video) per student."""
+    __tablename__ = 'my_work_list'
     __table_args__ = {'schema': CURRENT_SCHEMA}
-    
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.user_table.id'), nullable=False)
-    quiz_id = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.quiz.id'), nullable=False)
-    status = db.Column(db.String(50), default='in_progress')  # in_progress, completed, abandoned
-    score = db.Column(db.Integer, default=0)
-    responses = db.Column(db.Text)  # JSON string storing all responses {question_id: {answer, is_correct, feedback}}
-    started_at = db.Column(db.DateTime, default=db.func.now())
-    completed_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=db.func.now())
-    updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
+
+    id           = db.Column(db.Integer, primary_key=True)
+    user         = db.Column(db.String(100), nullable=False)
+    au_name      = db.Column(db.String(255), nullable=False)
+    item_code    = db.Column(db.String(20),  nullable=False)
+    item_detail  = db.Column(db.Text)
+    views        = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    status       = db.Column(db.String(20),  nullable=False, default='assigned', server_default='assigned')
+    score        = db.Column(db.String(20))
+    incorrect    = db.Column(db.Text)
+    last_updated       = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+    user_id            = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.user_table.id', ondelete='SET NULL'), nullable=True)
+    questions_answered = db.Column(db.Integer, nullable=False, default=0, server_default='0')
 
 
-# ==================== MONTESSORI SYSTEM (Separate from LMS) ==================== #
-
-class MUser(db.Model):
-    """Montessori student users - separate from LMS user_table."""
-    __tablename__ = 'muser'
+class UserStreak(db.Model):
+    """Per-student running correct-answer streak counter."""
+    __tablename__ = 'user_streak'
     __table_args__ = {'schema': CURRENT_SCHEMA}
-    
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
-    token = db.Column(db.String(50), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.now())
 
-
-class MontessoriPackage(db.Model):
-    """Montessori learning material packages."""
-    __tablename__ = 'montessori_package'
-    __table_args__ = {'schema': CURRENT_SCHEMA}
-    
-    id = db.Column(db.Integer, primary_key=True)
-    subject = db.Column(db.String(200), nullable=False)
-    topic = db.Column(db.String(300), nullable=False)
-    work = db.Column(db.String(300), nullable=False)
-    link = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=db.func.now())
-    updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
-    is_deleted = db.Column(db.Boolean, default=False)
-
-
-class MUserPackage(db.Model):
-    """Assignment of packages to Montessori students with tracking."""
-    __tablename__ = 'muser_package'
-    __table_args__ = {'schema': CURRENT_SCHEMA}
-    
-    id = db.Column(db.Integer, primary_key=True)
-    muser_id = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.muser.id'), nullable=False)
-    package_id = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.montessori_package.id'), nullable=False)
-    assigned_date = db.Column(db.DateTime, default=db.func.now())
-    click_count = db.Column(db.Integer, default=0)
-    last_accessed = db.Column(db.DateTime)
+    user_id    = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.user_table.id', ondelete='CASCADE'), primary_key=True)
+    streak     = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())

@@ -1,306 +1,437 @@
 /**
- * Quiz Controller - Orchestrates quiz flow for preview and execution modes
- * Uses existing type-specific handlers (QuizMCQ, QuizMR, QuizFILL) for rendering
- * 
- * Handles:
- * - Question navigation (next, previous for execution, jump for preview)
- * - Answer submission and validation (delegated to type-specific handlers)
- * - Feedback display (delegated to type-specific handlers)
- * - API calls for execution mode (storing answers)
- * - State management
+ * Quiz Controller
+ * Manages quiz flow in 'execution' and 'preview' modes.
+ * Rendering is fully delegated to UnifiedQuestionComponent — single source of truth.
+ *
+ * Execution mode: /quiz/execute?user=X&quiz=Y
+ *   - Saves each answer to the backend after submit.
+ *   - Shows completion panel after the last question.
+ *
+ * Preview mode: quiz_preview.html
+ *   - No DB writes; shows CLOSE after the last question.
  */
 
+// ── Streak tier config ─────────────────────────────────────────────────────────
+// TEST thresholds (easy to test — swap comments below for production):
+const STREAK_TIERS = [
+    { min:  2, max:  4, flames: '\uD83D\uDD25',             cls: 'tier-1' }, // prod: 2–9
+    { min:  5, max:  6, flames: '\uD83D\uDD25\uD83D\uDD25', cls: 'tier-2' }, // prod: 10–19
+    { min:  7, max:  8, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-3' }, // prod: 20–49
+    { min:  9, max: Infinity, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-4' }, // prod: 50+
+];
+// ── Production thresholds (comment out the block above and uncomment this): ────
+// const STREAK_TIERS = [
+//     { min:  2, max:  9, flames: '\uD83D\uDD25',             cls: 'tier-1' },
+//     { min: 10, max: 19, flames: '\uD83D\uDD25\uD83D\uDD25', cls: 'tier-2' },
+//     { min: 20, max: 49, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-3' },
+//     { min: 50, max: Infinity, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-4' },
+// ];
+
+
 class QuizController {
-    constructor(config) {
-        // Configuration
-        this.mode = config.mode; // 'preview' or 'execution'
-        this.quizId = config.quizId;
-        this.quizTitle_text = config.quizTitle || 'Quiz';
-        this.quizDescription = config.quizDescription || '';
-        this.userId = config.userId; // For execution mode
-        this.questions = config.questions; // Array of question objects
-        this.onClose = config.onClose; // Callback when quiz closes
-        
-        // State
-        this.currentIndex = 0;
-        this.isSubmitted = false;
-        this.currentHandler = null; // Current type-specific handler
-        
-        // DOM References
-        this.container = document.getElementById('quizQuestionDisplay');
-        this.stemContainer = document.getElementById('stemContainer');
-        this.imageContainer = document.getElementById('imageContainer');
-        this.questionImage = document.getElementById('questionImage');
-        this.optionsContainer = document.getElementById('optionsContainer');
-        this.feedbackContainer = document.getElementById('feedbackContainer');
-        this.progressText = document.getElementById('progressText');
-        this.questionJumpSelect = document.getElementById('questionJumpSelect');
-        this.submitBtn = document.getElementById('submitBtn');
-        this.nextBtn = document.getElementById('nextBtn');
-        this.closeBtn = document.getElementById('closeBtn');
-        this.quizTitleEl = document.getElementById('quizTitle');
-        this.quizIdEl = document.getElementById('quizId');
-        
-        this.setupUI();
-        this.attachEventListeners();
+    constructor(options = {}) {
+        this.mode            = options.mode || 'execution';
+        this.quizId          = options.quizId;
+        this.userId          = options.userId;        // execution only
+        this.questions       = options.questions || [];
+        this.currentIndex    = options.startingIndex || 0;
+        this.answeredIds     = new Set(options.answeredIds || []);
+        this.alreadyComplete = options.alreadyComplete || false;
+        this.onClose         = options.onClose || null;
+
+        this.component    = null;
+
+        // DOM refs — set in initialize()
+        this._container    = null;
+        this._submitBtn    = null;
+        this._nextBtn      = null;
+        this._closeBtn     = null;
+        this._progressText = null;
+        this._qIdBadge     = null;
+        this._completion   = null;
+
+        // Streak
+        this.initialStreak    = options.initialStreak || 0;
+        this._streakBadge     = null;
+        this._streakHideTimer = null;
     }
 
-    setupUI() {
-        // Set top band info
-        const modeLabel = this.mode === 'preview' ? 'Preview - ' : '';
-        const titleWithDesc = this.quizDescription 
-            ? `${this.quizTitle_text} - ${this.quizDescription}` 
-            : this.quizTitle_text;
-        this.quizTitleEl.textContent = `${modeLabel}${titleWithDesc}`;
-        this.quizIdEl.textContent = `ID: ${this.quizId}`;
+    initialize() {
+        this._container    = document.getElementById('questionContainer');
+        this._submitBtn    = document.getElementById('submitBtn');
+        this._nextBtn      = document.getElementById('nextBtn');
+        this._closeBtn     = document.getElementById('closeBtn');
+        this._progressText = document.getElementById('progressText');
+        this._qIdBadge     = document.getElementById('questionIdBadge');
+        this._completion   = document.getElementById('completionPanel');
+        this._streakBadge  = document.getElementById('streakBadge');
 
-        // Setup question dropdown for preview mode only
-        if (this.mode === 'preview') {
-            this.questionJumpSelect.style.display = 'block';
-            this.setupQuestionDropdown();
-        } else {
-            this.questionJumpSelect.style.display = 'none';
-        }
-
-        // Display first question
-        this.displayQuestion();
-    }
-
-    setupQuestionDropdown() {
-        this.questions.forEach((q, idx) => {
-            const option = document.createElement('option');
-            option.value = idx;
-            option.textContent = `Question ${idx + 1}`;
-            this.questionJumpSelect.appendChild(option);
-        });
-
-        this.questionJumpSelect.addEventListener('change', (e) => {
-            const idx = parseInt(e.target.value);
-            if (!isNaN(idx)) {
-                this.jumpToQuestion(idx);
-                this.questionJumpSelect.value = ''; // Reset dropdown
-            }
-        });
-    }
-
-    attachEventListeners() {
-        // Fresh listeners
-        this.submitBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.submitAnswer();
-        });
-        this.nextBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.nextQuestion();
-        });
-        this.closeBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            this.closeQuiz();
-        });
-    }
-
-    displayQuestion() {
-        if (this.currentIndex >= this.questions.length) {
-            this.showCompletion();
+        if (!this._container) {
+            console.error('QuizController: #questionContainer not found');
             return;
         }
 
-        const question = this.questions[this.currentIndex];
-        this.isSubmitted = false;
+        this._submitBtn?.addEventListener('click', () => this._handleSubmit());
+        this._nextBtn?.addEventListener('click',   () => this._handleNext());
+        this._closeBtn?.addEventListener('click',  () => this._handleClose());
 
-        // Reset UI
-        this.feedbackContainer.style.display = 'none';
-        this.submitBtn.style.display = 'block';
-        this.nextBtn.style.display = 'none';
-        this.closeBtn.style.display = 'none';
-        this.feedbackContainer.innerHTML = '';
-
-        // Update progress
-        this.progressText.textContent = `Question ${this.currentIndex + 1} of ${this.questions.length}`;
-
-        // Populate stem
-        const stemHtml = question.stem?.html || question.stem?.latex || '';
-        this.stemContainer.innerHTML = stemHtml;
-
-        // Populate image if exists
-        if (question.image?.src) {
-            this.imageContainer.style.display = 'block';
-            this.questionImage.src = question.image.src;
-            this.questionImage.alt = question.image.alt || 'Question image';
-        } else {
-            this.imageContainer.style.display = 'none';
-        }
-
-        // Use type-specific handler to render question
-        this.renderWithTypeHandler(question);
-
-        // Render MathJax
-        this.renderMathJax();
-    }
-
-    /**
-     * Use existing type-specific handlers for consistent rendering
-     */
-    renderWithTypeHandler(question) {
-        const type = question.type?.toLowerCase() || 'mcq';
-        
-        // Create a common-like object for the handler
-        const common = {
-            question: question,
-            clearFeedback: () => {
-                if (this.feedbackContainer) {
-                    this.feedbackContainer.innerHTML = '';
-                    this.feedbackContainer.style.display = 'none';
-                }
+        document.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter') return;
+            if (this._submitBtn && !this._submitBtn.disabled && this._submitBtn.style.display !== 'none') {
+                this._handleSubmit();
             }
-        };
-
-        // Instantiate and render with appropriate handler
-        switch (type) {
-            case 'mcq':
-                this.currentHandler = new QuizMCQ(common);
-                this.currentHandler.render();
-                break;
-            case 'mr':
-                this.currentHandler = new QuizMR(common);
-                this.currentHandler.render();
-                break;
-            case 'fill':
-                this.currentHandler = new QuizFILL(common);
-                this.currentHandler.render();
-                break;
-            default:
-                console.warn(`Unknown question type: ${type}`);
-        }
-    }
-
-    async submitAnswer() {
-        console.log('submitAnswer() called');
-        const question = this.questions[this.currentIndex];
-        const type = question.type?.toLowerCase() || 'mcq';
-
-        try {
-            // Use handler's checkAnswer method
-            if (!this.currentHandler) {
-                console.error('No handler initialized');
-                return;
-            }
-
-            const result = this.currentHandler.checkAnswer();
-            if (result === false) {
-                // Handler showed alert or validation failed
-                return;
-            }
-
-            this.isSubmitted = true;
-
-            // For execution mode, call API to store answer
-            if (this.mode === 'execution') {
-                const userAnswer = this.getHandlerAnswer();
-                const isCorrect = this.currentHandler.isAnswerCorrect ? this.currentHandler.isAnswerCorrect() : false;
-                await this.saveAnswerToDatabase(question, userAnswer, isCorrect);
-            }
-
-            // Show next/close button
-            if (this.currentIndex === this.questions.length - 1) {
-                this.closeBtn.style.display = 'block';
-            } else {
-                this.nextBtn.style.display = 'block';
-            }
-            this.submitBtn.style.display = 'none';
-
-        } catch (error) {
-            console.error('Error submitting answer:', error);
-            alert('Error submitting answer: ' + error.message);
-        }
-    }
-
-    /**
-     * Get answer from current handler
-     */
-    getHandlerAnswer() {
-        if (!this.currentHandler) return null;
-        
-        const type = this.questions[this.currentIndex].type?.toLowerCase() || 'mcq';
-        
-        switch (type) {
-            case 'mcq':
-                return this.currentHandler.selectedOption;
-            case 'mr':
-                return this.currentHandler.selectedOptions || [];
-            case 'fill':
-                return this.currentHandler.answers || {};
-            default:
-                return null;
-        }
-    }
-
-    async saveAnswerToDatabase(question, userAnswer, isCorrect) {
-        try {
-            const payload = {
-                quiz_id: this.quizId,
-                user_id: this.userId,
-                question_id: question.id,
-                question_type: question.type,
-                user_answer: userAnswer,
-                is_correct: isCorrect,
-                feedback: this.feedbackContainer?.textContent || ''
-            };
-
-            const response = await fetch('/quiz/submit-answer', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
+        });
+        document.getElementById('completionCloseBtn')
+            ?.addEventListener('click', () => this._handleClose());
+        document.getElementById('completionResetBtn')
+            ?.addEventListener('click', () => this._handleReset());
+        document.getElementById('calcBtn')
+            ?.addEventListener('click', () => {
+                const q = this.questions[this.currentIndex];
+                const cfg = getCalculatorConfig(q);
+                if (cfg.show) calculatorController.open(cfg);
             });
 
-            if (!response.ok) {
-                console.error('Failed to save answer');
-            }
-        } catch (error) {
-            console.error('Error saving answer to database:', error);
+        if (this.alreadyComplete) {
+            this._showAlreadyCompletePanel();
+        } else {
+            this._loadQuestion();
+        }
+
+        // Seed streak badge from server value (execution mode only)
+        if (this.mode === 'execution') {
+            this._updateStreak(this.initialStreak);
         }
     }
 
-    nextQuestion() {
-        this.currentIndex++;
-        this.displayQuestion();
+    // ── Question loading ────────────────────────────────────────────────────────
+
+    _loadQuestion() {
+        if (this.currentIndex < 0 || this.currentIndex >= this.questions.length) return;
+
+        const question = this.questions[this.currentIndex];
+
+        // Calculator: show/hide button and reset state
+        const calcCfg = getCalculatorConfig(question);
+        const calcBtn = document.getElementById('calcBtn');
+        if (calcBtn) calcBtn.style.display = calcCfg.show ? 'inline-block' : 'none';
+        if (calcCfg.show) {
+            calculatorController.clearState();
+        } else {
+            calculatorController.close();
+        }
+
+        this._container.innerHTML = '';
+        this._showBtn('submitBtn');
+        this._hideBtn('nextBtn');
+        this._hideBtn('closeBtn');
+        this._submitBtn.disabled = false;
+        this._updateProgress(question);
+
+        this.component = new UnifiedQuestionComponent({
+            question,
+            container: this._container,
+            readOnly:  false,
+        });
+        this.component.render();
     }
 
-    jumpToQuestion(index) {
-        if (this.mode === 'preview' && index >= 0 && index < this.questions.length) {
-            this.currentIndex = index;
-            this.displayQuestion();
+    // ── Submit flow ─────────────────────────────────────────────────────────────
+
+    async _handleSubmit() {
+        if (!this.component) return;
+
+        const answer = this.component.getAnswer();
+        if (!answer) {
+            alert('Please provide an answer');
+            return;
+        }
+
+        // Grey out submit immediately so it can't be double-clicked
+        this._submitBtn.disabled = true;
+
+        // Show feedback and lock the question inputs
+        await this.component.submitAnswer();
+
+        const question  = this.questions[this.currentIndex];
+        const isCorrect = this.component.lastIsCorrect;
+        const isLast    = this.currentIndex === this.questions.length - 1;
+
+        if (this.mode === 'execution') {
+            await this._saveAnswer(question, answer, isCorrect);
+        }
+
+        this._hideBtn('submitBtn');
+
+        if (isLast && this.mode !== 'execution') {
+            this._showBtn('closeBtn');
+        } else {
+            this._showBtn('nextBtn');
         }
     }
 
-    async closeQuiz() {
+    _handleNext() {
+        if (this.currentIndex === this.questions.length - 1 && this.mode === 'execution') {
+            this._completeQuiz();
+        } else if (this.currentIndex < this.questions.length - 1) {
+            this.currentIndex++;
+            this._loadQuestion();
+        }
+    }
+
+    _handleClose() {
         if (this.onClose) {
-            this.onClose(this.mode);
+            this.onClose('completed');
+        } else if (this.mode === 'execution') {
+            window.location.href = '/student-new';
+        } else {
+            window.location.href = '/';
         }
     }
 
-    showCompletion() {
-        this.container.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #F7F6F3;">
-                <div style="text-align: center; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);">
-                    <h1 style="color: #2F4A5C; margin-bottom: 20px;">Quiz Complete!</h1>
-                    <p style="color: #666; font-size: 1.1em; margin-bottom: 30px;">Thank you for completing the quiz.</p>
-                    <button onclick="window.location.href='/quiz/admin-return?from=${this.mode}'" 
-                            style="background: #667eea; color: white; padding: 12px 30px; border: none; border-radius: 6px; cursor: pointer; font-size: 1em; font-weight: 600;">
-                        Back to Admin
-                    </button>
-                </div>
-            </div>
-        `;
+    // ── Backend save ────────────────────────────────────────────────────────────
+
+    async _completeQuiz() {
+        try {
+            const res  = await fetch('/quiz/api/complete-quiz', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ user_id: this.userId, quiz_id: this.quizId }),
+            });
+            const data = res.ok ? await res.json() : {};
+            const scoreText = (data.correct != null && data.total != null)
+                ? `${data.correct} out of ${data.total}`
+                : '';
+            this._showCompletionWithScore(scoreText);
+        } catch (err) {
+            console.error('Error completing quiz:', err);
+            this._showCompletionWithScore('');
+        }
     }
 
-    renderMathJax(delay = 100) {
-        setTimeout(() => {
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                MathJax.typesetPromise().catch(err => console.log('MathJax error:', err));
+    async _saveAnswer(question, answer, isCorrect) {
+        try {
+            const userAnswerStr    = this._answerToString(question, answer);
+            const correctAnswerStr = this._extractCorrectAnswer(question);
+            const payload = {
+                user_id:           this.userId,
+                quiz_id:           this.quizId,
+                question_id:       question.id,
+                question_sequence: this.currentIndex,
+                user_answer:       userAnswerStr,
+                correct_answer:    correctAnswerStr,
+                is_correct:        isCorrect,
+            };
+            const res = await fetch('/quiz/api/submit-answer', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                this._updateStreak(data.streak ?? 0);
+            } else {
+                console.error('Failed to save answer, status:', res.status);
             }
-        }, delay);
+        } catch (err) {
+            console.error('Error saving answer:', err);
+        }
     }
+
+    _updateStreak(streak) {
+        if (this.mode !== 'execution' || !this._streakBadge) return;
+        clearTimeout(this._streakHideTimer);
+
+        const flamesEl = document.getElementById('streakFlames');
+        const countEl  = document.getElementById('streakCount');
+        const wasVisible = this._streakBadge.style.display !== 'none';
+
+        this._streakBadge.classList.remove('broken', 'tier-1', 'tier-2', 'tier-3', 'tier-4');
+
+        if (streak === 0) {
+            if (wasVisible) {
+                // 💔 flash before hiding
+                flamesEl.textContent = '\uD83D\uDC94';
+                countEl.textContent  = '+0';
+                this._streakBadge.classList.add('broken');
+                this._streakBadge.style.display = 'flex';
+                this._streakHideTimer = setTimeout(() => {
+                    this._streakBadge.style.display = 'none';
+                    this._streakBadge.classList.remove('broken');
+                }, 1200);
+            }
+            return;
+        }
+
+        const tier = STREAK_TIERS.find(t => streak >= t.min && streak <= t.max);
+        if (!tier) {
+            // Below minimum threshold — keep hidden
+            this._streakBadge.style.display = 'none';
+            return;
+        }
+
+        this._streakBadge.classList.add(tier.cls);
+        flamesEl.textContent = tier.flames;
+        countEl.textContent  = streak;
+        this._streakBadge.style.display = 'flex';
+    }
+
+    /**
+     * Look up option text by its id from question.input.options.
+     */
+    _optionText(question, optId) {
+        const opt = (question.input?.options || []).find(o => (o.id || '') === String(optId));
+        if (!opt) return String(optId);
+        return typeof opt === 'string' ? opt : (opt.html || opt.latex || opt.text || String(optId));
+    }
+
+    /**
+     * Get the display label for a FILL blank (prefers latex, strips HTML tags as fallback).
+     */
+    _blankLabel(blank, idx) {
+        const raw = blank.input_label?.latex
+            || blank.input_label?.html?.replace(/<[^>]*>/g, '')
+            || blank.label
+            || `Blank ${idx + 1}`;
+        return raw.trim().replace(/:$/, '').trim();  // remove trailing colon for cleaner "Label: value" format
+    }
+
+    /**
+     * Format one correct-answer entry from question.answer.correct[i].
+     * Mirrors the logic in TemplateHandlerFILL._formatCorrectAnswer.
+     */
+    _formatCorrectEntry(entry) {
+        if (!entry) return '';
+        const rt = entry.response_type || 'text';
+        if (rt === 'fraction' && entry.accepted_fraction?.length) {
+            const f = entry.accepted_fraction[0];
+            return `${f.numerator}/${f.denominator}`;
+        }
+        if (rt === 'numeric' && entry.accepted_numeric?.length) {
+            return String(entry.accepted_numeric[0]);
+        }
+        if (entry.accepted_text?.length) return entry.accepted_text[0];
+        return '';
+    }
+
+    /**
+     * Convert the raw answer (option id / id array / blank map) to a human-readable string.
+     */
+    _answerToString(question, answer) {
+        const type = (question.type || '').toLowerCase();
+        if (type === 'mcq') return this._optionText(question, answer);
+        if (type === 'mr')  return Array.isArray(answer)
+            ? answer.map(id => this._optionText(question, id)).join('; ')
+            : String(answer);
+        if (type === 'fill') {
+            const blanks = question.input?.blanks || [];
+            return blanks.map((blank, idx) => {
+                const blankId = blank.id || `blank_${idx}`;
+                const label   = this._blankLabel(blank, idx);
+                const val     = (answer && answer[blankId] != null) ? answer[blankId] : '';
+                return `${label}: ${val}`;
+            }).join('; ');
+        }
+        // ohs / feval — answer is already a primitive or small object
+        return typeof answer === 'object' ? JSON.stringify(answer) : String(answer);
+    }
+
+    /**
+     * Extract the correct answer value from the question JSON as a human-readable string.
+     */
+    _extractCorrectAnswer(question) {
+        const type = (question.type || '').toLowerCase();
+        if (type === 'mcq') {
+            const id = question.answer?.correct_option_id;
+            return id != null ? this._optionText(question, id) : null;
+        }
+        if (type === 'mr') {
+            const ids = question.answer?.correct_option_ids ?? [];
+            return ids.map(id => this._optionText(question, id)).join('; ');
+        }
+        if (type === 'fill') {
+            const blanks     = question.input?.blanks || [];
+            const correctArr = question.answer?.correct || [];
+            return blanks.map((blank, idx) => {
+                const blankId = blank.id || `blank_${idx}`;
+                const label   = this._blankLabel(blank, idx);
+                // correct entries may be keyed by blank_id or simply ordered
+                const entry   = correctArr.find(e => e.blank_id === blankId) ?? correctArr[idx];
+                return `${label}: ${this._formatCorrectEntry(entry)}`;
+            }).join('; ');
+        }
+        // ohs / feval — rules-based, no single correct value
+        return null;
+    }
+
+    // ── UI helpers ──────────────────────────────────────────────────────────────
+
+    _updateProgress(question) {
+        const n = this.currentIndex + 1;
+        const t = this.questions.length;
+        if (this._progressText) this._progressText.textContent = `Question ${n} of ${t}`;
+        if (this._qIdBadge)     this._qIdBadge.textContent = question?.id ? `[${question.id}]` : '';
+    }
+
+    _showCompletionPanel() {
+        calculatorController.close();
+        document.querySelector('.question-container')?.style.setProperty('display', 'none');
+        document.querySelector('.button-row')?.style.setProperty('display', 'none');
+        if (this._completion) this._completion.style.display = 'flex';
+    }
+
+    _showCompletionWithScore(scoreText) {
+        const msgEl    = document.getElementById('completionMessage');
+        const iconEl   = document.getElementById('completionIcon');
+        const scoreEl  = document.getElementById('completionScore');
+        const retakeEl = document.getElementById('completionRetake');
+        if (msgEl)    msgEl.textContent  = 'Thank you for completing the quiz!';
+        if (iconEl)   iconEl.textContent = '✓';
+        if (scoreEl)  scoreEl.textContent = scoreText ? `You scored ${scoreText}.` : '';
+        if (retakeEl) retakeEl.style.display = 'block';
+        this._showCompletionPanel();
+    }
+
+    _showAlreadyCompletePanel() {
+        const msgEl  = document.getElementById('completionMessage');
+        const iconEl = document.getElementById('completionIcon');
+        const resetBtn = document.getElementById('completionResetBtn');
+        if (msgEl)   msgEl.textContent  = 'This quiz has already been completed.';
+        if (iconEl)  iconEl.textContent = '✓';
+        if (resetBtn) resetBtn.style.display = 'inline-block';
+        this._showCompletionPanel();
+    }
+
+    async _handleReset() {
+        const btn = document.getElementById('completionResetBtn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Resetting…'; }
+        try {
+            const res = await fetch('/quiz/api/reset-execution', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ user_id: this.userId, quiz_id: this.quizId }),
+            });
+            if (res.ok) {
+                window.location.reload();
+            } else {
+                alert('Reset failed. Please try again.');
+                if (btn) { btn.disabled = false; btn.textContent = 'Reset & Retake'; }
+            }
+        } catch (err) {
+            console.error('Reset error:', err);
+            alert('Reset failed. Please try again.');
+            if (btn) { btn.disabled = false; btn.textContent = 'Reset & Retake'; }
+        }
+    }
+
+    _showBtn(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'inline-block';
+    }
+
+    _hideBtn(id) {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    }
+
 }

@@ -19,3 +19,7 @@ mx_app.db
 
 # Ignore environment files
 .env
+
+# Node.js dependencies
+node_modules/
+package-lock.json

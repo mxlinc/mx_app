@@ -154,6 +154,15 @@ FILL_SCHEMA = {
                                     "html": {"type": "string", "minLength": 1}
                                 }
                             },
+                            "label_after": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["latex", "html"],
+                                "properties": {
+                                    "latex": {"type": "string", "minLength": 1},
+                                    "html": {"type": "string", "minLength": 1}
+                                }
+                            },
                             "response_type": {
                                 "type": "string",
                                 "enum": ["text", "numeric", "fraction"]
@@ -345,6 +354,85 @@ MR_SCHEMA = {
                         "type": "string",
                         "pattern": "^opt[1-9][0-9]*$"
                     }
+                }
+            }
+        },
+        "topic": {"type": "string"},
+        "subtopic": {"type": "string"},
+        "level": {"type": "string"}
+    }
+}
+
+# ================== OHS SCHEMA ================== #
+OHS_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "title": "One HotSpot Question",
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["id", "type", "image", "input", "answer"],
+    "properties": {
+        "id": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "type": {
+            "const": "ohs"
+        },
+        "stem": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["latex", "html"],
+            "properties": {
+                "latex": {"type": "string", "minLength": 1},
+                "html": {"type": "string", "minLength": 1},
+                "feedback": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["latex", "html"],
+                    "properties": {
+                        "latex": {"type": "string", "minLength": 1},
+                        "html": {"type": "string", "minLength": 1}
+                    }
+                }
+            }
+        },
+        "image": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["src", "alt", "hotspot"],
+            "properties": {
+                "src": {"type": "string", "minLength": 1},
+                "alt": {"type": "string"},
+                "hotspot": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["id", "x", "y", "width", "height"],
+                    "properties": {
+                        "id": {
+                            "type": "string",
+                            "pattern": "^hs1$"
+                        },
+                        "x": {"type": "number", "minimum": 0},
+                        "y": {"type": "number", "minimum": 0},
+                        "width": {"type": "number", "minimum": 1},
+                        "height": {"type": "number", "minimum": 1}
+                    }
+                }
+            }
+        },
+        "input": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {}
+        },
+        "answer": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["correct_hotspot_id"],
+            "properties": {
+                "correct_hotspot_id": {
+                    "type": "string",
+                    "const": "hs1"
                 }
             }
         },

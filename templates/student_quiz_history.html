@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Student Quiz History – Admin{% endblock %}
+
+{% block head_extra %}
+<style>
+  .history-wrap {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  .page-heading {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1a2d3d;
+    margin-bottom: 1.25rem;
+  }
+  .selector-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.75rem;
+  }
+  .selector-row select {
+    flex: 1;
+    max-width: 320px;
+    padding: 0.45rem 0.75rem;
+    border: 1px solid #cfe0ed;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: #1a2d3d;
+    background: #fff;
+  }
+  .selector-row button {
+    padding: 0.45rem 1.1rem;
+    background: #2c6e9e;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    cursor: pointer;
+  }
+  .selector-row button:hover { background: #24618d; }
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+  .history-table th {
+    background: #e9f1f9;
+    color: #2c6e9e;
+    padding: 0.6rem 0.85rem;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 2px solid #cfe0ed;
+  }
+  .history-table td {
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid #e8edf2;
+    vertical-align: middle;
+  }
+  .history-table tr:last-child td { border-bottom: none; }
+  .history-table tr:hover td { background: #f4f8fb; }
+  .badge-score {
+    font-weight: 600;
+    color: #1a7a4a;
+  }
+  .badge-incorrect {
+    font-size: 0.82rem;
+    color: #8a3a2c;
+  }
+  .btn-review {
+    font-size: 0.82rem;
+    padding: 0.3rem 0.8rem;
+    background: #2c6e9e;
+    color: #fff;
+    border-radius: 5px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn-review:hover { background: #24618d; color: #fff; }
+  .btn-review-disabled {
+    font-size: 0.82rem;
+    padding: 0.3rem 0.8rem;
+    background: #e0e0e0;
+    color: #999;
+    border-radius: 5px;
+    white-space: nowrap;
+    cursor: not-allowed;
+  }
+  .empty-msg {
+    text-align: center;
+    color: #8a9aaa;
+    padding: 2rem 0;
+    font-size: 0.95rem;
+  }
+  .back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    font-size: 0.88rem;
+    color: #2c6e9e;
+    text-decoration: none;
+  }
+  .back-link:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="history-wrap">
+  <a class="back-link" href="{{ url_for('lms.admin_home_new') }}">← Admin Home</a>
+  <div class="page-heading">Student Quiz History</div>
+
+  <form class="selector-row" method="get">
+    <select name="username" required>
+      <option value="">— Select student —</option>
+      {% for s in students %}
+      <option value="{{ s.username }}" {% if s.username == selected_username %}selected{% endif %}>
+        {{ s.full_name or s.username }}
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit">View History</button>
+  </form>
+
+  {% if selected_username %}
+    {% if history %}
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Quiz</th>
+          <th>Score</th>
+          <th>Incorrect</th>
+          <th>Completed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in history %}
+        <tr>
+          <td style="color:#8a9aaa; font-size:0.82rem;">{{ loop.index }}</td>
+          <td>
+            <span style="font-size:0.78rem; color:#8a9aaa; margin-right:4px;">{{ item.quiz_code }}</span>
+            {{ item.title }}
+          </td>
+          <td class="badge-score">{{ item.score }}</td>
+          <td class="badge-incorrect">{{ item.incorrect }}</td>
+          <td style="font-size:0.82rem; color:#6c8a9e;">
+            {% if item.completed_at %}
+              {{ item.completed_at.strftime('%b %d, %Y') }}
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% if item.quiz_id and item.user_id %}
+            <a class="btn-review"
+               href="{{ url_for('qb.admin_quiz_review', user_id=item.user_id, quiz_id=item.quiz_id) }}"
+               target="_blank">Review</a>
+            {% else %}
+            <span class="btn-review-disabled">Review</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-msg">No completed quizzes found for this student.</div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

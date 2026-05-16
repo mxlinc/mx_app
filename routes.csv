@@ -1,0 +1,77 @@
+Blueprint,Method,URL,Description
+app,GET,/pkg/<pkg_name>,Serves static package index file
+app,GET,/pkg/<pkg_name>/,Serves static package directory index
+app,GET,/pkg/<pkg_name>/<path:filename>,Serves arbitrary file from package folder
+lms,GET+POST,/login,Login form — authenticate user and redirect by role
+lms,GET,/logout,Log out current user and redirect to login
+lms,GET,/,Root redirect based on user role
+lms,GET,/studenthome,Legacy student home — assigned work packs list
+lms,GET,/home,Student home — shows assigned work items
+lms,POST,/log_click,Records a click/view on a work item
+lms,GET,/refresh_all,Admin — recalculates all student pack statuses
+lms,GET,/student_cards,Student card view of assigned packs
+lms,GET,/recent,Recent activity across all students
+lms,GET,/teacherhome,Teacher home dashboard
+lms,GET,/admin_home,Legacy admin home dashboard
+lms,GET,/packdetails/<pack_id>,Detail view of a specific work pack
+lms,POST,/createpack,Creates a new work pack
+lms,POST,/update_pack_works/<pack_id>,Updates items in an existing pack
+lms,POST,/assignwork,Assigns a work pack to a student
+lms,POST,/mark_complete,Marks a work item as complete
+lms,POST,/mark_pack_done,Marks an entire pack as done
+lms,POST,/restore_pack,Restores a previously completed pack
+lms,POST,/update_work_status,Updates status of a single work row
+lms,GET,/check_pack_id/<pack_id>,Checks if a pack ID exists
+lms,GET,/fine_tune,Admin page for fine-tuning assignments
+lms,GET,/pack_report,Report of pack completion across students
+lms,POST,/mailgun_webhook,Receives inbound email events from Mailgun
+lms,GET,/emails,Admin view of logged email messages
+lms,GET,/contact,Public contact/enquiry page
+lms,POST,/contact_submit,Handles contact form submission
+lms,GET,/_debug/twilio_status,Debug endpoint for Twilio SMS status
+lms,POST,/check_assignment_conflicts,Checks for conflicts before assigning work
+lms,POST,/process_assignment,Processes and saves a new assignment
+lms,GET,/admin-new,New admin dashboard page
+lms,GET,/student-new,New student dashboard with units and progress
+lms,POST,/student-new/mark-viewed,Increments view count for a work item
+lms,GET,/student-new/submissions,Student recent quiz submission history
+lms,GET,/videos/list,Returns list of all videos
+lms,GET,/units/options,Returns unit options for dropdowns
+lms,POST,/units/create,Creates a new assignment unit
+lms,GET,/units/by-area,Returns units grouped by curriculum area
+lms,POST,/units/add-videos,Adds video items to a unit
+lms,GET,/units/list,Admin page listing all assignment units
+lms,GET,/units/<au_id>/content,Returns content items for a unit (JSON)
+lms,POST,/units/<au_id>/save-content,Saves reordered/updated content for a unit
+lms,GET,/unit/assign,Page for assigning units to students
+lms,GET,/unit/api/users,API — list users available for assignment
+lms,GET,/unit/api/units,API — list units available for assignment
+lms,POST,/unit/api/assign,API — assigns units to selected students
+qb (quiz),GET,/quiz/assign,Quiz assignment page for admins
+qb (quiz),GET,/quiz/api/users-for-assignment,API — users eligible for quiz assignment
+qb (quiz),POST,/quiz/api/assign,API — batch assigns quizzes to students
+qb (quiz),GET,/quiz/api/resync-quizzes/count,Returns count of quizzes needing resync
+qb (quiz),POST,/quiz/api/resync-quizzes,Resyncs quiz records from question bank
+qb (quiz),GET,/quiz/api/topics,Returns available quiz topics list
+qb (quiz),GET,/quiz/api/format-snippets,Returns LaTeX format snippet library
+qb (quiz),GET,/quiz/create-quiz,Create quiz form page
+qb (quiz),POST,/quiz/create-quiz,Handles create quiz form submission
+qb (quiz),POST,/quiz/api/create-quiz,API — creates quiz and returns JSON
+qb (quiz),GET,/quiz/list,Admin list of all quizzes
+qb (quiz),GET,/quiz/api/quizzes-page,Paginated API for quiz list
+qb (quiz),POST,/quiz/api/update-quizzes,Bulk update quiz metadata
+qb (quiz),POST,/quiz/api/delete-quizzes,Bulk delete selected quizzes
+qb (quiz),GET,/quiz/play/<question_id>,Plays a single question in preview mode
+qb (quiz),GET,/quiz/<quiz_id>/preview,Preview all questions in a quiz
+qb (quiz),GET,/quiz/<quiz_id>/questions,Returns questions for a quiz (JSON)
+qb (quiz),GET,/quiz/<quiz_id>/builder,Quiz builder page for editing questions
+qb (quiz),POST,/quiz/<quiz_id>/append-question,Appends a new question to a quiz
+qb (quiz),GET,/quiz/execute,Student quiz execution page
+qb (quiz),GET,/quiz/admin-return,Admin return page after previewing quiz
+qb (quiz),POST,/quiz/api/complete-quiz,Marks a quiz session as completed
+qb (quiz),POST,/quiz/api/reset-execution,Resets quiz execution for a student
+qb (quiz),POST,/quiz/api/submit-answer,Submits a single answer during execution
+qb (quiz),GET,/quiz/api/results/<user_quiz_id>,Returns results for a quiz session
+qb (quiz),GET,/quiz/api/student-quizzes,Returns all quiz records for a student
+qb (question),GET,/question/question/<question_id>,View a single question by ID
+qb (question),GET,/question/questions,List all questions with filters

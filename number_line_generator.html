@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Line Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        input[type="number"],
+        select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            grid-column: 1 / -1;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 150px;
+        }
+
+        .btn-generate {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-generate:active {
+            transform: translateY(0);
+        }
+
+        .btn-reset {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-reset:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-copy {
+            background: #4caf50;
+            color: white;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+        }
+
+        .btn-copy:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.6);
+        }
+
+        .btn-copy:active {
+            transform: translateY(0);
+        }
+
+        .canvas-container {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            overflow-x: auto;
+            overflow-y: auto;
+        }
+
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-left: 4px solid #667eea;
+            border-radius: 5px;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .error {
+            color: #d32f2f;
+            margin-top: 20px;
+            padding: 15px;
+            background: #ffebee;
+            border-left: 4px solid #d32f2f;
+            border-radius: 5px;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.5em;
+            }
+
+            .controls {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📐 Number Line Generator</h1>
+
+        <div class="controls">
+            <div class="form-group">
+                <label for="start">Start Value</label>
+                <input type="number" id="start" value="0" step="any">
+            </div>
+
+            <div class="form-group">
+                <label for="end">End Value</label>
+                <input type="number" id="end" value="10" step="any">
+            </div>
+
+            <div class="form-group">
+                <label>Step Mode</label>
+                <div style="display: flex; gap: 15px; margin-top: 8px;">
+                    <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0;">
+                        <input type="radio" name="stepMode" value="count" checked onchange="window.app.toggleStepMode()">
+                        Number of Steps
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 6px; font-weight: normal; margin: 0;">
+                        <input type="radio" name="stepMode" value="size" onchange="window.app.toggleStepMode()">
+                        Step Size
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="steps">Number of Steps</label>
+                <input type="number" id="steps" value="10" min="2" step="1">
+            </div>
+
+            <div class="form-group" id="stepSizeGroup" style="display: none;">
+                <label for="stepSize">Step Size</label>
+                <input type="number" id="stepSize" value="1" step="any" min="0.001">
+            </div>
+
+            <div class="form-group">
+                <label for="type">Number Type</label>
+                <select id="type">
+                    <option value="decimal">Decimal Numbers</option>
+                    <option value="fraction">Fractions</option>
+                    <option value="percent">Percentages</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-generate" onclick="window.app.generateNumberLine()">Generate</button>
+                <button class="btn-copy" onclick="window.app.copyToClipboard()" title="Copy number line as transparent image">Copy to Clipboard</button>
+                <button class="btn-reset" onclick="window.app.resetForm()">Reset</button>
+            </div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="canvas-container">
+            <svg id="canvas" width="900" height="200"></svg>
+        </div>
+
+        <div class="info-box" id="info"></div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script>
+        window.app = {
+            gcd: function(a, b) {
+                return b === 0 ? a : this.gcd(b, a % b);
+            },
+
+            simplifyFraction: function(numerator, denominator) {
+                const divisor = this.gcd(Math.abs(numerator), Math.abs(denominator));
+                return {
+                    num: numerator / divisor,
+                    den: denominator / divisor
+                };
+            },
+
+            toFraction: function(decimal, precision = 1000) {
+                let denominator = 1;
+                let maxDenominator = precision;
+
+                while (denominator <= maxDenominator) {
+                    const numerator = Math.round(decimal * denominator);
+                    const error = Math.abs(decimal - numerator / denominator);
+                    if (error < 1e-6) {
+                        return this.simplifyFraction(numerator, denominator);
+                    }
+                    denominator++;
+                }
+
+                return this.simplifyFraction(Math.round(decimal * precision), precision);
+            },
+
+            formatNumber: function(value, type) {
+                if (type === 'decimal') {
+                    return parseFloat(value.toFixed(10)).toString();
+                } else if (type === 'fraction') {
+                    const absValue = Math.abs(value);
+                    const frac = this.toFraction(absValue);
+                    if (frac.den === 1) {
+                        return value < 0 ? '-' + frac.num.toString() : frac.num.toString();
+                    }
+                    const sign = value < 0 ? '-' : '';
+                    return { type: 'fraction', sign: sign, num: frac.num, den: frac.den };
+                } else if (type === 'percent') {
+                    return (value * 100).toFixed(0) + '%';
+                }
+                return value.toString();
+            },
+
+            hideError: function() {
+                const errorBox = document.getElementById('error');
+                errorBox.classList.remove('show');
+            },
+
+            showError: function(message) {
+                const errorBox = document.getElementById('error');
+                errorBox.textContent = message;
+                errorBox.classList.add('show');
+            },
+
+            toggleStepMode: function() {
+                const stepCountGroup = document.querySelector('.form-group:has(#steps)');
+                const stepSizeGroup = document.getElementById('stepSizeGroup');
+                const stepMode = document.querySelector('input[name="stepMode"]:checked').value;
+
+                if (stepMode === 'count') {
+                    stepCountGroup.style.display = 'flex';
+                    stepSizeGroup.style.display = 'none';
+                } else {
+                    stepCountGroup.style.display = 'none';
+                    stepSizeGroup.style.display = 'flex';
+                }
+            },
+
+            generateNumberLine: function() {
+                this.hideError();
+
+                const start = parseFloat(document.getElementById('start').value);
+                const end = parseFloat(document.getElementById('end').value);
+                const type = document.getElementById('type').value;
+                const stepMode = document.querySelector('input[name="stepMode"]:checked').value;
+
+                if (isNaN(start) || isNaN(end)) {
+                    this.showError('Please enter valid numbers');
+                    return;
+                }
+
+                if (start === end) {
+                    this.showError('Start and end values must be different');
+                    return;
+                }
+
+                let steps;
+                const min = Math.min(start, end);
+                const max = Math.max(start, end);
+                const range = max - min;
+
+                if (stepMode === 'count') {
+                    steps = parseInt(document.getElementById('steps').value);
+                    if (isNaN(steps) || steps < 2) {
+                        this.showError('Number of steps must be at least 2');
+                        return;
+                    }
+                } else {
+                    const stepSize = parseFloat(document.getElementById('stepSize').value);
+                    if (isNaN(stepSize) || stepSize <= 0) {
+                        this.showError('Step size must be greater than 0');
+                        return;
+                    }
+                    steps = Math.round(range / stepSize);
+                    if (steps < 2) {
+                        this.showError('Step size is too large for the given range');
+                        return;
+                    }
+                }
+
+                const svgWidth = 900;
+                const svgHeight = 250;
+                const margin = 50;
+                const lineY = 100;
+                const lineStartX = margin;
+                const lineEndX = svgWidth - margin;
+                const lineLength = lineEndX - lineStartX;
+
+                const svg = document.getElementById('canvas');
+                svg.innerHTML = '';
+                svg.setAttribute('width', svgWidth);
+                svg.setAttribute('height', svgHeight);
+
+                // Draw line
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', lineStartX);
+                line.setAttribute('y1', lineY);
+                line.setAttribute('x2', lineEndX);
+                line.setAttribute('y2', lineY);
+                line.setAttribute('stroke', '#333');
+                line.setAttribute('stroke-width', '3');
+                svg.appendChild(line);
+
+                // Draw colored segments
+                if (min < 0 && max > 0) {
+                    const zeroRatio = Math.abs(min) / range;
+                    const zeroX = lineStartX + zeroRatio * lineLength;
+
+                    const greenLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    greenLine.setAttribute('x1', lineStartX);
+                    greenLine.setAttribute('y1', lineY);
+                    greenLine.setAttribute('x2', zeroX);
+                    greenLine.setAttribute('y2', lineY);
+                    greenLine.setAttribute('stroke', '#4CAF50');
+                    greenLine.setAttribute('stroke-width', '5');
+                    svg.appendChild(greenLine);
+
+                    const blueLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    blueLine.setAttribute('x1', zeroX);
+                    blueLine.setAttribute('y1', lineY);
+                    blueLine.setAttribute('x2', lineEndX);
+                    blueLine.setAttribute('y2', lineY);
+                    blueLine.setAttribute('stroke', '#2196F3');
+                    blueLine.setAttribute('stroke-width', '5');
+                    svg.appendChild(blueLine);
+                } else if (min >= 0) {
+                    const blueLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    blueLine.setAttribute('x1', lineStartX);
+                    blueLine.setAttribute('y1', lineY);
+                    blueLine.setAttribute('x2', lineEndX);
+                    blueLine.setAttribute('y2', lineY);
+                    blueLine.setAttribute('stroke', '#2196F3');
+                    blueLine.setAttribute('stroke-width', '5');
+                    svg.appendChild(blueLine);
+                } else {
+                    const greenLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    greenLine.setAttribute('x1', lineStartX);
+                    greenLine.setAttribute('y1', lineY);
+                    greenLine.setAttribute('x2', lineEndX);
+                    greenLine.setAttribute('y2', lineY);
+                    greenLine.setAttribute('stroke', '#4CAF50');
+                    greenLine.setAttribute('stroke-width', '5');
+                    svg.appendChild(greenLine);
+                }
+
+                // Draw arrows
+                const arrowSize = 8;
+                const arrowPath = `M${lineEndX},${lineY} L${lineEndX - arrowSize},${lineY - arrowSize} L${lineEndX - arrowSize},${lineY + arrowSize}`;
+                const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                arrow.setAttribute('d', arrowPath);
+                arrow.setAttribute('fill', '#333');
+                svg.appendChild(arrow);
+
+                // Draw tick marks and labels
+                const self = this;
+                const pointsToDraw = [];
+                
+                // Add regular step points
+                for (let i = 0; i <= steps; i++) {
+                    const ratio = i / steps;
+                    const value = min + ratio * range;
+                    pointsToDraw.push(value);
+                }
+                
+                // Add zero if it's in range and not already included
+                if (min <= 0 && 0 <= max) {
+                    if (!pointsToDraw.some(v => Math.abs(v) < 1e-10)) {
+                        pointsToDraw.push(0);
+                    }
+                }
+                
+                // Sort points
+                pointsToDraw.sort((a, b) => a - b);
+                
+                // Draw each point
+                for (let value of pointsToDraw) {
+                    const ratio = (value - min) / range;
+                    const x = lineStartX + ratio * lineLength;
+                    const isZero = Math.abs(value) < 1e-10;
+
+                    const tick = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                    tick.setAttribute('x1', x);
+                    tick.setAttribute('y1', lineY - (isZero ? 15 : 10));
+                    tick.setAttribute('x2', x);
+                    tick.setAttribute('y2', lineY + (isZero ? 15 : 10));
+                    tick.setAttribute('stroke', '#333');
+                    tick.setAttribute('stroke-width', isZero ? '4' : '2');
+                    svg.appendChild(tick);
+
+                    const formatted = self.formatNumber(value, type);
+
+                    if (typeof formatted === 'object' && formatted.type === 'fraction') {
+                        const latexStr = formatted.sign + '\\frac{' + formatted.num + '}{' + formatted.den + '}';
+
+                        const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                        foreignObject.setAttribute('x', x - 30);
+                        foreignObject.setAttribute('y', lineY + 18);
+                        foreignObject.setAttribute('width', '60');
+                        foreignObject.setAttribute('height', '50');
+
+                        const div = document.createElement('div');
+                        div.style.display = 'flex';
+                        div.style.justifyContent = 'center';
+                        div.style.alignItems = 'center';
+                        div.style.width = '100%';
+                        div.style.height = '100%';
+                        div.style.fontSize = '14px';
+                        div.style.fontWeight = isZero ? '700' : '400';
+
+                        foreignObject.appendChild(div);
+                        svg.appendChild(foreignObject);
+
+                        setTimeout(() => {
+                            try {
+                                window.katex.render(latexStr, div, { throwOnError: false, displayMode: false });
+                            } catch (e) {
+                                div.textContent = formatted.sign + formatted.num + '/' + formatted.den;
+                            }
+                        }, 0);
+                    } else {
+                        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        label.setAttribute('x', x);
+                        label.setAttribute('y', lineY + 35);
+                        label.setAttribute('text-anchor', 'middle');
+                        label.setAttribute('font-size', isZero ? '18' : '16');
+                        label.setAttribute('font-weight', isZero ? '700' : '600');
+                        label.setAttribute('fill', '#333');
+                        label.setAttribute('font-family', 'Segoe UI, sans-serif');
+                        label.textContent = formatted;
+                        svg.appendChild(label);
+                    }
+                }
+
+                const infoBox = document.getElementById('info');
+                const actualStepSize = range / steps;
+                let infoText = `Range: ${this.formatNumber(min, type)} to ${this.formatNumber(max, type)} | Type: ${type.charAt(0).toUpperCase() + type.slice(1)} | Steps: ${steps} | Step Size: ${actualStepSize.toFixed(4)}`;
+                infoBox.textContent = infoText;
+            },
+
+            copyToClipboard: async function() {
+                const svg = document.getElementById('canvas');
+                if (!svg || svg.innerHTML.trim() === '') {
+                    this.showError('Please generate a number line first');
+                    return;
+                }
+
+                try {
+                    const svgClone = svg.cloneNode(true);
+                    const width = parseInt(svg.getAttribute('width')) || 900;
+                    const height = parseInt(svg.getAttribute('height')) || 250;
+
+                    const canvas = document.createElement('canvas');
+                    const dpr = window.devicePixelRatio || 1;
+                    canvas.width = width * dpr;
+                    canvas.height = height * dpr;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.scale(dpr, dpr);
+
+                    const svgString = new XMLSerializer().serializeToString(svgClone);
+                    const blob = new Blob([svgString], { type: 'image/svg+xml' });
+                    const url = URL.createObjectURL(blob);
+
+                    const img = new Image();
+                    const self = this;
+                    img.onload = async () => {
+                        ctx.clearRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0);
+
+                        canvas.toBlob(async (canvasBlob) => {
+                            try {
+                                await navigator.clipboard.write([
+                                    new ClipboardItem({ 'image/png': canvasBlob })
+                                ]);
+
+                                const infoBox = document.getElementById('info');
+                                const originalText = infoBox.textContent;
+                                infoBox.textContent = '✓ Number line copied to clipboard!';
+                                infoBox.style.background = '#c8e6c9';
+                                infoBox.style.borderLeftColor = '#4CAF50';
+
+                                setTimeout(() => {
+                                    infoBox.textContent = originalText;
+                                    infoBox.style.background = '#e3f2fd';
+                                    infoBox.style.borderLeftColor = '#667eea';
+                                }, 2000);
+                            } catch (err) {
+                                self.showError('Failed to copy to clipboard: ' + err.message);
+                            }
+                            URL.revokeObjectURL(url);
+                        }, 'image/png');
+                    };
+
+                    img.onerror = () => {
+                        this.showError('Failed to process SVG image');
+                        URL.revokeObjectURL(url);
+                    };
+
+                    img.src = url;
+                } catch (err) {
+                    this.showError('Error: ' + err.message);
+                }
+            },
+
+            resetForm: function() {
+                document.getElementById('start').value = '0';
+                document.getElementById('end').value = '10';
+                document.getElementById('steps').value = '10';
+                document.getElementById('stepSize').value = '1';
+                document.getElementById('type').value = 'decimal';
+                document.querySelector('input[name="stepMode"][value="count"]').checked = true;
+                this.toggleStepMode();
+                document.getElementById('canvas').innerHTML = '';
+                document.getElementById('info').textContent = '';
+                this.hideError();
+            }
+        };
+
+        window.addEventListener('load', () => {
+            window.app.generateNumberLine();
+        });
+
+        document.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                window.app.generateNumberLine();
+            }
+        });
+    </script>
+</body>
+</html>

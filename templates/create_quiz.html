@@ -280,7 +280,7 @@
                 if (data.ok) {
                     showMessage('Quiz created successfully! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = `/quiz/quiz/${data.quiz_id}/preview`;
+                        window.location.href = `/quiz/list`;
                     }, 1500);
                 } else {
                     showMessage(data.error || 'Failed to create quiz', 'error');

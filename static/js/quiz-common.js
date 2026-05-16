@@ -1,18 +1,11 @@
 /**
  * Quiz Common Utilities
- * Shared functionality across all question types
+ * Admin/utility functions for question preview and navigation
+ * 
+ * Rendering tasks are now delegated to QuestionRenderer class
  */
 
-// Initialize MathJax configuration immediately
-window.MathJax = {
-    tex: {
-        inlineMath: [['$', '$'], ['\\(', '\\)']],
-        displayMath: [['$$', '$$'], ['\\[', '\\]']]
-    },
-    svg: {
-        fontCache: 'global'
-    }
-};
+// MathJax removed: LaTeX is converted to MathML server-side at save time.
 
 class QuizCommon {
     constructor() {
@@ -22,19 +15,12 @@ class QuizCommon {
     }
 
     /**
-     * Initialize MathJax (already done above, but kept for API completeness)
-     */
-    initMathJax() {
-        console.log('MathJax already initialized');
-    }
-
-    /**
      * Fetch question from backend and unwrap nested structure
      */
     async fetchQuestion(questionId) {
         console.log('Fetching question:', questionId);
         try {
-            const resp = await fetch(`/quiz/get-display/${questionId}`);
+            const resp = await fetch(`/question/api/display/${questionId}`);
             console.log('Fetch response status:', resp.status);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const data = await resp.json();
@@ -55,91 +41,6 @@ class QuizCommon {
             throw e;
         }
     }
-
-    /**
-     * Render question stem (common to all types)
-     */
-    renderStem() {
-        console.log('question.stem:', this.question.stem);
-        const stemHtml = this.question.stem?.html || this.question.stem?.latex || this.question.stem || 'No stem found';
-        console.log('Stem HTML:', stemHtml);
-        document.getElementById('stemContainer').innerHTML = stemHtml;
-    }
-
-    /**
-     * Render question image (common to types that use images)
-     */
-    renderImage() {
-        const imageContainer = document.getElementById('imageContainer');
-        if (!imageContainer) return false; // No image container in this layout
-
-        if (this.question.image?.src) {
-            console.log('Image found:', this.question.image.src);
-            imageContainer.style.display = 'block';
-            let imageSrc = this.question.image.src;
-            if (imageSrc.startsWith('./')) imageSrc = imageSrc.substring(1);
-            document.getElementById('questionImage').src = imageSrc;
-            document.getElementById('questionImage').onerror = () => {
-                console.error('Failed to load image:', imageSrc);
-                imageContainer.style.display = 'none';
-            };
-            return true;
-        } else {
-            console.log('No image in question.image');
-            imageContainer.style.display = 'none';
-            return false;
-        }
-    }
-
-    /**
-     * Add no-image class for CSS adjustments when no image present
-     */
-    setNoImageClass() {
-        const qaGrid = document.querySelector('.qa-grid');
-        if (qaGrid) {
-            qaGrid.classList.add('no-image');
-        }
-    }
-
-    /**
-     * Show feedback message
-     */
-    showFeedback(message, isCorrect) {
-        const feedbackDiv = document.getElementById('feedbackContainer');
-        feedbackDiv.innerHTML = message;
-        feedbackDiv.className = isCorrect ? 'feedback show correct' : 'feedback show incorrect';
-        this.submitted = true;
-        document.getElementById('submitBtn').disabled = true;
-
-        // Trigger MathJax to render feedback content
-        setTimeout(() => {
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise().catch(err => console.log('MathJax error:', err));
-            }
-        }, 50);
-    }
-
-    /**
-     * Clear feedback and reset submit button
-     */
-    clearFeedback() {
-        document.getElementById('feedbackContainer').classList.remove('show');
-        this.submitted = false;
-        document.getElementById('submitBtn').disabled = false;
-    }
-
-    /**
-     * Trigger MathJax rendering
-     */
-    renderMathJax(delay = 100) {
-        setTimeout(() => {
-            console.log('Rendering MathJax');
-            if (window.MathJax && window.MathJax.typesetPromise) {
-                window.MathJax.typesetPromise().catch(err => console.log('MathJax error:', err));
-            }
-        }, delay);
-    }
-
     /**
      * Display question JSON in modal
      */
@@ -196,7 +97,12 @@ class QuizCommon {
         document.getElementById('editLink')?.addEventListener('click', (e) => {
             e.preventDefault();
             const questionId = document.getElementById('questionId').textContent.trim();
-            window.location.href = `/quiz/edit/${questionId}`;
+            window.location.href = `/question/edit/${questionId}`;
+        });
+
+        document.getElementById('duplicateLink')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            this.duplicateQuestion();
         });
 
         document.getElementById('jsonLink')?.addEventListener('click', (e) => {
@@ -211,7 +117,7 @@ class QuizCommon {
                 subtopic: this.metadata.subtopic,
                 level: this.metadata.level
             });
-            window.location.href = `/quiz/builder?${params}`;
+            window.location.href = `/question/builder?${params}`;
         });
 
         document.getElementById('closeJsonBtn')?.addEventListener('click', () => {
@@ -224,6 +130,34 @@ class QuizCommon {
                 jsonModal.classList.remove('show');
             }
         });
+    }
+
+    /**
+     * Duplicate the current question
+     */
+    async duplicateQuestion() {
+        const questionId = document.getElementById('questionId').textContent.trim();
+        
+        try {
+            const response = await fetch(`/question/api/duplicate/${questionId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const result = await response.json();
+            
+            if (result.ok && result.question_id) {
+                // Navigate to the duplicated question display page
+                window.location.href = `/question/display/${result.question_id}`;
+            } else {
+                alert(result.error || 'Failed to duplicate question');
+            }
+        } catch (error) {
+            console.error('Error duplicating question:', error);
+            alert('Failed to duplicate question. Please try again.');
+        }
     }
 
     /**

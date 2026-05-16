@@ -19,6 +19,9 @@ elif DATABASE_URL.startswith("postgresql://") and "+psycopg" not in DATABASE_URL
 # Schema
 CURRENT_SCHEMA = os.getenv("APP_SCHEMA", "prod")
 
+# Math renderer: 'katex' (default, uses node katex_render.js) or 'mathml' (fallback, no node needed)
+LATEX_RENDERER = os.getenv("LATEX_RENDERER", "katex")
+
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
 
 # Package data path - use local test directory in development, /data/mont on render
@@ -27,3 +30,9 @@ if os.path.exists("/data/mont"):
     PACKAGE_DATA_PATH = os.getenv("PACKAGE_DATA_PATH", "/data/mont")
 else:
     PACKAGE_DATA_PATH = os.getenv("PACKAGE_DATA_PATH", "./test_data/packages")
+
+# Image storage - OneDrive folder locally, /data/qimage on Render
+if os.path.exists("/data/qimage"):
+    QIMAGE_PATH = os.getenv("QIMAGE_PATH", "/data/qimage")
+else:
+    QIMAGE_PATH = os.getenv("QIMAGE_PATH", r"C:\OneDrive--MEInc\OneDrive\0000 - Montessori Online\qimage")

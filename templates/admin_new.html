@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root {
+      --color-primary:    #2c6e9e;
+      --color-primary-lt: #d6eaf8;
+      --color-accent:     #3a9e6e;
+      --color-bg:         #f4f8fb;
+      --color-surface:    #ffffff;
+      --color-text:       #1a2d3d;
+      --color-muted:      #6c8a9e;
+      --color-border:     #cfe0ed;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      min-height: 100vh;
+    }
+
+    .top-nav {
+      background: var(--color-primary);
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .top-nav .brand {
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .top-nav .nav-links a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      margin-left: 1.25rem;
+      font-size: 0.9rem;
+    }
+
+    .top-nav .nav-links a:hover { color: #fff; }
+
+    .page-header {
+      background: var(--color-surface);
+      border-bottom: 1px solid var(--color-border);
+      padding: 1.25rem 2rem;
+    }
+
+    .page-header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--color-primary);
+      margin: 0;
+    }
+
+    .page-header p {
+      color: var(--color-muted);
+      margin: 0.25rem 0 0;
+      font-size: 0.9rem;
+    }
+
+    .main-content {
+      padding: 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .placeholder-card {
+      background: var(--color-surface);
+      border: 2px dashed var(--color-border);
+      border-radius: 10px;
+      padding: 3rem;
+      text-align: center;
+      color: var(--color-muted);
+    }
+
+    .placeholder-card .icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .placeholder-card h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--color-text);
+    }
+
+    .placeholder-card p {
+      font-size: 0.9rem;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    .quick-links {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .quick-link-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 8px;
+      padding: 1.25rem 1.5rem;
+      text-decoration: none;
+      color: var(--color-text);
+      transition: box-shadow 0.2s, border-color 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .quick-link-card:hover {
+      box-shadow: 0 2px 12px rgba(44,110,158,0.12);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .quick-link-card .link-icon {
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .quick-link-card .link-text {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="top-nav">
+    <a class="brand" href="#">&#127979; MathXcel Admin</a>
+    <div class="nav-links">
+      <a href="{{ url_for('lms.admin_home_new') }}">Dashboard</a>
+      <a href="{{ url_for('lms.logout') }}">Sign Out</a>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <h1>Admin Dashboard</h1>
+    <p>Welcome, {{ current_user.full_name or current_user.username }}</p>
+  </div>
+
+  <div class="main-content">
+
+    <div class="placeholder-card">
+      <div class="icon">&#128640;</div>
+      <h2>New Admin Interface — Coming Soon</h2>
+      <p>This is the scaffolding for the new admin experience. Functionality will be built here in parallel with the existing system.</p>
+    </div>
+
+    <div class="quick-links">
+      <a class="quick-link-card" href="{{ url_for('question.list_questions_page') }}">
+        <span class="link-icon">&#10067;</span>
+        <span class="link-text">Question Bank</span>
+      </a>
+      <a class="quick-link-card" href="{{ url_for('qb.quiz_list_page') }}">
+        <span class="link-icon">&#128221;</span>
+        <span class="link-text">Quizzes</span>
+      </a>
+      <a class="quick-link-card" href="{{ url_for('qb.assign_page') }}">
+        <span class="link-icon">&#128100;</span>
+        <span class="link-text">Assign Quizzes</span>
+      </a>
+      <a class="quick-link-card" href="{{ url_for('lms.lesson_list') }}">
+        <span class="link-icon">&#128218;</span>
+        <span class="link-text">Lessons</span>
+      </a>
+      <a class="quick-link-card" href="#" id="btn-open-create-unit">
+        <span class="link-icon">&#128466;</span>
+        <span class="link-text">Create Unit</span>
+      </a>
+      <a class="quick-link-card" href="{{ url_for('lms.units_list') }}">
+        <span class="link-icon">&#128203;</span>
+        <span class="link-text">Units</span>
+      </a>
+      <a class="quick-link-card" href="{{ url_for('lms.unit_assign_page') }}">
+        <span class="link-icon">&#127979;</span>
+        <span class="link-text">Assign Units</span>
+      </a>
+      <a class="quick-link-card" href="{{ url_for('lms.admin_home') }}">
+        <span class="link-icon">&#9881;</span>
+        <span class="link-text">Old Admin (Legacy)</span>
+      </a>
+      <a class="quick-link-card" href="{{ url_for('lms.unit_finetune_page') }}">
+        <span class="link-icon">&#127891;</span>
+        <span class="link-text">Fine Tune Assignments</span>
+      </a>
+      <a class="quick-link-card" href="#" id="btn-open-review">
+        <span class="link-icon">&#128270;</span>
+        <span class="link-text">Quiz Review</span>
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Review Student Modal -->
+  <div id="review-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1040;"></div>
+  <div id="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-modal-title"
+       style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+              background:#fff;border-radius:10px;padding:2rem;width:min(420px,95vw);
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1050;">
+    <h2 id="review-modal-title" style="font-size:1.15rem;font-weight:600;color:var(--color-primary);margin:0 0 1.25rem;">Quiz Review — Select Student</h2>
+    <div style="margin-bottom:1.25rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.4rem;">Student</label>
+      <select id="review-student-sel"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+        <option value="">— loading… —</option>
+      </select>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+      <button onclick="closeReviewModal()"
+              style="padding:0.5rem 1.25rem;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;font-size:0.95rem;">
+        Cancel
+      </button>
+      <button id="btn-go-review" onclick="goToReview()"
+              style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:var(--color-primary);color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;">
+        View History
+      </button>
+    </div>
+  </div>
+
+  <!-- Create Unit Modal -->
+  <div id="unit-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1040;"></div>
+  <div id="unit-modal" role="dialog" aria-modal="true" aria-labelledby="unit-modal-title"
+       style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+              background:#fff;border-radius:10px;padding:2rem;width:min(480px,95vw);
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1050;">
+    <h2 id="unit-modal-title" style="font-size:1.2rem;font-weight:600;color:var(--color-primary);margin:0 0 1.25rem;">
+      Create Assignment Unit
+    </h2>
+    <div id="unit-form-error" style="display:none;color:#c0392b;font-size:0.88rem;margin-bottom:0.75rem;"></div>
+
+    <!-- au_name -->
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Unit Name *</label>
+      <input id="au_name" type="text" placeholder="e.g. Fractions Level 1"
+             style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+    </div>
+
+    <!-- au_area -->
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Area</label>
+      <select id="au_area_sel" onchange="handleNew(this,'au_area_new')"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+        <option value="">— select —</option>
+      </select>
+      <input id="au_area_new" type="text" placeholder="New area name" maxlength="100"
+             style="display:none;margin-top:0.4rem;width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+    </div>
+
+    <!-- au_topic -->
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Topic</label>
+      <select id="au_topic_sel" onchange="handleNew(this,'au_topic_new')"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+        <option value="">— select —</option>
+      </select>
+      <input id="au_topic_new" type="text" placeholder="New topic name" maxlength="255"
+             style="display:none;margin-top:0.4rem;width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+    </div>
+
+    <!-- au_level -->
+    <div style="margin-bottom:1.5rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Level <span style="font-weight:400;color:var(--color-muted)">(2-char code)</span></label>
+      <select id="au_level_sel" onchange="handleNew(this,'au_level_new')"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+        <option value="">— select —</option>
+      </select>
+      <input id="au_level_new" type="text" placeholder="e.g. DX" maxlength="2"
+             style="display:none;margin-top:0.4rem;width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+      <button onclick="closeUnitModal()"
+              style="padding:0.5rem 1.25rem;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;font-size:0.95rem;">
+        Cancel
+      </button>
+      <button id="btn-save-unit" onclick="saveUnit()"
+              style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:var(--color-primary);color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;">
+        Create Unit
+      </button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    function populateSelect(selId, values) {
+      const sel = document.getElementById(selId);
+      // keep first blank option, remove rest
+      while (sel.options.length > 1) sel.remove(1);
+      values.forEach(v => {
+        const o = document.createElement('option');
+        o.value = o.textContent = v;
+        sel.appendChild(o);
+      });
+      const add = document.createElement('option');
+      add.value = '__new__';
+      add.textContent = '+ Add New';
+      sel.appendChild(add);
+    }
+
+    function handleNew(sel, inputId) {
+      document.getElementById(inputId).style.display = sel.value === '__new__' ? 'block' : 'none';
+    }
+
+    function getFieldValue(selId, inputId) {
+      const sel = document.getElementById(selId);
+      if (sel.value === '__new__') return document.getElementById(inputId).value.trim();
+      return sel.value;
+    }
+
+    function openUnitModal() {
+      fetch('/units/options')
+        .then(r => r.json())
+        .then(data => {
+          populateSelect('au_area_sel',  data.areas);
+          populateSelect('au_topic_sel', data.topics);
+          populateSelect('au_level_sel', data.levels);
+          document.getElementById('au_area_new').style.display   = 'none';
+          document.getElementById('au_topic_new').style.display  = 'none';
+          document.getElementById('au_level_new').style.display  = 'none';
+          document.getElementById('au_name').value = '';
+          document.getElementById('unit-form-error').style.display = 'none';
+          document.getElementById('unit-modal-backdrop').style.display = 'block';
+          document.getElementById('unit-modal').style.display = 'block';
+          document.getElementById('au_name').focus();
+        });
+    }
+
+    function closeUnitModal() {
+      document.getElementById('unit-modal-backdrop').style.display = 'none';
+      document.getElementById('unit-modal').style.display = 'none';
+    }
+
+    function saveUnit() {
+      const au_name = document.getElementById('au_name').value.trim();
+      const errEl = document.getElementById('unit-form-error');
+      if (!au_name) {
+        errEl.textContent = 'Unit Name is required.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const payload = {
+        au_name,
+        au_area:  getFieldValue('au_area_sel',  'au_area_new'),
+        au_topic: getFieldValue('au_topic_sel', 'au_topic_new'),
+        au_level: getFieldValue('au_level_sel', 'au_level_new'),
+      };
+      const btn = document.getElementById('btn-save-unit');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      fetch('/units/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          closeUnitModal();
+        } else {
+          errEl.textContent = data.error || 'An error occurred.';
+          errEl.style.display = 'block';
+        }
+      })
+      .catch(() => {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+      })
+      .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'Create Unit';
+      });
+    }
+
+    document.getElementById('btn-open-create-unit').addEventListener('click', e => {
+      e.preventDefault();
+      openUnitModal();
+    });
+    document.getElementById('unit-modal-backdrop').addEventListener('click', closeUnitModal);
+
+    // ── Quiz Review modal ──────────────────────────────────────────────────
+    function openReviewModal() {
+      const sel = document.getElementById('review-student-sel');
+      sel.innerHTML = '<option value="">— loading… —</option>';
+      document.getElementById('review-modal-backdrop').style.display = 'block';
+      document.getElementById('review-modal').style.display = 'block';
+      fetch('/unit/api/users')
+        .then(r => r.json())
+        .then(data => {
+          sel.innerHTML = '<option value="">— select student —</option>';
+          (data.users || []).forEach(u => {
+            const o = document.createElement('option');
+            o.value = u.username;
+            o.textContent = u.full_name || u.username;
+            sel.appendChild(o);
+          });
+        })
+        .catch(() => { sel.innerHTML = '<option value="">— failed to load —</option>'; });
+    }
+
+    function closeReviewModal() {
+      document.getElementById('review-modal-backdrop').style.display = 'none';
+      document.getElementById('review-modal').style.display = 'none';
+    }
+
+    function goToReview() {
+      const username = document.getElementById('review-student-sel').value;
+      if (!username) { alert('Please select a student.'); return; }
+      closeReviewModal();
+      window.location.href = `/quiz/admin/student-history?username=${encodeURIComponent(username)}`;
+    }
+
+    document.getElementById('btn-open-review').addEventListener('click', e => {
+      e.preventDefault();
+      openReviewModal();
+    });
+    document.getElementById('review-modal-backdrop').addEventListener('click', closeReviewModal);
+  </script>
+</body>
+</html>

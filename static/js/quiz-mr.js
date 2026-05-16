@@ -98,7 +98,7 @@ class QuizMR {
         console.log('MR.checkAnswer() called');
         if (this.selectedOptions.size === 0) {
             alert('Please select at least one option');
-            return;
+            return false;
         }
 
         // Get correct option IDs
@@ -108,23 +108,28 @@ class QuizMR {
 
         // Check if selection exactly matches correct options
         const correctSet = new Set(correctOptionIds);
-        const isCorrect = this.selectedOptions.size === correctSet.size && 
+        this.isCorrect = this.selectedOptions.size === correctSet.size && 
                           Array.from(this.selectedOptions).every(id => correctSet.has(id));
 
         // Display per-option feedback
         this.displayPerOptionFeedback(correctOptionIds);
 
         // Show feedback
-        if (isCorrect) {
+        if (this.isCorrect) {
             this.common.showFeedback('All correct answers selected!', true);
-            
-            // Disable submit button on correct answer
-            const submitBtn = document.querySelector('[onclick*="checkAnswer"]');
-            if (submitBtn) submitBtn.disabled = true;
         } else if (this.common.question.stem?.feedback?.html) {
             // Display question-level feedback on wrong answer
             this.common.showFeedback(this.common.question.stem.feedback.html, false);
         }
+
+        return true; // Answer was submitted successfully
+    }
+
+    /**
+     * Get whether the answer is correct
+     */
+    isAnswerCorrect() {
+        return this.isCorrect || false;
     }
 
     /**

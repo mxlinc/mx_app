@@ -80,6 +80,34 @@
             font-weight: 500;
         }
 
+        .format-helper-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 10px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+        }
+
+        .format-helper-selector label {
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+            white-space: nowrap;
+            font-size: 0.9em;
+        }
+
+        .format-helper-selector select {
+            padding: 6px 10px;
+            border: none;
+            font-size: 0.9em;
+            background: transparent;
+            cursor: pointer;
+            font-weight: 500;
+            max-width: 180px;
+        }
+
         .main-content {
             min-width: 0;
         }
@@ -592,6 +620,15 @@
                         <option value="mcq">MCQ (Multiple Choice)</option>
                         <option value="mr">MR (Multiple Response)</option>
                         <option value="fill">FILL (Fill in the Blank)</option>
+                        <option value="ohs">OHS (One HotSpot)</option>
+                        <option value="feval">FEVAL (Fill with Eval)</option>
+                        <option value="algebra">Algebra (Expression)</option>
+                    </select>
+                </div>
+                <div class="format-helper-selector">
+                    <label for="formatHelper" id="formatHelperLabel">Copy:</label>
+                    <select id="formatHelper">
+                        <option value="">— Format Helper —</option>
                     </select>
                 </div>
                 <button id="saveBtn" title="Save question (S)">
@@ -613,39 +650,6 @@
                     </div>
 
                     <form id="quizForm">
-                <!-- Metadata Section -->
-                <div class="form-section">
-                    <div class="form-row three-column">
-                        <div class="form-group">
-                            <label for="topic">Topic *</label>
-                            <select id="topic" name="topic" required>
-                                <option value="Number Sense">Number Sense</option>
-                                <option value="Algebra">Algebra</option>
-                                <option value="Measurement">Measurement</option>
-                                <option value="Data Management">Data Management</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="subtopic">Subtopic *</label>
-                            <select id="subtopic" name="subtopic" required>
-                                <option value="Fraction">Fraction</option>
-                                <option value="Decimal">Decimal</option>
-                                <option value="Percent">Percent</option>
-                                <option value="Ratio">Ratio</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="level">Level *</label>
-                            <select id="level" name="level" required>
-                                <option value="D">D</option>
-                                <option value="E">E</option>
-                                <option value="F">F</option>
-                                <option value="G">G</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Stem Section -->
                 <div class="form-section">
                     <div class="form-group">
@@ -654,20 +658,8 @@
                     </div>
                 </div>
 
-                <!-- Feedback Section -->
-                <div class="form-section">
-                    <div class="form-group">
-                        <label for="feedback_latex">Feedback <span class="input-type-label">(LaTeX format, optional)</span></label>
-                        <textarea id="feedback_latex" name="feedback_latex" placeholder="Enter feedback to display when student answers incorrectly (optional)..."></textarea>
-                        <small style="color: #666; margin-top: 3px; display: block; font-size: 0.8em;">This feedback will be shown only when the student provides an incorrect answer.</small>
-                    </div>
-                </div>
-
                 <!-- Image Section -->
                 <div class="form-section">
-                    <div class="section-title">
-                        <i class="fas fa-image"></i> Optional Image
-                    </div>
                     <div class="image-upload-box" onclick="document.getElementById('image').click()">
                         <input type="file" id="image" accept="image/*">
                         <div>
@@ -734,6 +726,138 @@
                     </button>
                 </div>
 
+                <!-- OHS (One HotSpot) Section -->
+                <div id="ohs-section" class="form-section" style="display: none;">
+                    <div class="section-title">
+                        <i class="fas fa-crosshairs"></i> Define HotSpot
+                    </div>
+                    <div style="background: #f0f7ff; border: 1px solid #0077cc; border-radius: 6px; padding: 12px; margin-bottom: 15px;">
+                        <p style="margin: 0; color: #0077cc; font-size: 0.9em;">
+                            <strong>Instructions:</strong> Upload an image above, then click and drag on the canvas below to draw a rectangle around the correct hotspot area.
+                        </p>
+                    </div>
+                    
+                    <!-- Hotspot Canvas -->
+                    <div style="position: relative; background: #f5f5f5; border: 2px dashed #ccc; border-radius: 6px; padding: 20px; text-align: center; margin-bottom: 15px;">
+                        <canvas id="ohsCanvas" style="border: 1px solid #ddd; border-radius: 4px; cursor: crosshair; display: none; max-width: 100%;" title="Click and drag to draw hotspot"></canvas>
+                        <p id="ohsCanvasPlaceholder" style="color: #999; font-size: 0.95em; margin: 40px 0;">
+                            <i class="fas fa-image" style="font-size: 2em; display: block; margin-bottom: 10px;"></i>
+                            Upload an image above to enable hotspot drawing
+                        </p>
+                    </div>
+
+                    <!-- Hotspot Coordinates Display -->
+                    <div id="ohsCoordinatesDisplay" style="background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px; padding: 12px; margin-bottom: 15px; display: none;">
+                        <div style="font-weight: 600; margin-bottom: 8px; color: #333;">HotSpot Coordinates:</div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.9em;">
+                            <div><span style="color: #666;">X:</span> <span id="ohsCoordX" style="font-weight: 600;">-</span></div>
+                            <div><span style="color: #666;">Y:</span> <span id="ohsCoordY" style="font-weight: 600;">-</span></div>
+                            <div><span style="color: #666;">Width:</span> <span id="ohsCoordW" style="font-weight: 600;">-</span></div>
+                            <div><span style="color: #666;">Height:</span> <span id="ohsCoordH" style="font-weight: 600;">-</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Clear Hotspot Button -->
+                    <button type="button" id="ohsClearBtn" style="background: #f44336; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9em; display: none;">
+                        <i class="fas fa-redo"></i> Clear HotSpot
+                    </button>
+                </div>
+
+                <!-- FEVAL (Fill with Evaluation) Section -->
+                <div id="feval-section" class="form-section" style="display: none;">
+                    <div class="section-title">
+                        <i class="fas fa-code"></i> Variables & Rules
+                    </div>
+                    
+                    <!-- Variables Container -->
+                    <div style="margin-bottom: 20px;">
+                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">Input Variables</label>
+                        <div id="feval-variables-container" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #f9f9f9; margin-bottom: 10px; min-height: 50px;"></div>
+                        <button type="button" id="addFEVALVariableBtn" style="background: #4CAF50; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.9em;">
+                            <i class="fas fa-plus"></i> Add Variable
+                        </button>
+                    </div>
+
+                    <!-- Rules Container -->
+                    <div>
+                        <label style="font-weight: 600; margin-bottom: 10px; display: block;">Validation Rules</label>
+                        <div id="feval-rules-container" style="border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #f9f9f9; margin-bottom: 10px; min-height: 80px;"></div>
+                        <button type="button" id="addFEVALRuleBtn" style="background: #2196F3; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.9em;">
+                            <i class="fas fa-plus"></i> Add Rule
+                        </button>
+                        <div style="background: #e3f2fd; border-left: 4px solid #2196F3; padding: 12px; margin-top: 15px; border-radius: 4px; font-size: 0.9em; color: #1565c0;">
+                            <strong>Rules Syntax:</strong> Use Python expressions (e.g., <code style="background: white; padding: 2px 4px; border-radius: 2px;">a + b == -7</code>). 
+                            Available functions: abs, round, max, min, sum, isinstance. Feedback templates use <code style="background: white; padding: 2px 4px; border-radius: 2px;">{expression}</code> syntax.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Algebra (Expression) Section -->
+                <div id="algebra-section" class="form-section" style="display: none;">
+                    <div class="section-title">
+                        <i class="fas fa-square-root-alt"></i> Algebra Answer
+                    </div>
+                    <div class="form-group">
+                        <label for="algebra-label">Input Label <span class="input-type-label">(LaTeX, optional — use <code>|</code> to add a label after the input)</span></label>
+                        <input type="text" id="algebra-label" placeholder="e.g.  Simplify: | units">
+                        <small style="color:#666;display:block;margin-top:4px;font-size:0.8em;">Text before the input field. Add <code>|</code> to include text that appears after it (e.g. <code>x = | + 3</code>).</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="algebra-accepted">Accepted Answers <span class="input-type-label">(pipe-delimited, spaces ignored)</span></label>
+                        <input type="text" id="algebra-accepted" placeholder="e.g. x+4 | 4+x | (x+4)">
+                        <small style="color:#666;display:block;margin-top:4px;font-size:0.8em;">Each pipe-separated entry is a fast-path string match. Spaces are stripped automatically.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="algebra-canonical">Canonical Form <span class="input-type-label">(used by sympy for equivalence)</span></label>
+                        <input type="text" id="algebra-canonical" placeholder="e.g. x+4" style="font-family:monospace;">
+                        <small style="color:#666;display:block;margin-top:4px;font-size:0.8em;">The definitive correct expression sympy compares against when string match fails.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="algebra-variables">Variables <span class="input-type-label">(comma-separated)</span></label>
+                        <input type="text" id="algebra-variables" placeholder="e.g. x, y" style="font-family:monospace;">
+                        <small style="color:#666;display:block;margin-top:4px;font-size:0.8em;">Only declared variables are available in sympy evaluation. Undeclared names are rejected.</small>
+                    </div>
+                    <div class="checkbox-label" style="margin-top:10px;">
+                        <input type="checkbox" id="algebra-use-sympy" checked>
+                        <label for="algebra-use-sympy" style="margin:0;">Enable sympy equivalence check as fallback</label>
+                    </div>
+                    <div style="background:#e8f5e9;border-left:4px solid #4CAF50;padding:12px;margin-top:15px;border-radius:4px;font-size:0.9em;color:#2e7d32;">
+                        <strong>How it works:</strong> Student types an expression (e.g. <code>4+x</code>).
+                        First checked against the accepted list (spaces stripped). If no match and sympy is enabled,
+                        algebraic equivalence is checked — so <code>2(x+1)</code>, <code>2*x+2</code>, and <code>2x+2</code> all pass for canonical <code>2x+2</code>.
+                    </div>
+                </div>
+
+                <!-- Feedback Section -->
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="feedback_latex">Feedback <span class="input-type-label">(LaTeX format, optional)</span></label>
+                        <textarea id="feedback_latex" name="feedback_latex" placeholder="Enter feedback to display when student answers incorrectly (optional)..."></textarea>
+                        <small style="color: #666; margin-top: 3px; display: block; font-size: 0.8em;">This feedback will be shown only when the student provides an incorrect answer.</small>
+                    </div>
+                </div>
+
+                <!-- Metadata Section -->
+                <div class="form-section" style="background: #f9f9f9; border-top: 2px solid #e8e8e8; margin-top: 20px;">
+                    <div style="font-weight: 600; margin-bottom: 15px; color: #666; font-size: 0.95em;">
+                        <i class="fas fa-tag" style="margin-right: 6px;"></i>Metadata
+                    </div>
+                    <div class="form-row three-column">
+                        <div class="form-group">
+                            <label for="topic">Topic</label>
+                            <input type="text" id="topic" name="topic">
+                        </div>
+                        <div class="form-group">
+                            <label for="subtopic">Subtopic</label>
+                            <input type="text" id="subtopic" name="subtopic">
+                        </div>
+                        <div class="form-group">
+                            <label for="level">Level</label>
+                            <input type="text" id="level" name="level">
+                        </div>
+                    </div>
+                </div>
+
                     </form>
                 </div>
             </div>
@@ -744,13 +868,53 @@
     <script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
     <script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
     <script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/quiz-feval.js') }}"></script>
+
+    <!-- Algebra question builder helpers (inline) -->
+    <script>
+    function collectAlgebraData() {
+        const accepted = document.getElementById('algebra-accepted').value
+            .split('|')
+            .map(s => s.replace(/\s+/g, ''))   // strip all spaces
+            .filter(s => s.length > 0);
+        const canonical  = document.getElementById('algebra-canonical').value.trim();
+        const variables  = document.getElementById('algebra-variables').value
+            .split(',')
+            .map(s => s.trim())
+            .filter(s => s.length > 0);
+        const useSympy   = document.getElementById('algebra-use-sympy').checked;
+
+        if (accepted.length === 0) throw new Error('Enter at least one accepted answer string');
+        if (!canonical)            throw new Error('Canonical form is required');
+        if (variables.length === 0) throw new Error('Declare at least one variable (e.g. x)');
+
+        // Parse label field: "label before | label after"
+        const labelRaw    = document.getElementById('algebra-label').value;
+        const pipeParts   = labelRaw.split('|');
+        const labelBefore = pipeParts[0].trim();
+        const labelAfter  = (pipeParts[1] || '').trim();
+
+        const q = {
+            type: 'algebra',
+            stem: { latex: document.getElementById('stem_latex').value },
+            answer: { accepted, canonical, variables, use_sympy: useSympy },
+        };
+        if (labelBefore) {
+            q.input_label = { latex: labelBefore };
+            if (labelAfter) q.label_after = { latex: labelAfter };
+        }
+        const fb = document.getElementById('feedback_latex').value.trim();
+        if (fb) q.feedback = { latex: fb };
+        return q;
+    }
+    </script>
 
     <script>
         // ===== State Management =====
         let lastQuestion = {
-            topic: 'Number Sense',
-            subtopic: 'Fraction',
-            level: 'D',
+            topic: '',
+            subtopic: '',
+            level: '',
             type: 'mcq'
         };
 
@@ -824,6 +988,13 @@
                     const preview = document.getElementById('imagePreview');
                     preview.src = e.target.result;
                     preview.style.display = 'block';
+                    
+                    // If OHS type, initialize canvas
+                    if (document.getElementById('questionType').value.toLowerCase() === 'ohs') {
+                        setTimeout(() => {
+                            initializeOHSCanvas();
+                        }, 100);
+                    }
                 };
                 reader.readAsDataURL(file);
                 editingQuestionImage = null; // Clear cached server image when new file selected
@@ -839,32 +1010,58 @@
         document.getElementById('questionType').addEventListener('change', (e) => {
             const type = e.target.value.toLowerCase();
             const mcqSection = document.getElementById('mcq-section');
-            const mrSection = document.getElementById('mr-section');
-            const fillSection = document.getElementById('fill-section');
-            const addBlankBtn = document.getElementById('addBlankBtn');
-            
+            const mrSection      = document.getElementById('mr-section');
+            const fillSection    = document.getElementById('fill-section');
+            const ohsSection     = document.getElementById('ohs-section');
+            const fevalSection   = document.getElementById('feval-section');
+            const algebraSection = document.getElementById('algebra-section');
+            const addBlankBtn    = document.getElementById('addBlankBtn');
+
+            // Hide all type-specific sections first, then show the selected one
+            [mrSection, fillSection, ohsSection, fevalSection, algebraSection].forEach(s => {
+                if (s) s.style.display = 'none';
+            });
+
             if (type === 'mcq') {
                 mcqSection.style.display = 'block';
-                mrSection.style.display = 'none';
-                fillSection.style.display = 'none';
                 lastQuestion.type = 'mcq';
             } else if (type === 'mr') {
                 mcqSection.style.display = 'none';
                 mrSection.style.display = 'block';
-                fillSection.style.display = 'none';
                 lastQuestion.type = 'mr';
                 // Regenerate MR options when switching
                 updateMRCorrectOptions();
             } else if (type === 'fill') {
                 mcqSection.style.display = 'none';
-                mrSection.style.display = 'none';
                 fillSection.style.display = 'block';
                 lastQuestion.type = 'fill';
-                
                 // Initialize FILL if needed (only when creating new, not editing)
                 if (!editingQuestionId && document.getElementById('fill-blanks-container').children.length === 0) {
                     addBlankUI();
                 }
+            } else if (type === 'ohs') {
+                mcqSection.style.display = 'none';
+                ohsSection.style.display = 'block';
+                lastQuestion.type = 'ohs';
+                // Initialize OHS canvas if image exists
+                setTimeout(() => { initializeOHSCanvas(); }, 100);
+            } else if (type === 'feval') {
+                mcqSection.style.display = 'none';
+                fevalSection.style.display = 'block';
+                lastQuestion.type = 'feval';
+                // Initialize FEVAL if needed (only when creating new, not editing)
+                if (!editingQuestionId) {
+                    if (document.getElementById('feval-variables-container').children.length === 0) {
+                        addFEVALVariable();
+                    }
+                    if (document.getElementById('feval-rules-container').children.length === 0) {
+                        addFEVALRule();
+                    }
+                }
+            } else if (type === 'algebra') {
+                mcqSection.style.display = 'none';
+                algebraSection.style.display = 'block';
+                lastQuestion.type = 'algebra';
             }
             
             // Clear form when switching types - but NOT when editing an existing question
@@ -911,6 +1108,14 @@
         }
 
         async function collectData() {
+            /**
+             * Strip leading option labels like A), B), 1), etc. from option text
+             */
+            function stripOptionLabel(text) {
+                // Match patterns like: A), a), 1), (A), etc.
+                return text.replace(/^[\s]*([A-Za-z0-9]+\s*[\)\)]|[\(\s]*[A-Za-z0-9]+\s*[\)\)])\s*/g, '').trim();
+            }
+
             const questionType = document.getElementById('questionType').value.toLowerCase();
             
             let question;
@@ -923,7 +1128,7 @@
                         options: document.getElementById('options').value
                             .split('\n')
                             .filter(o => o.trim())
-                            .map((o, i) => ({ id: `opt${i+1}`, latex: o.trim() })),
+                            .map((o, i) => ({ id: `opt${i+1}`, latex: stripOptionLabel(o) })),
                         shuffle: document.getElementById('shuffle').checked
                     },
                     answer: {}
@@ -938,8 +1143,9 @@
                 // Determine correct option
                 const customCorrect = document.getElementById('correct').value.trim();
                 if (customCorrect) {
+                    const strippedCorrect = stripOptionLabel(customCorrect);
                     const matchingOption = question.input.options.find(opt => 
-                        opt.latex === customCorrect
+                        opt.latex === strippedCorrect
                     );
                     if (matchingOption) {
                         question.answer.correct_option_id = matchingOption.id;
@@ -958,7 +1164,7 @@
                         options: document.getElementById('mr-options').value
                             .split('\n')
                             .filter(o => o.trim())
-                            .map((o, i) => ({ id: `opt${i+1}`, latex: o.trim() })),
+                            .map((o, i) => ({ id: `opt${i+1}`, latex: stripOptionLabel(o) })),
                         shuffle: document.getElementById('mr-shuffle').checked
                     },
                     answer: {}
@@ -982,6 +1188,46 @@
             } else if (questionType === 'fill') {
                 // Collect FILL data
                 question = getFILLQuestion();
+            } else if (questionType === 'feval') {
+                // Collect FEVAL data
+                question = collectFEVALData();
+            } else if (questionType === 'algebra') {
+                question = collectAlgebraData();
+            } else if (questionType === 'ohs') {
+                // Collect OHS data
+                if (!ohsHotspot) {
+                    throw new Error('OHS questions require a hotspot. Please draw a rectangle on the image.');
+                }
+                
+                question = {
+                    type: 'ohs',
+                    input: {},
+                    image: {
+                        alt: '',
+                        hotspot: {
+                            id: 'hs1',
+                            x: Math.round(ohsHotspot.x),
+                            y: Math.round(ohsHotspot.y),
+                            width: Math.round(ohsHotspot.width),
+                            height: Math.round(ohsHotspot.height)
+                        }
+                    },
+                    answer: {
+                        correct_hotspot_id: 'hs1'
+                    }
+                };
+                
+                // Add stem if provided
+                const stemLatex = document.getElementById('stem_latex').value.trim();
+                if (stemLatex) {
+                    question.stem = { latex: stemLatex };
+                    
+                    // Add feedback if provided
+                    const feedbackLatex = document.getElementById('feedback_latex').value.trim();
+                    if (feedbackLatex) {
+                        question.stem.feedback = { latex: feedbackLatex };
+                    }
+                }
             } else {
                 throw new Error(`Unknown question type: ${questionType}`);
             }
@@ -1019,7 +1265,22 @@
                         // FILL questions don't require additional validation at this point
                         validator = { validate: () => true };
                         break;
-                    // Future types: HOTSPOT, FB, MFB
+                    case 'FEVAL':
+                        // FEVAL questions don't require additional validation at this point
+                        validator = { validate: () => true };
+                        break;
+                    case 'ALGEBRA':
+                        validator = { validate: () => true };
+                        break;
+                    case 'OHS':
+                        // OHS questions need image on CREATE, but not on EDIT if image already exists
+                        if (!data.image_data_url && !data.id) {
+                            // Creating new question and no image uploaded
+                            showMessage('✗ OHS questions require an image. Please upload one.', 'error');
+                            return;
+                        }
+                        validator = { validate: () => true };
+                        break;
                     default:
                         showMessage('✗ Unknown question type: ' + questionType, 'error');
                         return;
@@ -1030,8 +1291,8 @@
                     return; // Validation errors already displayed
                 }
                 
-                console.log('Sending to /quiz/save:', data);
-                const response = await fetch('/quiz/save', {
+                console.log('Sending to /question/api/save:', data);
+                const response = await fetch('/question/api/save', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
@@ -1062,7 +1323,7 @@
                     // Go to full-screen display
                     if (result.question_id) {
                         setTimeout(() => {
-                            window.location.href = `/quiz/display/${result.question_id}`;
+                            window.location.href = `/question/display/${result.question_id}`;
                         }, 500);
                     }
                 } else {
@@ -1078,6 +1339,14 @@
 
         // ===== MR Correct Options Management =====
         function updateMRCorrectOptions() {
+            /**
+             * Strip leading option labels like A), B), 1), etc. from option text
+             */
+            function stripOptionLabel(text) {
+                // Match patterns like: A), a), 1), (A), etc.
+                return text.replace(/^[\s]*([A-Za-z0-9]+\s*[\)\)]|[\(\s]*[A-Za-z0-9]+\s*[\)\)])\s*/g, '').trim();
+            }
+
             const optionsText = document.getElementById('mr-options').value;
             const options = optionsText.split('\n').filter(o => o.trim());
             const container = document.getElementById('mr-correct-options');
@@ -1089,10 +1358,11 @@
             
             const checkboxesHtml = options.map((opt, i) => {
                 const optId = `opt${i+1}`;
+                const strippedOpt = stripOptionLabel(opt);
                 return `
                     <div style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
                         <input type="checkbox" id="correct_${optId}" value="${optId}" style="cursor: pointer;">
-                        <label for="correct_${optId}" style="cursor: pointer; margin: 0; flex: 1;">${opt}</label>
+                        <label for="correct_${optId}" style="cursor: pointer; margin: 0; flex: 1;">${strippedOpt}</label>
                     </div>
                 `;
             }).join('');
@@ -1102,6 +1372,152 @@
 
         // Setup MR options listener
         document.getElementById('mr-options').addEventListener('keyup', updateMRCorrectOptions);
+
+
+        // ===== OHS (One HotSpot) Handlers =====
+        let ohsHotspot = null;  // Stores current hotspot: {x, y, width, height}
+        let ohsDrawing = false;
+        let ohsStartX, ohsStartY;
+
+        function initializeOHSCanvas() {
+            const imagePreview = document.getElementById('imagePreview');
+            const canvas = document.getElementById('ohsCanvas');
+            const placeholder = document.getElementById('ohsCanvasPlaceholder');
+            
+            if (!imagePreview || !imagePreview.src) {
+                canvas.style.display = 'none';
+                placeholder.style.display = 'block';
+                return;
+            }
+
+            // Load image and set up canvas
+            const img = new Image();
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvas.style.display = 'block';
+                placeholder.style.display = 'none';
+                
+                // Draw image on canvas
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                
+                // Draw existing hotspot if any
+                if (ohsHotspot) {
+                    drawHotspotRect(ohsHotspot);
+                }
+                
+                // Re-attach event listeners
+                attachOHSCanvasListeners();
+            };
+            img.src = imagePreview.src;
+        }
+
+        function attachOHSCanvasListeners() {
+            const canvas = document.getElementById('ohsCanvas');
+            
+            canvas.addEventListener('mousedown', (e) => {
+                ohsDrawing = true;
+                const rect = canvas.getBoundingClientRect();
+                ohsStartX = e.clientX - rect.left;
+                ohsStartY = e.clientY - rect.top;
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!ohsDrawing) return;
+                
+                const rect = canvas.getBoundingClientRect();
+                const currentX = e.clientX - rect.left;
+                const currentY = e.clientY - rect.top;
+                
+                // Redraw canvas
+                const imagePreview = document.getElementById('imagePreview');
+                const img = new Image();
+                img.onload = () => {
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Draw preview rectangle
+                    const width = currentX - ohsStartX;
+                    const height = currentY - ohsStartY;
+                    drawHotspotRect({
+                        x: width < 0 ? currentX : ohsStartX,
+                        y: height < 0 ? currentY : ohsStartY,
+                        width: Math.abs(width),
+                        height: Math.abs(height)
+                    }, true);
+                };
+                img.src = imagePreview.src;
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                if (!ohsDrawing) return;
+                ohsDrawing = false;
+                
+                const rect = canvas.getBoundingClientRect();
+                const endX = e.clientX - rect.left;
+                const endY = e.clientY - rect.top;
+                
+                // Calculate hotspot coordinates
+                const x = Math.min(ohsStartX, endX);
+                const y = Math.min(ohsStartY, endY);
+                const width = Math.abs(endX - ohsStartX);
+                const height = Math.abs(endY - ohsStartY);
+                
+                if (width > 10 && height > 10) {  // Minimum size threshold
+                    ohsHotspot = { x, y, width, height };
+                    updateOHSDisplay();
+                } else {
+                    showMessage('Hotspot too small. Please draw a larger rectangle.', 'error');
+                }
+            });
+
+            canvas.addEventListener('mouseleave', () => {
+                ohsDrawing = false;
+            });
+        }
+
+        function drawHotspotRect(hotspot, isPreview = false) {
+            const canvas = document.getElementById('ohsCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Draw rectangle
+            ctx.strokeStyle = isPreview ? 'rgba(255, 193, 7, 0.7)' : 'rgba(76, 175, 80, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(hotspot.x, hotspot.y, hotspot.width, hotspot.height);
+            
+            // Fill with semi-transparent color
+            ctx.fillStyle = isPreview ? 'rgba(255, 193, 7, 0.1)' : 'rgba(76, 175, 80, 0.1)';
+            ctx.fillRect(hotspot.x, hotspot.y, hotspot.width, hotspot.height);
+        }
+
+        function updateOHSDisplay() {
+            const coordsDisplay = document.getElementById('ohsCoordinatesDisplay');
+            const clearBtn = document.getElementById('ohsClearBtn');
+            
+            if (ohsHotspot) {
+                document.getElementById('ohsCoordX').textContent = Math.round(ohsHotspot.x);
+                document.getElementById('ohsCoordY').textContent = Math.round(ohsHotspot.y);
+                document.getElementById('ohsCoordW').textContent = Math.round(ohsHotspot.width);
+                document.getElementById('ohsCoordH').textContent = Math.round(ohsHotspot.height);
+                
+                coordsDisplay.style.display = 'block';
+                clearBtn.style.display = 'inline-block';
+                showMessage('✓ Hotspot defined!', 'success');
+            } else {
+                coordsDisplay.style.display = 'none';
+                clearBtn.style.display = 'none';
+            }
+        }
+
+        document.getElementById('ohsClearBtn')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            ohsHotspot = null;
+            updateOHSDisplay();
+            initializeOHSCanvas();
+            showMessage('Hotspot cleared', 'success');
+        });
 
         // ===== Clear Form =====
         function clearForm() {
@@ -1123,6 +1539,35 @@
             const fillBlankContainer = document.getElementById('fill-blanks-container');
             if (fillBlankContainer) {
                 fillBlankContainer.innerHTML = '';
+            }
+            
+            // Clear OHS hotspot
+            ohsHotspot = null;
+            const ohsCanvas = document.getElementById('ohsCanvas');
+            if (ohsCanvas) {
+                ohsCanvas.style.display = 'none';
+            }
+            const ohsPlaceholder = document.getElementById('ohsCanvasPlaceholder');
+            if (ohsPlaceholder) {
+                ohsPlaceholder.style.display = 'block';
+            }
+            const coordsDisplay = document.getElementById('ohsCoordinatesDisplay');
+            if (coordsDisplay) {
+                coordsDisplay.style.display = 'none';
+            }
+            const clearBtn = document.getElementById('ohsClearBtn');
+            if (clearBtn) {
+                clearBtn.style.display = 'none';
+            }
+            
+            // Clear FEVAL variables and rules
+            const fevalVarsContainer = document.getElementById('feval-variables-container');
+            if (fevalVarsContainer) {
+                fevalVarsContainer.innerHTML = '';
+            }
+            const fevalRulesContainer = document.getElementById('feval-rules-container');
+            if (fevalRulesContainer) {
+                fevalRulesContainer.innerHTML = '';
             }
             
             editingQuestionId = null;
@@ -1171,7 +1616,7 @@
         // ===== Load Question for Editing =====
         async function loadQuestionForEdit(questionId) {
             try {
-                const response = await fetch(`/quiz/get-display/${questionId}`);
+                const response = await fetch(`/question/api/display/${questionId}`);
                 const data = await response.json();
                 console.log('API Response:', data);
                 
@@ -1197,7 +1642,7 @@
                 document.getElementById('stem_latex').value = stemValue;
                 
                 // Populate feedback if present
-                const feedbackValue = question.stem?.feedback?.latex || '';
+                const feedbackValue = question.stem?.feedback?.latex || question.feedback?.latex || '';
                 document.getElementById('feedback_latex').value = feedbackValue;
                 
                 document.getElementById('topic').value = data.topic || '';
@@ -1259,7 +1704,9 @@
                                 
                                 if (blankEl) {
                                     // Populate fields
-                                    blankEl.querySelector('.blank-label-latex').value = blank.input_label?.latex || '';
+                                    const _lbefore = blank.input_label?.latex || '';
+                                    const _lafter  = blank.label_after?.latex  || '';
+                                    blankEl.querySelector('.blank-label-latex').value = _lafter ? `${_lbefore} | ${_lafter}` : _lbefore;
                                     blankEl.querySelector('.blank-response-type').value = blank.response_type || 'text';
                                     blankEl.querySelector('.blank-placeholder').value = blank.placeholder || '';
                                     
@@ -1287,6 +1734,124 @@
                             });
                         }
                     }
+                } else if (questionType === 'ohs') {
+                    // Populate OHS hotspot
+                    if (question.image?.hotspot) {
+                        ohsHotspot = question.image.hotspot;
+                        updateOHSDisplay();
+                        
+                        // Initialize canvas after a short delay to ensure image is loaded
+                        setTimeout(() => {
+                            initializeOHSCanvas();
+                        }, 100);
+                    }
+                } else if (questionType === 'feval') {
+                    // Populate FEVAL variables and rules
+                    console.log('FEVAL Loading - Full question object:', JSON.stringify(question, null, 2));
+                    console.log('FEVAL Loading - Input blanks:', question.input?.blanks);
+                    console.log('FEVAL Loading - Answer rules:', question.answer?.rules);
+                    
+                    // Variables are stored in input.blanks
+                    if (question.input?.blanks && Array.isArray(question.input.blanks)) {
+                        console.log(`Loading ${question.input.blanks.length} variables`);
+                        const varsContainer = document.getElementById('feval-variables-container');
+                        if (varsContainer) {
+                            varsContainer.innerHTML = ''; // Clear existing
+                            
+                            question.input.blanks.forEach((blank, blankIdx) => {
+                                console.log(`Blank ${blankIdx}:`, blank);
+                                addFEVALVariable();
+                                // Get the LAST direct child of the container (not all nested divs)
+                                const varEl = varsContainer.children[varsContainer.children.length - 1];
+                                
+                                if (varEl) {
+                                    try {
+                                        const nameInput = varEl.querySelector('input.feval-var-name');
+                                        const labelInput = varEl.querySelector('input.feval-var-label');
+                                        
+                                        console.log(`Blank ${blankIdx} - nameInput found:`, nameInput !== null);
+                                        console.log(`Blank ${blankIdx} - labelInput found:`, labelInput !== null);
+                                        
+                                        if (nameInput) {
+                                            nameInput.value = blank.variable_name || '';
+                                            console.log(`Blank ${blankIdx} - Set name to: "${blank.variable_name}"`);
+                                        } else {
+                                            console.warn(`Blank ${blankIdx}: Could not find .feval-var-name input in varEl:`, varEl);
+                                        }
+                                        
+                                        if (labelInput) {
+                                            labelInput.value = blank.label || '';
+                                            console.log(`Blank ${blankIdx} - Set label to: "${blank.label}"`);
+                                        } else {
+                                            console.warn(`Blank ${blankIdx}: Could not find .feval-var-label input`);
+                                        }
+                                    } catch (e) {
+                                        console.error(`Error populating blank ${blankIdx}:`, e);
+                                    }
+                                } else {
+                                    console.warn(`Blank ${blankIdx}: Could not find variable element`);
+                                }
+                            });
+                        }
+                    } else {
+                        console.warn('No input.blanks found in question');
+                    }
+                    
+                    // Rules are stored in answer.rules
+                    if (question.answer?.rules && Array.isArray(question.answer.rules)) {
+                        console.log(`Loading ${question.answer.rules.length} rules`);
+                        const rulesContainer = document.getElementById('feval-rules-container');
+                        if (rulesContainer) {
+                            rulesContainer.innerHTML = ''; // Clear existing
+                            
+                            question.answer.rules.forEach((rule, ruleIdx) => {
+                                console.log(`Rule ${ruleIdx}:`, rule);
+                                addFEVALRule();
+                                // Get the LAST direct child of the container (not all nested divs)
+                                const ruleEl = rulesContainer.children[rulesContainer.children.length - 1];
+                                
+                                if (ruleEl) {
+                                    try {
+                                        const exprInput = ruleEl.querySelector('input.feval-rule-expr');
+                                        const feedbackInput = ruleEl.querySelector('input.feval-rule-feedback');
+                                        
+                                        console.log(`Rule ${ruleIdx} - exprInput found:`, exprInput !== null);
+                                        console.log(`Rule ${ruleIdx} - feedbackInput found:`, feedbackInput !== null);
+                                        
+                                        if (exprInput) {
+                                            exprInput.value = rule.expression || '';
+                                            console.log(`Rule ${ruleIdx} - Set expression to: "${rule.expression}"`);
+                                        } else {
+                                            console.warn(`Rule ${ruleIdx}: Could not find .feval-rule-expr input in ruleEl:`, ruleEl);
+                                        }
+                                        
+                                        if (feedbackInput) {
+                                            feedbackInput.value = rule.feedback || '';
+                                            console.log(`Rule ${ruleIdx} - Set feedback to: "${rule.feedback}"`);
+                                        } else {
+                                            console.warn(`Rule ${ruleIdx}: Could not find .feval-rule-feedback input`);
+                                        }
+                                    } catch (e) {
+                                        console.error(`Error populating rule ${ruleIdx}:`, e);
+                                    }
+                                } else {
+                                    console.warn(`Rule ${ruleIdx}: Could not find rule element`);
+                                }
+                            });
+                        }
+                    } else {
+                        console.warn('No answer.rules found in question');
+                    }
+                } else if (questionType === 'algebra') {
+                    const ans = question.answer || {};
+                    document.getElementById('algebra-accepted').value = (ans.accepted || []).join(' | ');
+                    document.getElementById('algebra-canonical').value = ans.canonical || '';
+                    document.getElementById('algebra-variables').value = (ans.variables || []).join(', ');
+                    document.getElementById('algebra-use-sympy').checked = ans.use_sympy !== false;
+
+                    const lb = question.input_label?.latex || '';
+                    const la = question.label_after?.latex  || '';
+                    document.getElementById('algebra-label').value = la ? `${lb} | ${la}` : lb;
                 }
 
                 showMessage('✓ Question loaded for editing', 'success');
@@ -1297,8 +1862,39 @@
             }
         }
 
+        // ===== Format Helper =====
+        async function loadFormatSnippets() {
+            try {
+                const res = await fetch('/quiz/api/format-snippets');
+                const data = await res.json();
+                if (!data.ok) return;
+                const select = document.getElementById('formatHelper');
+                data.snippets.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.snippet;
+                    opt.textContent = s.item;
+                    select.appendChild(opt);
+                });
+            } catch (e) {
+                console.error('Failed to load format snippets', e);
+            }
+        }
+
+        document.getElementById('formatHelper').addEventListener('change', function () {
+            const snippet = this.value;
+            if (!snippet) return;
+            this.value = '';
+            const clean = snippet.replace('§', '');
+            navigator.clipboard.writeText(clean).then(() => {
+                const label = document.getElementById('formatHelperLabel');
+                label.textContent = 'Copied!';
+                setTimeout(() => { label.textContent = 'Copy:'; }, 1500);
+            });
+        });
+
         // ===== Initialize =====
         window.addEventListener('DOMContentLoaded', async () => {
+            loadFormatSnippets();
             // Check for URL parameters
             const idParam = getQueryParam('id');
             const typeParam = getQueryParam('type');

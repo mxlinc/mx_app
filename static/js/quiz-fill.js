@@ -22,7 +22,10 @@ function getFILLQuestion() {
     
     blankElements.forEach((blankEl, idx) => {
         const blankId = `blank${idx + 1}`;
-        const label_latex = blankEl.querySelector('.blank-label-latex').value.trim();
+        const rawLabel = blankEl.querySelector('.blank-label-latex').value;
+        const pipeIdx = rawLabel.indexOf('|');
+        const label_latex = (pipeIdx === -1 ? rawLabel : rawLabel.slice(0, pipeIdx)).trim();
+        const label_after_latex = pipeIdx === -1 ? '' : rawLabel.slice(pipeIdx + 1).trim();
         const response_type = blankEl.querySelector('.blank-response-type').value;
         const placeholder = blankEl.querySelector('.blank-placeholder').value.trim();
         
@@ -39,6 +42,9 @@ function getFILLQuestion() {
             response_type: response_type,
             placeholder: placeholder || response_type
         };
+        if (label_after_latex) {
+            blank.label_after = { latex: label_after_latex, html: label_after_latex };
+        }
         blanks.push(blank);
 
         // Get correct answers for this blank
@@ -123,8 +129,8 @@ function addBlankUI() {
             </div>
             
             <div class="form-group" style="margin-bottom: 10px;">
-                <label>Label <span class="input-type-label">(LaTeX)</span></label>
-                <input type="text" class="blank-label-latex" placeholder="e.g., The value of x is" required>
+                <label>Label <span class="input-type-label">(LaTeX &mdash; use | to add a suffix, e.g. <em>Total length | cm.</em>)</span></label>
+                <input type="text" class="blank-label-latex" placeholder="e.g., The value of x is  OR  Total length | cm.">
             </div>
             
             <div class="form-row">
@@ -240,13 +246,14 @@ class QuizFILL {
             console.log('Blanks found:', this.common.question.input.blanks.length);
             
             const blanksHtml = this.common.question.input.blanks.map((blank) => {
-                const labelText = blank.input_label?.html || blank.input_label?.latex || '';
-                const inputId = `blank_${blank.id}`;
-                const placeholder = blank.placeholder || 'Enter answer';
-                
+                const labelText    = blank.input_label?.html || blank.input_label?.latex || '';
+                const labelAfter   = blank.label_after?.html || blank.label_after?.latex || '';
+                const inputId      = `blank_${blank.id}`;
+                const placeholder  = blank.placeholder || 'Enter answer';
+                const isInline     = !!labelAfter;
+
                 let inputField = '';
                 if (blank.response_type === 'fraction') {
-                    // Fraction input: stacked numerator/denominator format with clear black fraction bar
                     inputField = `
                         <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 8px; border: none; border-radius: 4px; padding: 0; overflow: visible;">
                             <input type="number" id="${inputId}_num" class="blank-input" placeholder="numerator" style="width: 80px; border: 2px solid #999; padding: 10px; text-align: center; font-size: 0.95em; background: white; border-radius: 4px;" title="Enter numerator">
@@ -255,12 +262,20 @@ class QuizFILL {
                         </div>
                     `;
                 } else if (blank.response_type === 'numeric') {
-                    inputField = `<input type="number" id="${inputId}" class="blank-input" placeholder="${placeholder}" step="any" style="width: 100%; max-width: 250px;">`;
+                    inputField = `<input type="number" id="${inputId}" class="blank-input" placeholder="${placeholder}" step="any" style="width: ${isInline ? '120px' : '100%; max-width: 250px'};">` ;
                 } else {
-                    // text
-                    inputField = `<input type="text" id="${inputId}" class="blank-input" placeholder="${placeholder}" style="width: 100%; max-width: 350px;">`;
+                    inputField = `<input type="text" id="${inputId}" class="blank-input" placeholder="${placeholder}" style="width: ${isInline ? '160px' : '100%; max-width: 350px'};">` ;
                 }
-                
+
+                if (isInline) {
+                    return `
+                        <div style="margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px;">
+                            <span style="font-size: clamp(1em, 3vw, 1.3em); font-weight: 500; color: #1b3a6f; line-height: 1.5;">${labelText}</span>
+                            ${inputField}
+                            <span style="font-size: clamp(1em, 3vw, 1.3em); font-weight: 500; color: #1b3a6f; line-height: 1.5;">${labelAfter}</span>
+                        </div>
+                    `;
+                }
                 return `
                     <div style="margin-bottom: 14px;">
                         <label style="font-size: clamp(1em, 3vw, 1.3em); font-weight: 500; color: #1b3a6f; margin-bottom: 8px; display: block; line-height: 1.5; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">${labelText}</label>
@@ -315,11 +330,8 @@ class QuizFILL {
                     emptyFieldLabel = blank.input_label?.latex || blank.id;
                     return;
                 }
-                this.userAnswers[blank.id] = {
-                    type: 'fraction',
-                    numerator: parseInt(num),
-                    denominator: parseInt(den)
-                };
+                // Store fraction as "numerator/denominator" string
+                this.userAnswers[blank.id] = `${num}/${den}`;
             } else if (blank.response_type === 'numeric') {
                 const value = document.getElementById(inputId)?.value.trim();
                 if (!value) {
@@ -327,10 +339,7 @@ class QuizFILL {
                     emptyFieldLabel = blank.input_label?.latex || blank.id;
                     return;
                 }
-                this.userAnswers[blank.id] = {
-                    type: 'numeric',
-                    value: parseFloat(value)
-                };
+                this.userAnswers[blank.id] = parseFloat(value);
             } else {
                 // text
                 const value = document.getElementById(inputId)?.value.trim();
@@ -339,16 +348,13 @@ class QuizFILL {
                     emptyFieldLabel = blank.input_label?.latex || blank.id;
                     return;
                 }
-                this.userAnswers[blank.id] = {
-                    type: 'text',
-                    value: value
-                };
+                this.userAnswers[blank.id] = value;
             }
         });
         
         if (hasEmptyField) {
             this.common.showFeedback(`Please fill in all answers`, false);
-            return;
+            return false;
         }
 
         // Check answers
@@ -360,7 +366,7 @@ class QuizFILL {
             const blankId = correct.blank_id;
             const userAnswer = this.userAnswers[blankId];
 
-            if (!userAnswer) {
+            if (!userAnswer && userAnswer !== 0) {
                 allCorrect = false;
                 blankFeedback[blankId] = { isCorrect: false, correctDisplay: 'No answer provided' };
                 return;
@@ -370,19 +376,29 @@ class QuizFILL {
             if (correct.response_type === 'text') {
                 const acceptedAnswers = correct.accepted_text || [];
                 const caseSensitive = correct.case_sensitive !== false;
-                const userVal = caseSensitive ? userAnswer.value : userAnswer.value.toLowerCase();
+                const userVal = caseSensitive ? userAnswer : userAnswer.toLowerCase();
                 isCorrect = acceptedAnswers.some(ans => {
                     const checkVal = caseSensitive ? ans : ans.toLowerCase();
                     return userVal === checkVal;
                 });
             } else if (correct.response_type === 'numeric') {
                 const acceptedValues = correct.accepted_numeric || [];
-                isCorrect = acceptedValues.includes(userAnswer.value);
+                isCorrect = acceptedValues.includes(userAnswer);
             } else if (correct.response_type === 'fraction') {
                 const acceptedFractions = correct.accepted_fraction || [];
-                isCorrect = acceptedFractions.some(frac => 
-                    this.areFractionsEquivalent(userAnswer, frac)
-                );
+                // Parse fraction string "numerator/denominator" back to object for comparison
+                const fractionMatch = userAnswer.match(/^(-?\d+)\s*\/\s*(-?\d+)$/);
+                if (!fractionMatch) {
+                    isCorrect = false;
+                } else {
+                    const userFrac = {
+                        numerator: parseInt(fractionMatch[1]),
+                        denominator: parseInt(fractionMatch[2])
+                    };
+                    isCorrect = acceptedFractions.some(frac => 
+                        this.areFractionsEquivalent(userFrac, frac)
+                    );
+                }
             }
 
             if (isCorrect) {
@@ -409,16 +425,29 @@ class QuizFILL {
         // Display per-blank feedback
         this.displayPerBlankFeedback(blanks, blankFeedback);
 
+        // Store allCorrect for isAnswerCorrect() method
+        this.isCorrect = allCorrect;
+
         // Display question-level feedback on wrong answer if available
         if (!allCorrect && this.common.question.stem?.feedback?.html) {
             this.common.showFeedback(this.common.question.stem.feedback.html, false);
         }
 
-        if (allCorrect) {
-            // Disable submit button
-            const submitBtn = document.querySelector('[onclick*="checkAnswer"]');
-            if (submitBtn) submitBtn.disabled = true;
-        }
+        return true; // Answer was submitted successfully
+    }
+
+    /**
+     * Get whether the answer is correct
+     */
+    isAnswerCorrect() {
+        return this.isCorrect || false;
+    }
+
+    /**
+     * Expose answers for getHandlerAnswer() in quiz-controller
+     */
+    get answers() {
+        return this.userAnswers;
     }
 
     /**
