@@ -25,14 +25,17 @@ LATEX_RENDERER = os.getenv("LATEX_RENDERER", "katex")
 SECRET_KEY = os.getenv("SECRET_KEY", "devsecret")
 
 # Package data path - use local test directory in development, /data/mont on render
-# Auto-detect: if /data/mont exists (Render), use it; otherwise use local test data
-if os.path.exists("/data/mont"):
+# Auto-detect: check for /data mount point (Render persistent disk), not the subdir
+_on_render = os.path.isdir("/data")
+
+# Package data path
+if _on_render:
     PACKAGE_DATA_PATH = os.getenv("PACKAGE_DATA_PATH", "/data/mont")
 else:
     PACKAGE_DATA_PATH = os.getenv("PACKAGE_DATA_PATH", "./test_data/packages")
 
-# Image storage - OneDrive folder locally, /data/qimage on Render
-if os.path.exists("/data/qimage"):
+# Image storage — /data/qimage on Render (created on first save), OneDrive folder locally
+if _on_render:
     QIMAGE_PATH = os.getenv("QIMAGE_PATH", "/data/qimage")
 else:
     QIMAGE_PATH = os.getenv("QIMAGE_PATH", r"C:\OneDrive--MEInc\OneDrive\0000 - Montessori Online\qimage")
