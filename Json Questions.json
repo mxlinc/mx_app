@@ -1,0 +1,986 @@
+[
+  {
+    "type": "mcq",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Examine the input-output table shown below.\nWhich of these rules describes the data?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "Multiply by 2 and add 1 ."
+          },
+          {
+            "id": "opt2",
+            "latex": "Multiply by 4 and subtract 3 ."
+          },
+          {
+            "id": "opt3",
+            "latex": "Multiply by 2 and add 5 ."
+          },
+          {
+            "id": "opt4",
+            "latex": "Multiply by 3 and subtract 1."
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
+    }
+  },
+  {
+    "type": "mcq",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "A rectangular wall is being built. \nThe table shows the dimensions of the wall after each day.\nIf the pattern continues, what will the perimeter of the wall be at the end of Day 10?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$42~m$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$38~m$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$21~m$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$19~m$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">>\nEvaluate the following:"
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$-3-(-2)=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          },
+          {
+            "id": "blank2",
+            "input_label": {
+              "latex": "$-1+(-3)=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              -1
+            ]
+          },
+          {
+            "blank_id": "blank2",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              -4
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">>\nWhat value will go in the blank to make it a true statement:"
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$-3-$"
+            },
+            "label_after": {
+              "latex": "$=5$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              -8
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">>\nWhat value will go in the blank to make it a true statement:"
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$-2-$"
+            },
+            "label_after": {
+              "latex": "$=-1$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              -1
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "mcq",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "A pattern that increases when the same amount is added to each term is represented in the table below.\nWhich of the following is the term number when the term value is 53 ?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "6"
+          },
+          {
+            "id": "opt2",
+            "latex": "8"
+          },
+          {
+            "id": "opt3",
+            "latex": "41"
+          },
+          {
+            "id": "opt4",
+            "latex": "47"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt2"
+      }
+    }
+  },
+  {
+    "type": "mcq",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Look at the repeating pattern below.\nRRBBGGYY RRBBGGYY\n\nIf the pattern continues, what will the $82^{\\text {nd }}$ letter be?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "R"
+          },
+          {
+            "id": "opt2",
+            "latex": "B"
+          },
+          {
+            "id": "opt3",
+            "latex": "G"
+          },
+          {
+            "id": "opt4",
+            "latex": "Y"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Represent the shaded part of the unit square below as Fraction, Decimal and Percent."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Fraction"
+            },
+            "placeholder": "fraction",
+            "response_type": "fraction"
+          },
+          {
+            "id": "blank2",
+            "input_label": {
+              "latex": "Decimal"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          },
+          {
+            "id": "blank3",
+            "input_label": {
+              "latex": "Percent"
+            },
+            "label_after": {
+              "latex": "%"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "fraction",
+            "accepted_fraction": [
+              {
+                "numerator": 1,
+                "denominator": 100
+              }
+            ]
+          },
+          {
+            "blank_id": "blank2",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              0.01
+            ]
+          },
+          {
+            "blank_id": "blank3",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              1
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Represent the shaded part of the unit square below as Fraction, Decimal and Percent.\n\nFraction is 1 Whole."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Decimal"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          },
+          {
+            "id": "blank2",
+            "input_label": {
+              "latex": "Percent"
+            },
+            "label_after": {
+              "latex": "%"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              1
+            ]
+          },
+          {
+            "blank_id": "blank2",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              100
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Represent the shaded part of the unit square below as Fraction, Decimal and Percent.\n\nFraction is 1 Whole."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Decimal"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          },
+          {
+            "id": "blank2",
+            "input_label": {
+              "latex": "Percent"
+            },
+            "label_after": {
+              "latex": "%"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              1
+            ]
+          },
+          {
+            "blank_id": "blank2",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              100
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Represent the shaded part of the unit square below as Fraction, Decimal and Percent."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Fraction"
+            },
+            "placeholder": "fraction",
+            "response_type": "fraction"
+          },
+          {
+            "id": "blank2",
+            "input_label": {
+              "latex": "Decimal"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          },
+          {
+            "id": "blank3",
+            "input_label": {
+              "latex": "Percent"
+            },
+            "label_after": {
+              "latex": "%"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "fraction",
+            "accepted_fraction": [
+              {
+                "numerator": 1,
+                "denominator": 2
+              }
+            ]
+          },
+          {
+            "blank_id": "blank2",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              0.5
+            ]
+          },
+          {
+            "blank_id": "blank3",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              50
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Represent the shaded part of the unit square below as Fraction, Decimal and Percent."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Fraction"
+            },
+            "placeholder": "fraction",
+            "response_type": "fraction"
+          },
+          {
+            "id": "blank2",
+            "input_label": {
+              "latex": "Decimal"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          },
+          {
+            "id": "blank3",
+            "input_label": {
+              "latex": "Percent"
+            },
+            "label_after": {
+              "latex": "%"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "fraction",
+            "accepted_fraction": [
+              {
+                "numerator": 7,
+                "denominator": 10
+              }
+            ]
+          },
+          {
+            "blank_id": "blank2",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              0.7
+            ]
+          },
+          {
+            "blank_id": "blank3",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              70
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Represent the shaded part of the unit square below as Fraction, Decimal and Percent."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Fraction"
+            },
+            "placeholder": "fraction",
+            "response_type": "fraction"
+          },
+          {
+            "id": "blank2",
+            "input_label": {
+              "latex": "Decimal"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          },
+          {
+            "id": "blank3",
+            "input_label": {
+              "latex": "Percent"
+            },
+            "label_after": {
+              "latex": "%"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "fraction",
+            "accepted_fraction": [
+              {
+                "numerator": 4,
+                "denominator": 5
+              }
+            ]
+          },
+          {
+            "blank_id": "blank2",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              0.8
+            ]
+          },
+          {
+            "blank_id": "blank3",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              80
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "mcq",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "The shaded part is 42% of the whole.",
+        "feedback": {
+          "latex": "There are 25 small squares inside the unit square (100%). \nSo, each small square is $100 \\div 25 = 4$%\n10 full square make 40% plus one half square is 2% making total shaded 42%."
+        }
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "True"
+          },
+          {
+            "id": "opt2",
+            "latex": "False"
+          }
+        ],
+        "shuffle": false
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">\n>\nWhat value for $x$ makes the expression $x+5$ evaluate to 7 ?"
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$x=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              2
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">\n>\nWhat value for $x$ makes the expression $x-2$ evaluate to 0 ?"
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$x=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              2
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">\n>\nWhat value for $x$ makes the expression $x-1$ evaluate to -5 ?"
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$x=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              -4
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">\n>\nWhat value for 𝑥 makes the expression $\\frac{x}{4}$ evaluate to 2?"
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$x=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              8
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Michelle has a building set which includes \n60 short pieces, \n60 long pieces, \nand 60 bolts with nuts. \n\nFind the number of objects she can make, each identical to the one shown."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Number of Objects:"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              -4
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "algebra",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Sally has 7 more crayons than Maggie.\n\nMaggie has $x$ crayons. \n\nHow many crayons Sally has?"
+      },
+      "type": "algebra",
+      "answer": {
+        "accepted": [
+          "x+7",
+          "7+x"
+        ],
+        "canonical": "x+7",
+        "use_sympy": true,
+        "variables": [
+          "x"
+        ]
+      }
+    }
+  },
+  {
+    "type": "algebra",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": ">>Take Sarita's present age to be $y$ years.\n\nWhat will be her age 5 years from now?"
+      },
+      "type": "algebra",
+      "answer": {
+        "accepted": [
+          "y+5",
+          "5+y"
+        ],
+        "canonical": "y+5",
+        "use_sympy": false,
+        "variables": [
+          "y"
+        ]
+      }
+    }
+  },
+  {
+    "type": "mcq",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "Three circles are tangent to each other and to the straight line. The radii of the circles with centres $A, B$, and $C$ are $a, b$, and $c$, respectively. Then $c$, expressed in terms of $a$ and $b$, equals"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$\\frac{a b}{(\\sqrt{a}+\\sqrt{b})^{2}}$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$\\frac{\\sqrt{a b}}{a+b}$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$\\frac{a b}{(a+b)^{2}}$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$\\frac{\\sqrt{a b}}{\\sqrt{a}+\\sqrt{b}}$"
+          },
+          {
+            "id": "opt5",
+            "latex": "$\\frac{a b}{a+b}$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
+    }
+  },
+  {
+    "type": "mcq",
+    "topic": "",
+    "subtopic": "",
+    "level": "",
+    "question": {
+      "stem": {
+        "latex": "$p \\times q+r$"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$pq+r$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$pr+q$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$p\\times qr$"
+          }
+        ],
+        "shuffle": false
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
+    }
+  }
+]

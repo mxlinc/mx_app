@@ -991,11 +991,18 @@
             document.getElementById('deleteBtn').addEventListener('click', async () => {
                 const id = document.getElementById('questionId').textContent.trim();
                 if (!confirm(`Delete question ${id} and its image (if any)? This cannot be undone.`)) return;
+                // Capture next ID before deleting
+                const nextBtn = document.getElementById('nextTopLink');
+                const nextId = nextBtn?.dataset.nextId || null;
                 try {
                     const res = await fetch(`/question/api/delete/${id}`, { method: 'POST' });
                     const data = await res.json();
                     if (data.ok) {
-                        window.location.href = '/quiz/questions';
+                        if (nextId) {
+                            await loadQuestion(nextId);
+                        } else {
+                            window.location.href = '/question/list';
+                        }
                     } else {
                         alert('Delete failed: ' + (data.error || 'Unknown error'));
                     }
