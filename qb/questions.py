@@ -473,6 +473,49 @@ function insertPageBreak(btn) {{
 </html>"""
 
 
+# ==================== EXPORT ==================== #
+
+def _strip_for_export(obj):
+    """Recursively remove 'html' and 'image' keys; strip residual HTML tags from strings."""
+    import re
+    _TAG = re.compile(r'<[^>]+')
+    if isinstance(obj, dict):
+        return {k: _strip_for_export(v) for k, v in obj.items() if k not in ('html', 'image')}
+    if isinstance(obj, list):
+        return [_strip_for_export(i) for i in obj]
+    if isinstance(obj, str):
+        return _TAG.sub('', obj).strip()
+    return obj
+
+
+@question_bp.route("/api/export", methods=["GET"])
+@login_required
+def export_questions():
+    """Download all questions as clean JSON (LaTeX only, no HTML, no images)."""
+    import io
+    import json as _json
+    questions = QBank.query.order_by(QBank.id).all()
+    out = []
+    for q in questions:
+        cleaned = _strip_for_export(q.json or {})
+        cleaned.pop('id', None)   # remove embedded DB id; leave option/blank ids intact
+        out.append({
+            "type": q.type,
+            "topic": q.topic,
+            "subtopic": q.subtopic,
+            "level": q.level,
+            "question": cleaned,
+        })
+    payload = _json.dumps(out, ensure_ascii=False, indent=2)
+    buf = io.BytesIO(payload.encode('utf-8'))
+    return send_file(
+        buf,
+        mimetype='application/json',
+        as_attachment=True,
+        download_name='questions_export.json',
+    )
+
+
 def generate_review_html(*, student_name, quiz_title, score, completed_at, total, questions):
     """Return a self-contained HTML page showing incorrect answers for admin review.
 
@@ -806,6 +849,7 @@ def duplicate_question(question_id):
             return jsonify({"ok": False, "error": "Question not found"}), 404
         new_json = copy.deepcopy(original.json)
         new_json.pop('id', None)
+        new_json.pop('image', None)
         new_question, error = create_question_safely(
             original.type, original.topic, original.subtopic, original.level, new_json)
         if error:
@@ -827,6 +871,7 @@ def duplicate_question_page(question_id):
             return redirect(url_for('question.list_questions_page'))
         new_json = copy.deepcopy(original.json)
         new_json.pop('id', None)
+        new_json.pop('image', None)
         new_question, error = create_question_safely(
             original.type, original.topic, original.subtopic, original.level, new_json)
         if error:
