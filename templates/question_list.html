@@ -700,6 +700,22 @@
         </div>
     </div>
 
+    <!-- Delete Warning Modal -->
+    <div class="modal" id="deleteWarnModal">
+        <div class="modal-content" style="max-width:500px;">
+            <div class="modal-header">
+                <button class="close-btn" onclick="document.getElementById('deleteWarnModal').classList.remove('show')">&times;</button>
+                <h2 style="color:#c0392b;">&#x26D4; Cannot Delete</h2>
+            </div>
+            <div style="padding:0 0 8px;">
+                <p id="deleteWarnMsg" style="white-space:pre-line;line-height:1.7;font-size:0.92em;margin:0;"></p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="document.getElementById('deleteWarnModal').classList.remove('show')">Close</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentPage = 1;
         let totalPages = 1;
@@ -1176,7 +1192,8 @@
                         loadQuestions(currentPage);
                     }, 1000);
                 } else {
-                    showError(result.error || 'Failed to delete questions');
+                    document.getElementById('deleteWarnMsg').textContent = result.error || 'Failed to delete questions';
+                    document.getElementById('deleteWarnModal').classList.add('show');
                 }
             })
             .catch(error => {

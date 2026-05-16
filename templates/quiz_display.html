@@ -806,6 +806,23 @@
         <div id="calcContainer"></div>
     </div>
 
+    <!-- Delete Warning Modal -->
+    <div class="json-modal" id="deleteWarnModal">
+        <div class="json-modal-content" style="max-width:480px;">
+            <div class="json-modal-header" style="background:#c0392b;">
+                <h2 style="color:#fff;">&#x26D4; Cannot Delete Question</h2>
+                <button class="json-modal-close" onclick="document.getElementById('deleteWarnModal').classList.remove('show')">&#xd7;</button>
+            </div>
+            <div class="json-modal-body" style="padding:20px 24px;">
+                <p id="deleteWarnMsg" style="white-space:pre-line;line-height:1.6;margin:0;"></p>
+            </div>
+            <div style="padding:12px 24px 20px;text-align:right;">
+                <button class="json-modal-close" style="padding:8px 20px;background:#c0392b;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.95em;"
+                        onclick="document.getElementById('deleteWarnModal').classList.remove('show')">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JSON Modal -->
     <div class="json-modal" id="jsonModal">
         <div class="json-modal-content">
@@ -1004,10 +1021,12 @@
                             window.location.href = '/question/list';
                         }
                     } else {
-                        alert('Delete failed: ' + (data.error || 'Unknown error'));
+                        document.getElementById('deleteWarnMsg').textContent = data.error || 'Delete failed';
+                        document.getElementById('deleteWarnModal').classList.add('show');
                     }
                 } catch (e) {
-                    alert('Delete failed: ' + e.message);
+                    document.getElementById('deleteWarnMsg').textContent = 'Delete failed: ' + e.message;
+                    document.getElementById('deleteWarnModal').classList.add('show');
                 }
             });
         }
