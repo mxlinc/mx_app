@@ -8,6 +8,7 @@ from flask_login import login_required, current_user
 
 from db import db
 from models import Quiz, QBank, QuizExecution, UserTable, MyWorkList, UserStreak
+from qb.db_utils import quiz_code
 from qb.routes import qb_bp
 
 logger = logging.getLogger(__name__)
@@ -181,7 +182,7 @@ def complete_quiz():
         incorrect_str = "All Correct" if not wrong_seqs else "Q: " + ", ".join(str(n) for n in wrong_seqs)
 
         # Update MyWorkList row (look up by user_id + item_code directly)
-        item_code = f'Q-{quiz_id:04d}'
+        item_code = quiz_code(quiz_id)
         mwl = (MyWorkList.query
                .filter_by(user_id=user_id, item_code=item_code)
                .first())
@@ -213,7 +214,7 @@ def reset_execution():
             return jsonify({'ok': False, 'error': 'Missing user_id or quiz_id'}), 400
         QuizExecution.query.filter_by(user_id=user_id, quiz_id=quiz_id).delete()
         # Also reset MyWorkList so the quiz appears as re-assignable
-        item_code = f'Q-{quiz_id:04d}'
+        item_code = quiz_code(quiz_id)
         mwl = (MyWorkList.query
                .filter_by(user_id=user_id, item_code=item_code)
                .first())
@@ -268,7 +269,7 @@ def submit_answer():
 
         # Increment questions_answered on first submission only
         if is_new:
-            item_code = f'Q-{quiz_id:04d}'
+            item_code = quiz_code(quiz_id)
             (db.session.query(MyWorkList)
              .filter_by(user_id=user_id, item_code=item_code)
              .update({'questions_answered': MyWorkList.questions_answered + 1},
@@ -365,7 +366,7 @@ def admin_quiz_review():
 
     quiz     = Quiz.query.get(quiz_id)
     user_obj = UserTable.query.get(user_id)
-    item_code = f'Q-{quiz_id:04d}'
+    item_code = quiz_code(quiz_id)
     mwl = MyWorkList.query.filter_by(user_id=user_id, item_code=item_code).first()
 
     total_rows = QuizExecution.query.filter_by(user_id=user_id, quiz_id=quiz_id).count()

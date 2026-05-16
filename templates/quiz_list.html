@@ -672,6 +672,23 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content" style="max-width:580px;">
+            <div class="modal-header">
+                <button class="close-btn" onclick="closeDeleteModal()">&times;</button>
+                <h2>Delete Quizzes</h2>
+                <p id="deleteModalSubtitle"></p>
+            </div>
+            <div id="deleteModalBody" style="max-height:340px;overflow-y:auto;font-size:0.92em;"></div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button id="deleteModalConfirmBtn" class="btn-save" style="background:#c0392b;"
+                        onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Update Quizzes Modal -->
     <div class="modal" id="updateModal">
         <div class="modal-content">
@@ -938,76 +955,95 @@
             });
         }
 
+        let _pendingDeleteIds = [];
+
         function deleteSelectedQuizzes() {
-            if (selectedQuizzes.size === 0) {
-                showError('Please select at least one quiz');
-                return;
-            }
-            
-            const count = selectedQuizzes.size;
-            const message = count === 1 
-                ? 'Are you sure you want to delete this quiz? This action cannot be undone.'
-                : `Are you sure you want to delete ${count} quizzes? This action cannot be undone.`;
-            
-            if (!confirm(message)) {
-                return;
-            }
-            
-            const data = {
-                quiz_ids: Array.from(selectedQuizzes)
-            };
-            
-            fetch('/quiz/api/delete-quizzes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.ok) {
-                    showError(`✓ Successfully deleted ${result.deleted_count} quiz(zes)`);
-                    selectedQuizzes.clear();
-                    updateSelectionUI();
-                    setTimeout(() => {
-                        loadQuizzes(currentPage);
-                    }, 1000);
-                } else {
-                    showError(result.error || 'Failed to delete quizzes');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showError('Failed to delete quizzes. Please try again.');
-            });
+            if (selectedQuizzes.size === 0) { showError('Please select at least one quiz'); return; }
+            openDeleteModal(Array.from(selectedQuizzes));
         }
 
         function deleteSingleQuiz(quizId) {
-            if (!confirm('Delete this quiz? This action cannot be undone.')) return;
-            
+            openDeleteModal([quizId]);
+        }
+
+        function openDeleteModal(quizIds) {
+            _pendingDeleteIds = quizIds;
             fetch('/quiz/api/delete-quizzes', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ quiz_ids: [quizId] })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({quiz_ids: quizIds})
             })
-            .then(response => response.json())
-            .then(result => {
-                if (result.ok) {
-                    showError(`✓ Quiz deleted successfully`);
-                    setTimeout(() => {
-                        loadQuizzes(currentPage);
-                    }, 1000);
+            .then(r => r.json())
+            .then(data => {
+                if (!data.ok) { showError(data.error || 'Check failed'); return; }
+                renderDeleteModal(data.results, data.any_blocked);
+                document.getElementById('deleteModal').classList.add('show');
+            })
+            .catch(() => showError('Failed to check quiz assignments.'));
+        }
+
+        function renderDeleteModal(results, anyBlocked) {
+            const subtitle = document.getElementById('deleteModalSubtitle');
+            const body     = document.getElementById('deleteModalBody');
+            const btn      = document.getElementById('deleteModalConfirmBtn');
+
+            subtitle.textContent = `${results.length} quiz(zes) selected`;
+            btn.disabled      = anyBlocked;
+            btn.style.opacity = anyBlocked ? '0.4' : '1';
+            btn.style.cursor  = anyBlocked ? 'not-allowed' : 'pointer';
+
+            let html = '';
+            for (const q of results) {
+                html += `<div style="margin-bottom:12px;padding:10px 12px;border-radius:6px;border:1px solid #e0e0e0;">`;
+                html += `<strong>${q.title}</strong> <span style="color:#888;font-size:0.85em;">${q.quiz_code}</span>`;
+                if (q.blocking.length) {
+                    html += `<div style="margin-top:6px;padding:6px 10px;background:#fdecea;border-radius:4px;color:#c0392b;">`;
+                    html += `&#x26d4; Cannot delete — active/future assignments:<br>`;
+                    html += q.blocking.map(r => `&nbsp;&nbsp;${r.user} (${r.status})`).join('<br>');
+                    html += `</div>`;
+                }
+                if (q.auto_expire.length) {
+                    html += `<div style="margin-top:6px;padding:6px 10px;background:#fff8e1;border-radius:4px;color:#856404;">`;
+                    html += `&#x26a0;&#xfe0f; Completed records will be archived:<br>`;
+                    html += q.auto_expire.map(r => `&nbsp;&nbsp;${r.user} &mdash; score: ${r.score}`).join('<br>');
+                    html += `</div>`;
+                }
+                if (!q.blocking.length && !q.auto_expire.length) {
+                    html += `<div style="margin-top:6px;color:#27ae60;font-size:0.88em;">&#x2713; No active assignments — safe to delete</div>`;
+                }
+                html += `</div>`;
+            }
+            if (anyBlocked) {
+                html += `<p style="color:#c0392b;font-size:0.88em;margin-top:4px;">Resolve blocked quizzes first. Mark active/future items as expired via Fine Tune.</p>`;
+            }
+            body.innerHTML = html;
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('show');
+            _pendingDeleteIds = [];
+        }
+
+        function confirmDelete() {
+            if (!_pendingDeleteIds.length) return;
+            fetch('/quiz/api/delete-quizzes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({quiz_ids: _pendingDeleteIds, confirm_expire: true})
+            })
+            .then(r => r.json())
+            .then(data => {
+                closeDeleteModal();
+                if (data.ok) {
+                    showError(`✓ ${data.message}`);
+                    selectedQuizzes.clear();
+                    updateSelectionUI();
+                    setTimeout(() => loadQuizzes(currentPage), 1000);
                 } else {
-                    showError(result.error || 'Failed to delete quiz');
+                    showError(data.error || 'Delete failed');
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                showError('Failed to delete quiz. Please try again.');
-            });
+            .catch(() => showError('Delete failed. Please try again.'));
         }
 
         function renderPagination(data) {

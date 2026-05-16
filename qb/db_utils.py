@@ -8,6 +8,31 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+# ── Item-code helpers ──────────────────────────────────────────────────────────
+
+def make_code(prefix: str, item_id: int, width: int = 4) -> str:
+    """Format a numeric ID as a padded item code.  make_code('Q', 1) -> 'Q-0001'"""
+    return f"{prefix}-{item_id:0{width}d}"
+
+
+def code_to_id(code: str) -> int:
+    """Extract numeric ID from an item code.  code_to_id('Q-0001') -> 1"""
+    return int(code.split('-', 1)[1])
+
+
+def quiz_code(quiz_id: int) -> str:
+    """Return the standard quiz code for a quiz ID.  quiz_code(1) -> 'Q-0001'"""
+    return make_code('Q', quiz_id)
+
+
+def video_code(video_id: int) -> str:
+    """Return the standard video code for a video ID.  video_code(3) -> 'V-0003'"""
+    return make_code('V', video_id)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+
+
 def get_next_id():
     """
     Get the next ID for a question: max(id) + 1.

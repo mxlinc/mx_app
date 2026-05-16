@@ -6,7 +6,8 @@ from flask import render_template, request, jsonify, redirect, url_for
 from flask_login import login_required
 
 from db import db
-from models import AUnit, QBank, Quiz, FormatHelper
+from models import AUnit, QBank, Quiz, FormatHelper, MyWorkList
+from qb.db_utils import quiz_code
 from qb.routes import qb_bp, get_handler
 
 logger = logging.getLogger(__name__)
@@ -157,7 +158,7 @@ def create_quiz():
     )
     db.session.add(quiz)
     db.session.commit()
-    quiz.quiz_code = f'Q-{quiz.id:04d}'
+    quiz.quiz_code = quiz_code(quiz.id)
     db.session.commit()
     return jsonify({'ok': True, 'quiz_id': quiz.id, 'message': 'Quiz created successfully'}), 201
 
@@ -186,7 +187,7 @@ def create_quiz_api():
         )
         db.session.add(quiz)
         db.session.commit()
-        quiz.quiz_code = f'Q-{quiz.id:04d}'
+        quiz.quiz_code = quiz_code(quiz.id)
         db.session.commit()
         logger.info(f"Quiz created: ID={quiz.id}, quiz_code={quiz.quiz_code}, title={quiz.title}")
         return jsonify({"ok": True, "quiz_id": quiz.id,
@@ -296,14 +297,52 @@ def delete_quizzes():
     try:
         data = request.get_json()
         quiz_ids = data.get('quiz_ids', [])
+        confirm_expire = data.get('confirm_expire', False)
         if not quiz_ids:
             return jsonify({'ok': False, 'error': 'No quizzes selected'}), 400
-        deleted_count = sum(
-            1 for quiz_id in quiz_ids
-            if (quiz := Quiz.query.get(quiz_id)) and db.session.delete(quiz) is None
-        )
+
+        quizzes = Quiz.query.filter(Quiz.id.in_(quiz_ids)).all()
+
+        # Build per-quiz status report
+        results = []
+        any_blocked = False
+        for q in quizzes:
+            mwl_rows    = MyWorkList.query.filter_by(item_code=q.quiz_code).all()
+            blocking    = [r for r in mwl_rows if r.status in ('assigned', 'future')]
+            auto_expire = [r for r in mwl_rows if r.status == 'done']
+            if blocking:
+                any_blocked = True
+            results.append({
+                'quiz_id':     q.id,
+                'quiz_code':   q.quiz_code,
+                'title':       q.title,
+                'blocking':    [{'user': r.user, 'status': r.status} for r in blocking],
+                'auto_expire': [{'user': r.user, 'score': r.score or '\u2014'} for r in auto_expire],
+            })
+
+        # Dry-run: return the report without touching the database
+        if not confirm_expire:
+            return jsonify({'ok': True, 'dry_run': True,
+                            'results': results, 'any_blocked': any_blocked})
+
+        # Execute — refuse if anything is still blocking
+        if any_blocked:
+            return jsonify({'ok': False,
+                            'error': 'Some quizzes have active/future assignments.',
+                            'results': results}), 400
+
+        # Auto-expire done rows, then hard-delete the quiz (cascade handles quiz_execution)
+        deleted_count = 0
+        for q in quizzes:
+            MyWorkList.query.filter_by(item_code=q.quiz_code, status='done').update(
+                {'status': 'expired'}, synchronize_session=False
+            )
+            db.session.delete(q)
+            deleted_count += 1
+
         db.session.commit()
-        return jsonify({'ok': True, 'message': f'Deleted {deleted_count} quiz(zes)', 'deleted_count': deleted_count})
+        return jsonify({'ok': True, 'deleted_count': deleted_count,
+                        'message': f'Deleted {deleted_count} quiz(zes)'})
     except Exception as e:
         db.session.rollback()
         logger.exception(e)

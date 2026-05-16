@@ -15,6 +15,20 @@ from qb.db_utils import create_question_safely
 logger = logging.getLogger(__name__)
 
 
+# ==================== SHARED HELPERS ====================
+
+def _quizzes_using_question(question_id: int) -> list:
+    """Return Quiz objects whose question_ids string contains question_id."""
+    candidates = Quiz.query.filter(
+        Quiz.question_ids.like(f'%{question_id}%')
+    ).all()
+    # Narrow out false positives from the LIKE (e.g. id=1 matching ids '10,11')
+    return [
+        qz for qz in candidates
+        if str(question_id) in [i.strip() for i in (qz.question_ids or '').split(',')]
+    ]
+
+
 # ==================== BUILDER ==================== #
 
 @question_bp.route("/builder", methods=["GET"])
@@ -118,6 +132,12 @@ def delete_question(question_id):
     q = QBank.query.get(question_id)
     if not q:
         return jsonify({"ok": False, "error": "Question not found"}), 404
+
+    blocking = _quizzes_using_question(question_id)
+    if blocking:
+        names = ', '.join(f"{qz.quiz_code} ({qz.title})" for qz in blocking)
+        return jsonify({"ok": False,
+                        "error": f"Cannot delete — used in {len(blocking)} quiz(zes): {names}"}), 400
 
     image_src = (q.json or {}).get("image", {}).get("src") if isinstance(q.json, dict) else None
     if image_src:
@@ -829,6 +849,18 @@ def delete_questions():
         existing_count = QBank.query.filter(QBank.id.in_(question_ids)).count()
         if existing_count != len(question_ids):
             return jsonify({"ok": False, "error": "One or more questions do not exist"}), 400
+
+        # Block if any selected question is used in a quiz
+        blocked = []
+        for qid in question_ids:
+            quizzes = _quizzes_using_question(qid)
+            if quizzes:
+                names = ', '.join(f"{qz.quiz_code} ({qz.title})" for qz in quizzes)
+                blocked.append(f"Q#{qid} → {names}")
+        if blocked:
+            return jsonify({"ok": False,
+                            "error": "Cannot delete — remove from quizzes first:\n" + "\n".join(blocked)}), 400
+
         deleted = QBank.query.filter(QBank.id.in_(question_ids)).delete()
         db.session.commit()
         logger.info(f"Deleted {deleted} question(s): IDs={question_ids}")
