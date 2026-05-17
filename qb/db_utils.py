@@ -101,7 +101,10 @@ def save_question_to_db(question_type, topic, subtopic, level, final_json, data)
         img_id = question_id if question_id else new_question_id
         image_path = save_image_from_data_url(image_data_url, f"{img_id}.png", subdir="qimage")
         if image_path:
-            final_json['image'] = {"src": image_path, "alt": ""}
+            if 'image' not in final_json:
+                final_json['image'] = {"src": image_path, "alt": ""}
+            else:
+                final_json['image']['src'] = image_path
     elif existing_image_path:
         image_path = existing_image_path
 
