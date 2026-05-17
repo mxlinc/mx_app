@@ -116,7 +116,7 @@ class AUnit(db.Model):
     au_area      = db.Column(db.String(100))
     au_name      = db.Column(db.String(255), nullable=False)
     au_topic     = db.Column(db.String(255))
-    au_level     = db.Column(db.String(2))
+    au_level     = db.Column(db.String(20))
     au_content   = db.Column(db.Text)
     last_updated = db.Column(db.DateTime, server_default=db.func.now())
 
@@ -138,7 +138,7 @@ class QBank(db.Model):
     json = db.Column(JSON, nullable=False)
     topic = db.Column(db.String(100))
     subtopic = db.Column(db.String(100))
-    level = db.Column(db.String(1))
+    level = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())
     sync_required = db.Column(db.Boolean, default=False, nullable=False, server_default='false')
@@ -157,8 +157,13 @@ class Quiz(db.Model):
     subtopic = db.Column(db.String(100))
     level = db.Column(db.String(20))
     question_ids = db.Column(db.String(5000))  # Comma-separated question IDs from q_bank
-    question_count = db.Column(db.Integer, default=0)
     questions_json = db.Column(db.JSON)        # Pre-baked HTML question list; rebuilt on save/question-edit
+
+    @property
+    def question_count(self):
+        if not self.question_ids:
+            return 0
+        return len([i for i in self.question_ids.split(',') if i.strip()])
     status = db.Column(db.String(20), default='draft')  # 'draft' or 'published'
     created_at = db.Column(db.DateTime, default=db.func.now())
     updated_at = db.Column(db.DateTime, default=db.func.now(), onupdate=db.func.now())

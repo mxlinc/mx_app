@@ -153,7 +153,7 @@ def create_quiz():
     quiz = Quiz(
         title=data.get('title', ''), description=data.get('description', ''),
         topic=data.get('topic', ''), subtopic=data.get('subtopic', ''),
-        question_ids=','.join(question_ids), question_count=len(question_ids),
+        question_ids=','.join(question_ids),
         questions_json=build_questions_json(question_ids)
     )
     db.session.add(quiz)
@@ -184,7 +184,6 @@ def create_quiz_api():
             topic=data.get('topic', ''), subtopic=data.get('subtopic', ''),
             level=data.get('level', ''),
             question_ids=','.join(str_ids),
-            question_count=len(str_ids),
             questions_json=build_questions_json(str_ids)
         )
         db.session.add(quiz)
@@ -493,7 +492,6 @@ def append_question_to_quiz(quiz_id):
     existing_ids = [qid.strip() for qid in quiz.question_ids.split(',') if qid.strip()] if quiz.question_ids else []
     existing_ids.append(str(question_obj.id))
     quiz.question_ids = ','.join(existing_ids)
-    quiz.question_count = len(existing_ids)
     quiz.updated_at = db.func.now()
     db.session.commit()
     return jsonify({'ok': True, 'question_id': question_obj.id, 'quiz_id': quiz_id,
