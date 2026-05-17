@@ -1442,11 +1442,8 @@ def unit_assign_submit():
     quiz_codes  = {c for c in all_codes if c.startswith('Q-')}
     video_codes = {c for c in all_codes if c.startswith('V-')}
 
-    # Build lookup: code → item_detail string
-    quiz_detail  = {}
-    for q in Quiz.query.filter(Quiz.quiz_code.in_(quiz_codes)).all():
-        quiz_detail[q.quiz_code] = _json.dumps(q.questions_json) if q.questions_json is not None else None
-
+    # item_detail is only meaningful for videos (stores the URL).
+    # Quizzes are served via Quiz.questions_json at execution time — no copy needed.
     video_detail = {}
     for v in Video.query.filter(Video.lesson_code.in_(video_codes)).all():
         video_detail[v.lesson_code] = f'https://mx-app-mm.onrender.com/packages/advanced/{v.file_name}'
@@ -1475,9 +1472,7 @@ def unit_assign_submit():
                         skipped += 1
                         continue
 
-                    if code.startswith('Q-'):
-                        detail = quiz_detail.get(code)
-                    elif code.startswith('V-'):
+                    if code.startswith('V-'):
                         detail = video_detail.get(code)
                     else:
                         detail = None

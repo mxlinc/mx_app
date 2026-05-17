@@ -460,14 +460,39 @@
         </div>
     </div>
 
+    <!-- Unit Name Modal -->
+    <div class="modal" id="unitNameModal">
+        <div class="modal-content" style="max-width:420px;">
+            <div class="modal-header">📁 Assign to Unit</div>
+            <p style="color:#555;font-size:14px;margin-bottom:16px;">
+                Enter a unit/group name for this assignment (e.g. "Additional Exercises").
+                Students will see this as the section heading.
+            </p>
+            <input type="text" id="unitNameInput" placeholder="Unit name…"
+                   style="width:100%;padding:10px;border:2px solid #ddd;border-radius:6px;
+                          font-size:15px;box-sizing:border-box;"
+                   onkeydown="if(event.key==='Enter') submitUnitName()">
+            <div class="modal-actions">
+                <button class="btn btn-secondary"
+                        onclick="document.getElementById('unitNameModal').classList.remove('show')">
+                    Cancel
+                </button>
+                <button class="btn btn-success" onclick="submitUnitName()">Continue →</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Conflict Modal -->
     <div class="modal" id="conflictModal">
         <div class="modal-content">
-            <div class="modal-header">⚠️ Assignment Conflicts</div>
+            <div class="modal-header">⚠️ Already Assigned</div>
             <div class="conflict-info" id="conflictInfo"></div>
             <div class="modal-actions">
-                <button class="btn btn-secondary" onclick="rejectConflict()">Skip This Student</button>
-                <button class="btn btn-primary" onclick="acceptConflict()">Keep These Assignments</button>
+                <button class="btn btn-secondary"
+                        onclick="document.getElementById('conflictModal').classList.remove('show')">
+                    Cancel
+                </button>
+                <button class="btn btn-primary" onclick="proceedWithForce()">Assign Anyway</button>
             </div>
         </div>
     </div>
@@ -479,10 +504,7 @@
             selectedQuizzes: [],
             allUsers: [],
             currentPage: 1,
-            totalPages: 1,
-            conflicts: {},
-            conflictUsers: [],
-            currentConflictIndex: 0
+            totalPages: 1
         };
 
         // ==================== INITIALIZATION ====================
@@ -719,94 +741,83 @@
         }
 
         // ==================== ASSIGNMENT ====================
-        async function assignQuizzes() {
+        let _pendingAuName = '';
+
+        function assignQuizzes() {
             if (state.selectedUsers.length === 0) {
-                showMessage('Please select at least one student', 'error');
-                return;
+                showMessage('Please select at least one student', 'error'); return;
             }
             if (state.selectedQuizzes.length === 0) {
-                showMessage('Please select at least one quiz', 'error');
+                showMessage('Please select at least one quiz', 'error'); return;
+            }
+            document.getElementById('unitNameInput').value = '';
+            document.getElementById('unitNameInput').style.borderColor = '#ddd';
+            document.getElementById('unitNameModal').classList.add('show');
+            setTimeout(() => document.getElementById('unitNameInput').focus(), 100);
+        }
+
+        function submitUnitName() {
+            const auName = document.getElementById('unitNameInput').value.trim();
+            if (!auName) {
+                document.getElementById('unitNameInput').style.borderColor = '#dc3545';
                 return;
             }
-            
+            document.getElementById('unitNameInput').style.borderColor = '#ddd';
+            document.getElementById('unitNameModal').classList.remove('show');
+            _pendingAuName = auName;
+            callDirectAssign(false);
+        }
+
+        async function callDirectAssign(force) {
             try {
-                const response = await fetch('/quiz/api/assign', {
+                const res = await fetch('/quiz/api/direct-assign', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         user_ids: state.selectedUsers,
-                        quiz_ids: state.selectedQuizzes
+                        quiz_ids: state.selectedQuizzes,
+                        au_name:  _pendingAuName,
+                        force:    force
                     })
                 });
-                
-                const result = await response.json();
-                
-                if (result.ok) {
-                    state.conflicts = result.conflicts;
-                    state.conflictUsers = Object.keys(result.conflicts).map(Number);
-                    state.currentConflictIndex = 0;
-                    
-                    showMessage(`✓ Successfully assigned ${result.created_count} quiz(zes)!`, 'success');
-                    
-                    if (state.conflictUsers.length > 0) {
-                        showConflictModal();
-                    } else {
-                        // Reset selections
-                        state.selectedQuizzes = [];
-                        updateQuizSelectionUI();
-                    }
+                const data = await res.json();
+                if (!data.ok) { showMessage(data.error || 'Assignment failed', 'error'); return; }
+
+                if (data.conflicts && data.conflicts.length > 0) {
+                    renderConflicts(data.conflicts);
+                    document.getElementById('conflictModal').classList.add('show');
                 } else {
-                    showMessage(result.error || 'Failed to assign quizzes', 'error');
+                    showMessage(`✓ ${data.message}`, 'success');
+                    state.selectedQuizzes = [];
+                    updateQuizSelectionUI();
                 }
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('Error assigning quizzes', 'error');
+            } catch (e) {
+                showMessage('Error: ' + e.message, 'error');
             }
         }
 
         // ==================== CONFLICT HANDLING ====================
-        function showConflictModal() {
-            if (state.currentConflictIndex >= state.conflictUsers.length) {
-                document.getElementById('conflictModal').classList.remove('show');
-                state.selectedQuizzes = [];
-                updateQuizSelectionUI();
-                showMessage('✓ All assignments processed!', 'success');
-                return;
-            }
-            
-            const userId = state.conflictUsers[state.currentConflictIndex];
-            const conflict = state.conflicts[userId];
-            
-            const info = document.getElementById('conflictInfo');
-            info.innerHTML = `
-                <div class="conflict-user">👤 ${conflict.user_full_name}</div>
-                <div style="margin-top: 10px; font-size: 13px; color: #666;">
-                    The following quiz(zes) are already assigned to this student:
-                </div>
-                <div class="conflict-quizzes">
-                    ${conflict.quizzes.map(q => `
-                        <div class="conflict-quiz">
-                            <strong>${q.title}</strong>
-                            <div class="conflict-quiz-id">Quiz ID: ${q.id}</div>
-                        </div>
-                    `).join('')}
-                </div>
-                <div style="margin-top: 10px; font-size: 13px; color: #666;">
-                    ${state.currentConflictIndex + 1} of ${state.conflictUsers.length} student(s)
-                </div>
-            `;
-            
-            document.getElementById('conflictModal').classList.add('show');
+        function renderConflicts(conflicts) {
+            const rows = conflicts.map(c =>
+                `<div class="conflict-quiz">
+                    <strong>${c.full_name}</strong> — ${c.title}
+                    <div class="conflict-quiz-id">
+                        Already in <em>${c.existing_au_name}</em>
+                        &nbsp;·&nbsp; status: <strong>${c.existing_status}</strong>
+                    </div>
+                </div>`
+            ).join('');
+            document.getElementById('conflictInfo').innerHTML =
+                `<div style="margin-bottom:10px;font-size:13px;color:#666;">
+                    These quizzes are already assigned to the listed students.
+                    Proceeding will add a new row under "<strong>${_pendingAuName}</strong>".
+                 </div>
+                 <div class="conflict-quizzes">${rows}</div>`;
         }
 
-        function acceptConflict() {
-            state.currentConflictIndex++;
-            showConflictModal();
-        }
-
-        function rejectConflict() {
-            state.currentConflictIndex++;
-            showConflictModal();
+        async function proceedWithForce() {
+            document.getElementById('conflictModal').classList.remove('show');
+            await callDirectAssign(true);
         }
 
         // ==================== UI HELPERS ====================

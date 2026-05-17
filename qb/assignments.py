@@ -1,12 +1,12 @@
-"""Quiz assignment routes — /quiz/assign and /quiz/api/assign."""
+"""Quiz assignment routes — /quiz/assign and /quiz/api/direct-assign."""
 
 import logging
 
 from flask import render_template, request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 
 from db import db
-from models import UserTable, Quiz
+from models import UserTable, Quiz, MyWorkList
 from qb.routes import qb_bp
 
 logger = logging.getLogger(__name__)
@@ -19,8 +19,9 @@ def assign_page():
 
 
 @qb_bp.route("/api/users-for-assignment", methods=["GET"])
+@login_required
 def get_users_for_assignment():
-    """Users eligible for quiz assignment (role='new')."""
+    """Users eligible for quiz assignment (role='student_new')."""
     try:
         users = UserTable.query.filter_by(user_role='student_new').all()
         users_data = sorted(
@@ -33,44 +34,91 @@ def get_users_for_assignment():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-@qb_bp.route("/api/assign", methods=["POST"])
-def assign_quizzes():
-    """Batch-assign quizzes to users; skips duplicates and reports conflicts."""
-    try:
-        data = request.get_json()
-        user_ids = data.get('user_ids', [])
-        quiz_ids = data.get('quiz_ids', [])
+@qb_bp.route("/api/direct-assign", methods=["POST"])
+@login_required
+def direct_assign_quizzes():
+    """Two-phase assignment.
 
-        if not user_ids or not quiz_ids:
-            return jsonify({"ok": False, "error": "user_ids and quiz_ids are required"}), 400
+    First call (force=False): checks for existing my_work_list rows matching
+    any (user, item_code) pair and returns conflicts without writing.
+    Second call (force=True): creates new rows, skipping exact duplicates
+    (same user + au_name + item_code).
+    """
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
 
-        created_count = 0
-        conflicts = {}
+    data     = request.get_json(force=True)
+    user_ids = data.get('user_ids', [])
+    quiz_ids = data.get('quiz_ids', [])
+    au_name  = (data.get('au_name') or '').strip()
+    force    = data.get('force', False)
 
-        for user_id in user_ids:
-            user_conflicts = []
-            for quiz_id in quiz_ids:
-                existing = None  # user_quiz table removed; assignment now via my_work_list
+    if not user_ids or not quiz_ids:
+        return jsonify({'ok': False, 'error': 'user_ids and quiz_ids are required'}), 400
+    if not au_name:
+        return jsonify({'ok': False, 'error': 'Unit name is required'}), 400
+
+    quizzes  = Quiz.query.filter(Quiz.id.in_(quiz_ids)).all()
+    quiz_map = {q.id: q for q in quizzes}
+    codes    = {q.id: q.quiz_code for q in quizzes}
+    users    = UserTable.query.filter(UserTable.id.in_(user_ids)).all()
+    user_map = {u.id: u for u in users}
+
+    if not force:
+        conflicts = []
+        for uid in user_ids:
+            user = user_map.get(uid)
+            if not user:
+                continue
+            for qid in quiz_ids:
+                qcode = codes.get(qid)
+                if not qcode:
+                    continue
+                existing = MyWorkList.query.filter_by(user=user.username, item_code=qcode).first()
                 if existing:
-                    quiz = Quiz.query.get(quiz_id)
-                    if quiz:
-                        user_conflicts.append({"id": quiz_id, "title": quiz.title})
-                else:
-                    created_count += 1  # no-op: assignment now handled via unit_assign
+                    conflicts.append({
+                        'user_id':          uid,
+                        'full_name':        user.full_name or user.username,
+                        'quiz_id':          qid,
+                        'quiz_code':        qcode,
+                        'title':            quiz_map[qid].title,
+                        'existing_au_name': existing.au_name,
+                        'existing_status':  existing.status,
+                    })
+        if conflicts:
+            return jsonify({'ok': True, 'conflicts': conflicts, 'created': 0})
 
-            if user_conflicts:
-                user = UserTable.query.get(user_id)
-                if user:
-                    conflicts[str(user_id)] = {
-                        "user_full_name": user.full_name or user.username,
-                        "quizzes": user_conflicts
-                    }
+    created = skipped = 0
+    for uid in user_ids:
+        user = user_map.get(uid)
+        if not user:
+            continue
+        for qid in quiz_ids:
+            qcode = codes.get(qid)
+            if not qcode:
+                continue
+            exists = MyWorkList.query.filter_by(
+                user=user.username, au_name=au_name, item_code=qcode
+            ).first()
+            if exists:
+                skipped += 1
+                continue
+            db.session.add(MyWorkList(
+                user=user.username,
+                au_name=au_name,
+                item_code=qcode,
+                item_detail=None,
+                views=0,
+                status='assigned',
+                user_id=uid,
+            ))
+            created += 1
 
-        db.session.commit()
-        logger.info(f"Quiz assignment: Created {created_count} records, {len(conflicts)} conflicts")
-        return jsonify({"ok": True, "created_count": created_count, "conflicts": conflicts})
-
-    except Exception as e:
-        db.session.rollback()
-        logger.exception(e)
-        return jsonify({"ok": False, "error": str(e)}), 500
+    db.session.commit()
+    msg = f'Assigned {created} quiz(zes).'
+    if skipped:
+        msg += f' Skipped {skipped} exact duplicate(s).'
+    logger.info('Direct quiz assignment: au_name=%r created=%s skipped=%s by=%s',
+                au_name, created, skipped, current_user.username)
+    return jsonify({'ok': True, 'conflicts': [], 'created': created,
+                    'skipped': skipped, 'message': msg})
