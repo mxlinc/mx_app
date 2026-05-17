@@ -58,27 +58,15 @@
     .cu-btn-save   { padding:0.5rem 1.25rem; border:none; border-radius:6px; background:var(--c-primary); color:#fff; font-weight:600; cursor:pointer; font-size:0.95rem; }
     .cu-btn-save:disabled { opacity:0.6; cursor:default; }
 
-    .page-header { background: var(--c-surface); border-bottom: 1px solid var(--c-border); padding: 1.25rem 2rem; }
-    .page-header h1 { font-size: 1.5rem; font-weight: 600; color: var(--c-primary); margin: 0; }
-    .page-header p  { color: var(--c-text-sm); margin: 0.25rem 0 0; font-size: 0.9rem; }
   </style>
 {% endblock %}
 
 {% block nav %}
-  <nav class="top-nav">
-    <a class="brand" href="#">&#127979; MathXcel Admin</a>
-    <div class="nav-links">
-      <a href="{{ url_for('lms.admin_home_new') }}">Dashboard</a>
-      <a href="{{ url_for('lms.logout') }}">Sign Out</a>
-    </div>
-  </nav>
+  {% set page_title = 'Assignment Units' %}
+  {% include '_admin_header.html' %}
 {% endblock %}
 
 {% block body %}
-  <div class="page-header">
-    <h1>Assignment Units</h1>
-    <p>Click a unit to view and reorder its content.</p>
-  </div>
 
   <div class="main-content">
 

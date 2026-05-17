@@ -24,49 +24,6 @@
       min-height: 100vh;
     }
 
-    .top-nav {
-      background: var(--color-primary);
-      padding: 0.75rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .top-nav .brand {
-      color: #fff;
-      font-size: 1.1rem;
-      font-weight: 600;
-      text-decoration: none;
-    }
-
-    .top-nav .nav-links a {
-      color: rgba(255,255,255,0.85);
-      text-decoration: none;
-      margin-left: 1.25rem;
-      font-size: 0.9rem;
-    }
-
-    .top-nav .nav-links a:hover { color: #fff; }
-
-    .page-header {
-      background: var(--color-surface);
-      border-bottom: 1px solid var(--color-border);
-      padding: 1.25rem 2rem;
-    }
-
-    .page-header h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--color-primary);
-      margin: 0;
-    }
-
-    .page-header p {
-      color: var(--color-muted);
-      margin: 0.25rem 0 0;
-      font-size: 0.9rem;
-    }
-
     .main-content {
       padding: 2rem;
       max-width: 1100px;
@@ -140,18 +97,8 @@
 </head>
 <body>
 
-  <nav class="top-nav">
-    <a class="brand" href="#">&#127979; MathXcel Admin</a>
-    <div class="nav-links">
-      <a href="{{ url_for('lms.admin_home_new') }}">Dashboard</a>
-      <a href="{{ url_for('lms.logout') }}">Sign Out</a>
-    </div>
-  </nav>
-
-  <div class="page-header">
-    <h1>Admin Dashboard</h1>
-    <p>Welcome, {{ current_user.full_name or current_user.username }}</p>
-  </div>
+  {% set page_title = 'Admin Dashboard' %}
+  {% include '_admin_header.html' %}
 
   <div class="main-content">
 

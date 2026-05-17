@@ -182,8 +182,9 @@
     </style>
 </head>
 <body>
+  {% set page_title = 'Unit Assignment' %}
+  {% include '_admin_header.html' %}
 <div class="container">
-    <a href="{{ url_for('lms.admin_home_new') }}" style="font-size:0.82rem;color:#6c8a9e;text-decoration:none;display:inline-block;margin-bottom:10px;">&#8592; Dashboard</a>
     <h1>📚 Assign Units to Students</h1>
 
     <!-- ========== 1. SELECT STUDENTS ========== -->

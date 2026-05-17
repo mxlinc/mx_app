@@ -581,10 +581,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
 </head>
 <body>
+  {% set page_title = 'Question Bank' %}
+  {% include '_admin_header.html' %}
     <div class="container">
         <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div>
-                <a href="{{ url_for('lms.admin_home_new') }}" style="font-size:0.82rem;color:#6c8a9e;text-decoration:none;display:inline-block;margin-bottom:6px;">&#8592; Dashboard</a>
                 <h1>📚 Question Bank</h1>
                 <p>Browse and manage all quiz questions</p>
             </div>

@@ -1,0 +1,29 @@
+<style>
+  .admin-nav {
+    background: #2c6e9e;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .admin-nav .page-title {
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+  .admin-nav .nav-links a {
+    color: rgba(255,255,255,0.85);
+    text-decoration: none;
+    margin-left: 1.25rem;
+    font-size: 0.9rem;
+  }
+  .admin-nav .nav-links a:hover { color: #fff; }
+</style>
+
+<nav class="admin-nav">
+  <span class="page-title">{{ page_title }}</span>
+  <div class="nav-links">
+    <a href="{{ url_for('lms.admin_home_new') }}">&#8962; Dashboard</a>
+    <a href="{{ url_for('lms.logout') }}">Sign Out</a>
+  </div>
+</nav>
