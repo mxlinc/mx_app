@@ -60,7 +60,7 @@
                 return `<div class="template-blank-wrapper template-blank-inline"><span class="template-blank-label">${labelText}</span>${inputHtml}<span class="template-blank-label-after">${labelAfter}</span></div>`;
             }
             return `<div class="template-blank-wrapper"><label class="template-blank-label">${labelText}</label>${inputHtml}</div>`;
-        }).join('');
+        }).join('<div style="height: 1.2em;"></div>');
         const img = question.image_url ? `<div class="template-image"><img src="${question.image_url}" alt="Question image"></div>` : '';
         return `<div class="template-question template-fill"><div class="template-stem">${question.stem || ''}</div>${img}<div class="template-blanks-container">${html}</div></div>`;
     }
