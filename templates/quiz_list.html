@@ -260,6 +260,26 @@
             background: #da190b;
         }
 
+        .btn-resync {
+            background: #ff9800;
+            color: white;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9em;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-resync:hover {
+            background: #e65100;
+        }
+
+        .btn-resync:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
         .btn-edit-single {
             background: #1976d2;
             color: white;
@@ -589,10 +609,6 @@
   {% set page_title = 'Quiz List' %}
   {% include '_admin_header.html' %}
     <div class="container">
-        <div class="header">
-            <h1>📋 Quiz List</h1>
-            <p>Browse and manage all quizzes</p>
-        </div>
 
         <div class="error-message" id="errorMessage"></div>
 
@@ -635,6 +651,9 @@
                     <input type="checkbox" id="unusedFilter" checked onchange="loadQuizzes(1)" style="width:18px;height:18px;">
                     Show Unused Only
                 </label>
+            </div>
+            <div style="align-self:center;">
+                <button class="btn-resync" id="resyncBtn" onclick="runResync()" title="Rebuild quiz snapshots for all recently edited questions">🔄 Re-sync Quizzes <span id="resyncCount"></span></button>
             </div>
         </div>
 
@@ -728,12 +747,13 @@
                 </div>
                 <div class="form-group">
                     <label for="editLevel">Level</label>
-                    <select id="editLevel">
-                        <option value="">— None —</option>
-                        <option value="Easy">Easy</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Hard">Hard</option>
-                    </select>
+                    <input type="text" id="editLevel" placeholder="e.g. DX, GHI">
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="editDraft" style="width:auto;margin:0;">
+                        Draft (uncheck = Ready)
+                    </label>
                 </div>
                 <div class="form-group">
                     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
@@ -791,6 +811,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadTopics();
             loadQuizzes(1);
+            loadResyncCount();
         });
 
         function loadTopics() {
@@ -952,6 +973,46 @@
 
         let _editQuizId = null;
 
+        function loadResyncCount() {
+            fetch('/quiz/api/resync-quizzes/count')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('resyncCount');
+                    const btn   = document.getElementById('resyncBtn');
+                    if (data.ok && data.pending > 0) {
+                        badge.textContent = `(${data.pending} pending)`;
+                        btn.disabled = false;
+                    } else {
+                        badge.textContent = '';
+                        btn.disabled = true;
+                    }
+                })
+                .catch(() => {});
+        }
+
+        function runResync() {
+            const btn = document.getElementById('resyncBtn');
+            btn.disabled = true;
+            btn.textContent = '🔄 Syncing...';
+            fetch('/quiz/api/resync-quizzes', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.synced > 0) {
+                        showError(data.message);
+                    }
+                    if (data.failed && data.failed.length > 0) {
+                        showError(`Re-sync failed for question IDs: ${data.failed.join(', ')}`);
+                    }
+                    btn.textContent = '🔄 Re-sync Quizzes ';
+                    loadResyncCount();
+                })
+                .catch(() => {
+                    showError('Re-sync request failed. Please try again.');
+                    btn.textContent = '🔄 Re-sync Quizzes ';
+                    loadResyncCount();
+                });
+        }
+
         function openEditModal(quizId) {
             _editQuizId = quizId;
             fetch(`/quiz/api/${quizId}`)
@@ -965,6 +1026,7 @@
                     document.getElementById('editTopic').value       = data.topic;
                     document.getElementById('editSubtopic').value    = data.subtopic;
                     document.getElementById('editLevel').value       = data.level || '';
+                    document.getElementById('editDraft').checked     = (data.status === 'draft');
                     document.getElementById('editPropagate').checked = false;
                     document.getElementById('editQuizModal').classList.add('show');
                 })
@@ -984,7 +1046,8 @@
                 description: document.getElementById('editDescription').value.trim(),
                 topic:       document.getElementById('editTopic').value.trim(),
                 subtopic:    document.getElementById('editSubtopic').value.trim(),
-                level:       document.getElementById('editLevel').value,
+                level:       document.getElementById('editLevel').value.trim(),
+                status:      document.getElementById('editDraft').checked ? 'draft' : 'ready',
                 propagate:   document.getElementById('editPropagate').checked
             };
             const submitBtn = event.target.querySelector('button[type="submit"]');

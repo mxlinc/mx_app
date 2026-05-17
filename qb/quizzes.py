@@ -341,6 +341,7 @@ def edit_quiz(quiz_id):
         if data.get('topic')       is not None: quiz.topic       = data['topic']
         if data.get('subtopic')    is not None: quiz.subtopic    = data['subtopic']
         if data.get('level')       is not None: quiz.level       = data['level']
+        if data.get('status')      is not None: quiz.status      = data['status']
 
         propagate = data.get('propagate', False)
         if propagate and quiz.question_ids:
