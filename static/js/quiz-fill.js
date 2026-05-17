@@ -29,19 +29,18 @@ function getFILLQuestion() {
         const response_type = blankEl.querySelector('.blank-response-type').value;
         const placeholder = blankEl.querySelector('.blank-placeholder').value.trim();
         
-        if (!label_latex || !response_type) {
-            throw new Error(`Blank ${idx + 1}: label and response type are required.`);
+        if (!response_type) {
+            throw new Error(`Blank ${idx + 1}: response type is required.`);
         }
 
         const blank = {
             id: blankId,
-            input_label: {
-                latex: label_latex,
-                html: label_latex  // Will be set properly in preview
-            },
             response_type: response_type,
             placeholder: placeholder || response_type
         };
+        if (label_latex) {
+            blank.input_label = { latex: label_latex, html: label_latex };
+        }
         if (label_after_latex) {
             blank.label_after = { latex: label_after_latex, html: label_after_latex };
         }
@@ -282,7 +281,7 @@ class QuizFILL {
                         ${inputField}
                     </div>
                 `;
-            }).join('');
+            }).join('<div style="height: 1.2em;"></div>');
             
             document.getElementById('optionsContainer').innerHTML = blanksHtml;
             console.log('Blanks rendered');
