@@ -70,10 +70,6 @@
 
   <div class="main-content">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <a href="{{ url_for('lms.admin_home_new') }}" class="btn btn-sm btn-outline-secondary">&larr; Dashboard</a>
-    </div>
-
     {% if not areas %}
       <p class="text-muted">No units found. Create one from the Dashboard.</p>
     {% endif %}
