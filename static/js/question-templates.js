@@ -29,7 +29,11 @@
             return `<div class="template-option template-mr-option"><input type="checkbox" id="${optId}" value="${optId}" class="template-checkbox"><label for="${optId}" class="template-option-label">${txt}</label></div>`;
         }).join('');
         const img = question.image_url ? `<div class="template-image"><img src="${question.image_url}" alt="Question image"></div>` : '';
-        return `<div class="template-question template-mr"><div class="template-stem">${question.stem || ''}</div>${img}<div class="template-options-container template-mr-options">${html}</div></div>`;
+        const numCorrect = (question.answer?.correct_option_ids || []).length;
+        const hint = numCorrect > 0
+            ? `<p class="template-mr-hint">Select ${numCorrect} correct option${numCorrect > 1 ? 's' : ''}</p>`
+            : '';
+        return `<div class="template-question template-mr"><div class="template-stem">${question.stem || ''}</div>${img}${hint}<div class="template-options-container template-mr-options">${html}</div></div>`;
     }
     static FILL(question) {
         const blanks = question.input?.blanks || [];

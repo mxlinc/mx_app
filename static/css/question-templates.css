@@ -95,6 +95,13 @@
 }
 
 /* ===== MR SPECIFIC ===== */
+.template-mr-hint {
+    font-size: 0.85em;
+    color: #666;
+    font-style: italic;
+    margin: 0 0 12px;
+}
+
 .template-mr-options {
     display: flex;
     flex-direction: column;
