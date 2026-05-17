@@ -289,6 +289,86 @@
             background: #1256a3;
         }
 
+        /* ── Edit Quiz full-window panel ── */
+        #editQuizPanel {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: #fff;
+            flex-direction: column;
+        }
+        #editQuizPanel.show { display: flex; }
+        .eq-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 24px;
+            border-bottom: 2px solid #d0d9e8;
+            background: #f0f5ff;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+        .eq-title { font-size: 1.15rem; font-weight: 700; color: #1976d2; }
+        .eq-body {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+        .eq-meta {
+            width: 360px;
+            min-width: 280px;
+            padding: 20px 24px;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+            background: #fafafa;
+            flex-shrink: 0;
+        }
+        .eq-questions {
+            flex: 1;
+            padding: 20px 24px;
+            overflow-y: auto;
+        }
+        .eq-q-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border: 1px solid #e8e8e8;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            background: #fff;
+        }
+        .eq-q-row:hover { border-color: #1976d2; background: #f0f6ff; }
+        .eq-q-num { min-width: 22px; color: #aaa; font-size: 0.78rem; text-align: right; flex-shrink: 0; }
+        .eq-q-type {
+            font-size: 0.68rem;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            flex-shrink: 0;
+        }
+        .eq-q-preview { flex: 1; font-size: 0.87rem; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .eq-q-meta { font-size: 0.74rem; color: #999; white-space: nowrap; flex-shrink: 0; }
+        .eq-q-btn {
+            background: none;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 1px 7px;
+            font-size: 0.88rem;
+            color: #555;
+            flex-shrink: 0;
+            line-height: 1.4;
+        }
+        .eq-q-btn:hover { background: #eee; }
+        .eq-q-btn.remove { color: #c0392b; border-color: #e0b0b0; }
+        .eq-q-btn.remove:hover { background: #fdecea; }
+
         .empty-state {
             padding: 60px 20px;
             text-align: center;
@@ -719,54 +799,64 @@
         </div>
     </div>
 
-    <!-- Update Quizzes Modal -->
-    <div class="modal" id="editQuizModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <button class="close-btn" onclick="closeEditModal()">&times;</button>
-                <h2>Edit Quiz</h2>
-                <p id="editQuizCode"></p>
-            </div>
-            <form onsubmit="submitEditQuiz(event)">
-                <input type="hidden" id="editQuizId">
-                <div class="form-group">
-                    <label for="editTitle">Title *</label>
-                    <input type="text" id="editTitle" required>
-                </div>
-                <div class="form-group">
-                    <label for="editDescription">Description</label>
-                    <textarea id="editDescription" rows="2"></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="editTopic">Topic</label>
-                    <input type="text" id="editTopic">
-                </div>
-                <div class="form-group">
-                    <label for="editSubtopic">Subtopic</label>
-                    <input type="text" id="editSubtopic">
-                </div>
-                <div class="form-group">
-                    <label for="editLevel">Level</label>
-                    <input type="text" id="editLevel" placeholder="e.g. DX, GHI">
-                </div>
-                <div class="form-group">
-                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                        <input type="checkbox" id="editDraft" style="width:auto;margin:0;">
-                        Draft (uncheck = Ready)
-                    </label>
-                </div>
-                <div class="form-group">
-                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-                        <input type="checkbox" id="editPropagate" style="width:auto;margin:0;">
-                        Propagate topic, subtopic &amp; level to all questions in this quiz
-                    </label>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
-                    <button type="submit" class="btn-save">Save</button>
-                </div>
-            </form>
+    <!-- Edit Quiz Panel (full-window overlay) -->
+    <div id="editQuizPanel">
+      <div class="eq-header">
+        <div>
+          <span class="eq-title">Edit Quiz</span>
+          <span id="eqCode" style="color:#888;font-size:0.9rem;margin-left:8px;font-weight:400;"></span>
         </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button onclick="submitEditQuiz()" id="eqSaveBtn" class="btn-save">Save</button>
+          <button onclick="closeEditModal()" class="btn-cancel" style="padding:6px 16px;">Cancel</button>
+        </div>
+      </div>
+      <div class="eq-body">
+        <!-- Left: metadata -->
+        <div class="eq-meta">
+          <input type="hidden" id="editQuizId">
+          <div class="form-group">
+            <label for="editTitle">Title *</label>
+            <input type="text" id="editTitle" required>
+          </div>
+          <div class="form-group">
+            <label for="editDescription">Description</label>
+            <textarea id="editDescription" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="editTopic">Topic</label>
+            <input type="text" id="editTopic">
+          </div>
+          <div class="form-group">
+            <label for="editSubtopic">Subtopic</label>
+            <input type="text" id="editSubtopic">
+          </div>
+          <div class="form-group">
+            <label for="editLevel">Level</label>
+            <input type="text" id="editLevel" placeholder="e.g. DX, GHI">
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="editDraft" style="width:auto;margin:0;">
+              Draft (uncheck = Published)
+            </label>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+              <input type="checkbox" id="editPropagate" style="width:auto;margin:0;">
+              Propagate topic, subtopic &amp; level to all questions
+            </label>
+          </div>
+        </div>
+        <!-- Right: question list -->
+        <div class="eq-questions">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <h3 style="margin:0;font-size:1rem;font-weight:700;">Questions <span id="eqQCount" style="color:#888;font-size:0.85rem;font-weight:400;"></span></h3>
+            <span style="font-size:0.78rem;color:#999;">↑↓ to reorder &nbsp;·&nbsp; × to remove from quiz</span>
+          </div>
+          <div id="eqQuestionList"></div>
+        </div>
+      </div>
     </div>
 
     <div class="modal" id="updateModal">
@@ -1014,42 +1104,101 @@
                 .then(r => r.json())
                 .then(data => {
                     if (!data.ok) { showError(data.error || 'Failed to load quiz'); return; }
-                    document.getElementById('editQuizId').value    = data.id;
-                    document.getElementById('editQuizCode').textContent = data.quiz_code ? `(${data.quiz_code})` : '';
-                    document.getElementById('editTitle').value       = data.title;
-                    document.getElementById('editDescription').value = data.description;
-                    document.getElementById('editTopic').value       = data.topic;
-                    document.getElementById('editSubtopic').value    = data.subtopic;
-                    document.getElementById('editLevel').value       = data.level || '';
-                    document.getElementById('editDraft').checked     = (data.status === 'draft');
-                    document.getElementById('editPropagate').checked = false;
-                    document.getElementById('editQuizModal').classList.add('show');
+                    document.getElementById('editQuizId').value       = data.id;
+                    document.getElementById('eqCode').textContent     = data.quiz_code ? `(${data.quiz_code})` : '';
+                    document.getElementById('editTitle').value        = data.title;
+                    document.getElementById('editDescription').value  = data.description;
+                    document.getElementById('editTopic').value        = data.topic;
+                    document.getElementById('editSubtopic').value     = data.subtopic;
+                    document.getElementById('editLevel').value        = data.level || '';
+                    document.getElementById('editDraft').checked      = (data.status === 'draft');
+                    document.getElementById('editPropagate').checked  = false;
+                    renderEqQuestions(data.questions || []);
+                    document.getElementById('editQuizPanel').classList.add('show');
                 })
                 .catch(() => showError('Failed to load quiz data'));
         }
 
         function closeEditModal() {
-            document.getElementById('editQuizModal').classList.remove('show');
+            document.getElementById('editQuizPanel').classList.remove('show');
             _editQuizId = null;
         }
 
-        function submitEditQuiz(event) {
-            event.preventDefault();
-            const quizId = document.getElementById('editQuizId').value;
-            const data = {
-                title:       document.getElementById('editTitle').value.trim(),
-                description: document.getElementById('editDescription').value.trim(),
-                topic:       document.getElementById('editTopic').value.trim(),
-                subtopic:    document.getElementById('editSubtopic').value.trim(),
-                level:       document.getElementById('editLevel').value.trim(),
-                status:      document.getElementById('editDraft').checked ? 'draft' : 'published',
-                propagate:   document.getElementById('editPropagate').checked
-            };
-            const submitBtn = event.target.querySelector('button[type="submit"]');
-            const originalText = submitBtn.textContent;
-            submitBtn.textContent = 'Saving...';
-            submitBtn.disabled = true;
+        const _EQ_TYPE_COLORS = {
+            mcq: '#1976d2', fill: '#388e3c', algebra: '#e65100',
+            mr: '#7b1fa2', feval: '#00796b', ohs: '#546e7a'
+        };
 
+        function renderEqQuestions(questions) {
+            const list = document.getElementById('eqQuestionList');
+            list.innerHTML = '';
+            questions.forEach((q, i) => {
+                const row = document.createElement('div');
+                row.className = 'eq-q-row';
+                row.dataset.id = q.id;
+                const color = _EQ_TYPE_COLORS[q.type] || '#607d8b';
+                const meta = [q.topic, q.subtopic].filter(Boolean).join(' / ');
+                const preview = q.preview || meta || `ID ${q.id}`;
+                row.innerHTML = `
+                    <span class="eq-q-num">${i + 1}</span>
+                    <span class="eq-q-type" style="background:${color};color:#fff;">${q.type}</span>
+                    <span class="eq-q-preview" title="${preview.replace(/"/g, '&quot;')}">${preview}</span>
+                    ${meta ? `<span class="eq-q-meta">${meta}</span>` : ''}
+                    <button class="eq-q-btn" onclick="moveEqUp(this)" title="Move up">↑</button>
+                    <button class="eq-q-btn" onclick="moveEqDown(this)" title="Move down">↓</button>
+                    <button class="eq-q-btn remove" onclick="removeEq(this)" title="Remove from quiz">×</button>
+                `;
+                list.appendChild(row);
+            });
+            updateEqCount();
+        }
+
+        function moveEqUp(btn) {
+            const row = btn.closest('.eq-q-row');
+            const prev = row.previousElementSibling;
+            if (prev) { row.parentNode.insertBefore(row, prev); renumberEq(); }
+        }
+
+        function moveEqDown(btn) {
+            const row = btn.closest('.eq-q-row');
+            const next = row.nextElementSibling;
+            if (next) { row.parentNode.insertBefore(next, row); renumberEq(); }
+        }
+
+        function removeEq(btn) {
+            btn.closest('.eq-q-row').remove();
+            renumberEq();
+        }
+
+        function renumberEq() {
+            document.querySelectorAll('#eqQuestionList .eq-q-row').forEach((row, i) => {
+                row.querySelector('.eq-q-num').textContent = i + 1;
+            });
+            updateEqCount();
+        }
+
+        function updateEqCount() {
+            const n = document.querySelectorAll('#eqQuestionList .eq-q-row').length;
+            document.getElementById('eqQCount').textContent = `(${n})`;
+        }
+
+        function submitEditQuiz() {
+            const quizId = document.getElementById('editQuizId').value;
+            const rows = document.querySelectorAll('#eqQuestionList .eq-q-row');
+            const data = {
+                title:        document.getElementById('editTitle').value.trim(),
+                description:  document.getElementById('editDescription').value.trim(),
+                topic:        document.getElementById('editTopic').value.trim(),
+                subtopic:     document.getElementById('editSubtopic').value.trim(),
+                level:        document.getElementById('editLevel').value.trim(),
+                status:       document.getElementById('editDraft').checked ? 'draft' : 'published',
+                propagate:    document.getElementById('editPropagate').checked,
+                question_ids: [...rows].map(r => parseInt(r.dataset.id))
+            };
+            if (!data.title) { showError('Title is required'); return; }
+            const saveBtn = document.getElementById('eqSaveBtn');
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
             fetch(`/quiz/api/${quizId}/edit`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1057,18 +1206,14 @@
             })
             .then(r => r.json())
             .then(result => {
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
-                if (result.ok) {
-                    closeEditModal();
-                    loadQuizzes(currentPage);
-                } else {
-                    showError(result.error || 'Failed to save quiz');
-                }
+                saveBtn.textContent = 'Save';
+                saveBtn.disabled = false;
+                if (result.ok) { closeEditModal(); loadQuizzes(currentPage); }
+                else { showError(result.error || 'Failed to save quiz'); }
             })
             .catch(() => {
-                submitBtn.textContent = originalText;
-                submitBtn.disabled = false;
+                saveBtn.textContent = 'Save';
+                saveBtn.disabled = false;
                 showError('Failed to save quiz. Please try again.');
             });
         }
@@ -1337,8 +1482,6 @@
         window.onclick = function(event) {
             const updateModal = document.getElementById('updateModal');
             if (event.target === updateModal) { closeUpdateModal(); }
-            const editModal = document.getElementById('editQuizModal');
-            if (event.target === editModal) { closeEditModal(); }
         }
 
         // ── Add-to-Unit modal ────────────────────────────────────────

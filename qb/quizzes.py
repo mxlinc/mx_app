@@ -302,9 +302,34 @@ def update_quizzes():
 @qb_bp.route("/api/<int:quiz_id>", methods=["GET"])
 @login_required
 def get_quiz(quiz_id):
-    """Return metadata for a single quiz (used to populate the edit modal)."""
+    """Return metadata and ordered question list for a single quiz (used to populate the edit panel)."""
     try:
         quiz = Quiz.query.get_or_404(quiz_id)
+
+        # Build ordered question preview list
+        questions = []
+        if quiz.question_ids:
+            ids = [i.strip() for i in quiz.question_ids.split(',') if i.strip()]
+            rows = {q.id: q for q in QBank.query.filter(QBank.id.in_([int(i) for i in ids])).all()}
+            for qid in ids:
+                q = rows.get(int(qid))
+                if not q:
+                    continue
+                j = q.json or {}
+                preview = ''
+                for key in ('question', 'q', 'text', 'stem', 'prompt'):
+                    val = j.get(key, '')
+                    if isinstance(val, str) and val.strip():
+                        preview = val[:120]
+                        break
+                questions.append({
+                    'id': q.id,
+                    'type': q.type,
+                    'topic': q.topic or '',
+                    'subtopic': q.subtopic or '',
+                    'preview': preview,
+                })
+
         return jsonify({
             'ok': True,
             'id': quiz.id,
@@ -315,6 +340,7 @@ def get_quiz(quiz_id):
             'subtopic': quiz.subtopic or '',
             'level': quiz.level or '',
             'status': quiz.status or 'draft',
+            'questions': questions,
         })
     except Exception as e:
         logger.exception(e)
@@ -343,6 +369,12 @@ def edit_quiz(quiz_id):
         if data.get('status')      is not None: quiz.status      = data['status']
 
         propagate = data.get('propagate', False)
+
+        # Handle question reordering / deletion
+        if 'question_ids' in data:
+            new_ids = [str(i) for i in data['question_ids'] if str(i).strip()]
+            quiz.question_ids = ','.join(new_ids)
+
         if propagate and quiz.question_ids:
             ids = [i.strip() for i in quiz.question_ids.split(',') if i.strip()]
             for q_id in [int(i) for i in ids]:
@@ -351,6 +383,9 @@ def edit_quiz(quiz_id):
                     if quiz.topic    is not None: q.topic    = quiz.topic
                     if quiz.subtopic is not None: q.subtopic = quiz.subtopic
                     if quiz.level    is not None: q.level    = quiz.level
+            quiz.questions_json = build_questions_json(ids)
+        elif 'question_ids' in data:
+            ids = [i.strip() for i in quiz.question_ids.split(',') if i.strip()]
             quiz.questions_json = build_questions_json(ids)
 
         db.session.commit()
