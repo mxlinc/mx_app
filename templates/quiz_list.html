@@ -260,6 +260,15 @@
             background: #da190b;
         }
 
+        .btn-edit-single {
+            background: #1976d2;
+            color: white;
+        }
+
+        .btn-edit-single:hover {
+            background: #1256a3;
+        }
+
         .empty-state {
             padding: 60px 20px;
             text-align: center;
@@ -692,6 +701,54 @@
     </div>
 
     <!-- Update Quizzes Modal -->
+    <div class="modal" id="editQuizModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="close-btn" onclick="closeEditModal()">&times;</button>
+                <h2>Edit Quiz</h2>
+                <p id="editQuizCode"></p>
+            </div>
+            <form onsubmit="submitEditQuiz(event)">
+                <input type="hidden" id="editQuizId">
+                <div class="form-group">
+                    <label for="editTitle">Title *</label>
+                    <input type="text" id="editTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="editDescription">Description</label>
+                    <textarea id="editDescription" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="editTopic">Topic</label>
+                    <input type="text" id="editTopic">
+                </div>
+                <div class="form-group">
+                    <label for="editSubtopic">Subtopic</label>
+                    <input type="text" id="editSubtopic">
+                </div>
+                <div class="form-group">
+                    <label for="editLevel">Level</label>
+                    <select id="editLevel">
+                        <option value="">— None —</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="editPropagate" style="width:auto;margin:0;">
+                        Propagate topic, subtopic &amp; level to all questions in this quiz
+                    </label>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn-save">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal" id="updateModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -841,6 +898,7 @@
                     <td>${statusBadge}</td>
                     <td class="actions-cell">
                         <a href="/quiz/${quiz.id}/preview" class="action-btn" target="_blank" title="Preview">Preview</a>
+                        <button class="action-btn btn-edit-single" onclick="openEditModal(${quiz.id})" title="Edit">Edit</button>
                         <button class="action-btn btn-delete-single" onclick="deleteSingleQuiz(${quiz.id})" title="Delete">Delete</button>
                     </td>
                 `;
@@ -890,6 +948,71 @@
                 selectionBar.classList.add('show');
                 document.getElementById('selectedCount').textContent = count;
             }
+        }
+
+        let _editQuizId = null;
+
+        function openEditModal(quizId) {
+            _editQuizId = quizId;
+            fetch(`/quiz/api/${quizId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.ok) { showError(data.error || 'Failed to load quiz'); return; }
+                    document.getElementById('editQuizId').value    = data.id;
+                    document.getElementById('editQuizCode').textContent = data.quiz_code ? `(${data.quiz_code})` : '';
+                    document.getElementById('editTitle').value       = data.title;
+                    document.getElementById('editDescription').value = data.description;
+                    document.getElementById('editTopic').value       = data.topic;
+                    document.getElementById('editSubtopic').value    = data.subtopic;
+                    document.getElementById('editLevel').value       = data.level || '';
+                    document.getElementById('editPropagate').checked = false;
+                    document.getElementById('editQuizModal').classList.add('show');
+                })
+                .catch(() => showError('Failed to load quiz data'));
+        }
+
+        function closeEditModal() {
+            document.getElementById('editQuizModal').classList.remove('show');
+            _editQuizId = null;
+        }
+
+        function submitEditQuiz(event) {
+            event.preventDefault();
+            const quizId = document.getElementById('editQuizId').value;
+            const data = {
+                title:       document.getElementById('editTitle').value.trim(),
+                description: document.getElementById('editDescription').value.trim(),
+                topic:       document.getElementById('editTopic').value.trim(),
+                subtopic:    document.getElementById('editSubtopic').value.trim(),
+                level:       document.getElementById('editLevel').value,
+                propagate:   document.getElementById('editPropagate').checked
+            };
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Saving...';
+            submitBtn.disabled = true;
+
+            fetch(`/quiz/api/${quizId}/edit`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                if (result.ok) {
+                    closeEditModal();
+                    loadQuizzes(currentPage);
+                } else {
+                    showError(result.error || 'Failed to save quiz');
+                }
+            })
+            .catch(() => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                showError('Failed to save quiz. Please try again.');
+            });
         }
 
         function openUpdateModal() {
@@ -1155,9 +1278,9 @@
 
         window.onclick = function(event) {
             const updateModal = document.getElementById('updateModal');
-            if (event.target === updateModal) {
-                closeUpdateModal();
-            }
+            if (event.target === updateModal) { closeUpdateModal(); }
+            const editModal = document.getElementById('editQuizModal');
+            if (event.target === editModal) { closeEditModal(); }
         }
 
         // ── Add-to-Unit modal ────────────────────────────────────────

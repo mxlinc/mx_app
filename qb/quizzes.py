@@ -178,9 +178,11 @@ def create_quiz_api():
         if existing != len(question_ids):
             return jsonify({"ok": False, "error": "One or more selected questions do not exist"}), 400
         str_ids = [str(qid) for qid in question_ids]
+        propagate = data.get('propagate', False)
         quiz = Quiz(
             title=data['title'], description=data.get('description', ''),
             topic=data.get('topic', ''), subtopic=data.get('subtopic', ''),
+            level=data.get('level', ''),
             question_ids=','.join(str_ids),
             question_count=len(str_ids),
             questions_json=build_questions_json(str_ids)
@@ -188,6 +190,13 @@ def create_quiz_api():
         db.session.add(quiz)
         db.session.commit()
         quiz.quiz_code = quiz_code(quiz.id)
+        if propagate and str_ids:
+            for q_id in [int(i) for i in str_ids]:
+                q = QBank.query.get(q_id)
+                if q:
+                    if quiz.topic:    q.topic    = quiz.topic
+                    if quiz.subtopic: q.subtopic = quiz.subtopic
+                    if quiz.level:    q.level    = quiz.level
         db.session.commit()
         logger.info(f"Quiz created: ID={quiz.id}, quiz_code={quiz.quiz_code}, title={quiz.title}")
         return jsonify({"ok": True, "quiz_id": quiz.id,
@@ -285,6 +294,67 @@ def update_quizzes():
 
         db.session.commit()
         return jsonify({'ok': True, 'message': f'Updated {updated_count} quiz(zes)', 'updated_count': updated_count})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@qb_bp.route("/api/<int:quiz_id>", methods=["GET"])
+@login_required
+def get_quiz(quiz_id):
+    """Return metadata for a single quiz (used to populate the edit modal)."""
+    try:
+        quiz = Quiz.query.get_or_404(quiz_id)
+        return jsonify({
+            'ok': True,
+            'id': quiz.id,
+            'quiz_code': quiz.quiz_code or '',
+            'title': quiz.title,
+            'description': quiz.description or '',
+            'topic': quiz.topic or '',
+            'subtopic': quiz.subtopic or '',
+            'level': quiz.level or '',
+            'status': quiz.status or 'draft',
+        })
+    except Exception as e:
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@qb_bp.route("/api/<int:quiz_id>/edit", methods=["POST"])
+@login_required
+def edit_quiz(quiz_id):
+    """Edit a single quiz's metadata and optionally propagate topic/subtopic/level to its questions."""
+    try:
+        data = request.get_json()
+        quiz = Quiz.query.get_or_404(quiz_id)
+
+        title = data.get('title')
+        if title is not None:
+            title = title.strip()
+            if not title:
+                return jsonify({'ok': False, 'error': 'Title cannot be empty'}), 400
+            quiz.title = title
+
+        if data.get('description') is not None: quiz.description = data['description']
+        if data.get('topic')       is not None: quiz.topic       = data['topic']
+        if data.get('subtopic')    is not None: quiz.subtopic    = data['subtopic']
+        if data.get('level')       is not None: quiz.level       = data['level']
+
+        propagate = data.get('propagate', False)
+        if propagate and quiz.question_ids:
+            ids = [i.strip() for i in quiz.question_ids.split(',') if i.strip()]
+            for q_id in [int(i) for i in ids]:
+                q = QBank.query.get(q_id)
+                if q:
+                    if quiz.topic    is not None: q.topic    = quiz.topic
+                    if quiz.subtopic is not None: q.subtopic = quiz.subtopic
+                    if quiz.level    is not None: q.level    = quiz.level
+            quiz.questions_json = build_questions_json(ids)
+
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'Quiz updated'})
     except Exception as e:
         db.session.rollback()
         logger.exception(e)

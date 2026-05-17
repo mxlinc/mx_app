@@ -155,6 +155,7 @@ class Quiz(db.Model):
     description = db.Column(db.Text)
     topic = db.Column(db.String(100))
     subtopic = db.Column(db.String(100))
+    level = db.Column(db.String(20))
     question_ids = db.Column(db.String(5000))  # Comma-separated question IDs from q_bank
     question_count = db.Column(db.Integer, default=0)
     questions_json = db.Column(db.JSON)        # Pre-baked HTML question list; rebuilt on save/question-edit
