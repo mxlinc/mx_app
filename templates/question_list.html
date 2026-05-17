@@ -584,15 +584,6 @@
   {% set page_title = 'Question Bank' %}
   {% include '_admin_header.html' %}
     <div class="container">
-        <div class="header" style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h1>📚 Question Bank</h1>
-                <p>Browse and manage all quiz questions</p>
-            </div>
-            <div style="padding-top: 8px;">
-                <button class="btn-resync" id="resyncBtn" onclick="runResync()" title="Rebuild quiz snapshots for all recently edited questions">🔄 Re-sync Quizzes <span id="resyncCount"></span></button>
-            </div>
-        </div>
 
         <div class="error-message" id="errorMessage"></div>
 
@@ -623,6 +614,9 @@
                     <input type="checkbox" id="unusedFilter" checked onchange="loadQuestions(1)" style="width:18px;height:18px;">
                     Show Unused Only
                 </label>
+            </div>
+            <div style="align-self:center;">
+                <button class="btn-resync" id="resyncBtn" onclick="runResync()" title="Rebuild quiz snapshots for all recently edited questions">🔄 Re-sync Quizzes <span id="resyncCount"></span></button>
             </div>
         </div>
 
