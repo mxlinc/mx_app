@@ -779,14 +779,15 @@
             <span class="id-value" id="questionId">{{ question_id }}</span>
             <button class="next-question-btn" id="adminCalcBtn">&#128425; Calculator</button>
             <button class="delete-btn" id="deleteBtn">&#128465; Delete</button>
+            <a href="{{ url_for('lms.admin_home_new') }}">&#8592; Dashboard</a>
+            <a href="#" id="jsonLink">JSON</a>
         </div>
         <div class="links">
-            <a href="{{ url_for('lms.admin_home_new') }}">&#8592; Dashboard</a>
-            <a href="#" id="nextTopLink" style="display:none">Next</a>
+            <a href="{{ url_for('qb.list_questions_page') }}">&#8592; List</a>
             <a href="#" id="editLink">Edit</a>
             <a href="#" id="duplicateLink">Duplicate</a>
-            <a href="#" id="jsonLink">JSON</a>
             <a href="#" id="newLink">New</a>
+            <a href="#" id="nextTopLink" style="display:none">Next</a>
         </div>
     </div>
 
