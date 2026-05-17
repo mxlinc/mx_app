@@ -155,57 +155,62 @@
 
   <div class="main-content">
 
-    <div class="placeholder-card">
-      <div class="icon">&#128640;</div>
-      <h2>New Admin Interface — Coming Soon</h2>
-      <p>This is the scaffolding for the new admin experience. Functionality will be built here in parallel with the existing system.</p>
-    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;">
 
-    <div class="quick-links">
-      <a class="quick-link-card" href="{{ url_for('question.list_questions_page') }}">
-        <span class="link-icon">&#10067;</span>
-        <span class="link-text">Question Bank</span>
-      </a>
-      <a class="quick-link-card" href="{{ url_for('qb.quiz_list_page') }}">
-        <span class="link-icon">&#128221;</span>
-        <span class="link-text">Quizzes</span>
-      </a>
-      <a class="quick-link-card" href="{{ url_for('qb.assign_page') }}">
-        <span class="link-icon">&#128100;</span>
-        <span class="link-text">Assign Quizzes</span>
-      </a>
-      <a class="quick-link-card" href="{{ url_for('lms.lesson_list') }}">
-        <span class="link-icon">&#128218;</span>
-        <span class="link-text">Lessons</span>
-      </a>
-      <a class="quick-link-card" href="#" id="btn-open-create-unit">
-        <span class="link-icon">&#128466;</span>
-        <span class="link-text">Create Unit</span>
-      </a>
-      <a class="quick-link-card" href="{{ url_for('lms.units_list') }}">
-        <span class="link-icon">&#128203;</span>
-        <span class="link-text">Units</span>
-      </a>
-      <a class="quick-link-card" href="{{ url_for('lms.unit_assign_page') }}">
-        <span class="link-icon">&#127979;</span>
-        <span class="link-text">Assign Units</span>
-      </a>
-      <a class="quick-link-card" href="{{ url_for('lms.admin_home') }}">
-        <span class="link-icon">&#9881;</span>
-        <span class="link-text">Old Admin (Legacy)</span>
-      </a>
-      <a class="quick-link-card" href="{{ url_for('lms.unit_finetune_page') }}">
-        <span class="link-icon">&#127891;</span>
-        <span class="link-text">Fine Tune Assignments</span>
-      </a>
-      <a class="quick-link-card" href="#" id="btn-open-review">
-        <span class="link-icon">&#128270;</span>
-        <span class="link-text">Quiz Review</span>
-      </a>
-      <a class="quick-link-card" href="/question/api/export">
-        <span class="link-icon">&#8681;</span>
-        <span class="link-text">Export Questions</span>
-      </a>
+      <!-- Stack 1: Content -->
+      <div>
+        <h2 style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-muted);margin:0 0 0.75rem;">Content</h2>
+        <div style="display:flex;flex-direction:column;gap:0.6rem;">
+          <a class="quick-link-card" href="{{ url_for('question.list_questions_page') }}">
+            <span class="link-icon">&#10067;</span>
+            <span class="link-text">Question Bank</span>
+          </a>
+          <a class="quick-link-card" href="{{ url_for('qb.quiz_list_page') }}">
+            <span class="link-icon">&#128221;</span>
+            <span class="link-text">Quizzes</span>
+          </a>
+          <a class="quick-link-card" href="{{ url_for('lms.lesson_list') }}">
+            <span class="link-icon">&#127910;</span>
+            <span class="link-text">Videos</span>
+          </a>
+          <a class="quick-link-card" href="{{ url_for('lms.units_list') }}">
+            <span class="link-icon">&#128203;</span>
+            <span class="link-text">Units</span>
+          </a>
+          <a class="quick-link-card" href="/question/api/export">
+            <span class="link-icon">&#8681;</span>
+            <span class="link-text">Export Questions</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Stack 2: Actions -->
+      <div>
+        <h2 style="font-size:0.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--color-muted);margin:0 0 0.75rem;">Actions</h2>
+        <div style="display:flex;flex-direction:column;gap:0.6rem;">
+          <a class="quick-link-card" href="#" id="btn-open-create-unit">
+            <span class="link-icon">&#128466;</span>
+            <span class="link-text">Create Unit</span>
+          </a>
+          <a class="quick-link-card" href="{{ url_for('lms.unit_assign_page') }}">
+            <span class="link-icon">&#127979;</span>
+            <span class="link-text">Assign Unit</span>
+          </a>
+          <a class="quick-link-card" href="{{ url_for('qb.assign_page') }}">
+            <span class="link-icon">&#128100;</span>
+            <span class="link-text">Quiz Assign</span>
+          </a>
+          <a class="quick-link-card" href="{{ url_for('lms.unit_finetune_page') }}">
+            <span class="link-icon">&#127891;</span>
+            <span class="link-text">Fine Tune Assignments</span>
+          </a>
+          <a class="quick-link-card" href="#" id="btn-open-review">
+            <span class="link-icon">&#128270;</span>
+            <span class="link-text">Quiz Review</span>
+          </a>
+        </div>
+      </div>
+
     </div>
 
   </div>
