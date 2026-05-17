@@ -316,12 +316,14 @@ def get_quiz(quiz_id):
                 if not q:
                     continue
                 j = q.json or {}
-                preview = ''
-                for key in ('question', 'q', 'text', 'stem', 'prompt'):
-                    val = j.get(key, '')
-                    if isinstance(val, str) and val.strip():
-                        preview = val[:120]
-                        break
+                stem = j.get('stem', '')
+                if isinstance(stem, dict):
+                    preview = stem.get('latex', '') or stem.get('html', '') or ''
+                elif isinstance(stem, str):
+                    preview = stem
+                else:
+                    preview = ''
+                preview = preview[:120].strip()
                 questions.append({
                     'id': q.id,
                     'type': q.type,

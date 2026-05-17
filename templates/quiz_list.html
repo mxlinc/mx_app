@@ -368,6 +368,10 @@
         .eq-q-btn:hover { background: #eee; }
         .eq-q-btn.remove { color: #c0392b; border-color: #e0b0b0; }
         .eq-q-btn.remove:hover { background: #fdecea; }
+        .eq-drag-handle { cursor: grab; color: #bbb; font-size: 1rem; flex-shrink: 0; user-select: none; padding: 0 3px; }
+        .eq-drag-handle:hover { color: #666; }
+        .eq-q-row.sortable-ghost { opacity: 0.4; background: #d6eaf8; border-color: #1976d2; }
+        .eq-q-id { font-size: 0.72rem; color: #aaa; flex-shrink: 0; font-family: monospace; }
 
         .empty-state {
             padding: 60px 20px;
@@ -684,6 +688,7 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
 <body>
   {% set page_title = 'Quiz List' %}
@@ -1114,6 +1119,11 @@
                     document.getElementById('editDraft').checked      = (data.status === 'draft');
                     document.getElementById('editPropagate').checked  = false;
                     renderEqQuestions(data.questions || []);
+                    if (window._eqSortable) window._eqSortable.destroy();
+                    window._eqSortable = Sortable.create(
+                        document.getElementById('eqQuestionList'),
+                        { animation: 150, handle: '.eq-drag-handle', ghostClass: 'sortable-ghost', onEnd: renumberEq }
+                    );
                     document.getElementById('editQuizPanel').classList.add('show');
                 })
                 .catch(() => showError('Failed to load quiz data'));
@@ -1138,31 +1148,20 @@
                 row.dataset.id = q.id;
                 const color = _EQ_TYPE_COLORS[q.type] || '#607d8b';
                 const meta = [q.topic, q.subtopic].filter(Boolean).join(' / ');
-                const preview = q.preview || meta || `ID ${q.id}`;
+                const preview = q.preview || meta || `—`;
+                const safePreview = preview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 row.innerHTML = `
+                    <span class="eq-drag-handle" title="Drag to reorder">⠿</span>
                     <span class="eq-q-num">${i + 1}</span>
+                    <span class="eq-q-id">#${q.id}</span>
                     <span class="eq-q-type" style="background:${color};color:#fff;">${q.type}</span>
-                    <span class="eq-q-preview" title="${preview.replace(/"/g, '&quot;')}">${preview}</span>
+                    <span class="eq-q-preview" title="${safePreview}">${safePreview}</span>
                     ${meta ? `<span class="eq-q-meta">${meta}</span>` : ''}
-                    <button class="eq-q-btn" onclick="moveEqUp(this)" title="Move up">↑</button>
-                    <button class="eq-q-btn" onclick="moveEqDown(this)" title="Move down">↓</button>
                     <button class="eq-q-btn remove" onclick="removeEq(this)" title="Remove from quiz">×</button>
                 `;
                 list.appendChild(row);
             });
             updateEqCount();
-        }
-
-        function moveEqUp(btn) {
-            const row = btn.closest('.eq-q-row');
-            const prev = row.previousElementSibling;
-            if (prev) { row.parentNode.insertBefore(row, prev); renumberEq(); }
-        }
-
-        function moveEqDown(btn) {
-            const row = btn.closest('.eq-q-row');
-            const next = row.nextElementSibling;
-            if (next) { row.parentNode.insertBefore(next, row); renumberEq(); }
         }
 
         function removeEq(btn) {
