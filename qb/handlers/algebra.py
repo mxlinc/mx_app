@@ -78,10 +78,11 @@ class AlgebraHandler:
 
         if not answer.get('accepted'):
             errors.append("At least one accepted answer string is required")
-        if not (answer.get('canonical') or '').strip():
-            errors.append("Canonical form is required")
-        if not answer.get('variables'):
-            errors.append("At least one variable must be declared")
+        if answer.get('use_sympy'):
+            if not (answer.get('canonical') or '').strip():
+                errors.append("Canonical form is required")
+            if not answer.get('variables'):
+                errors.append("At least one variable must be declared")
 
         return len(errors) == 0, errors
 

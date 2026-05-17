@@ -29,10 +29,7 @@ SCHEMA = os.getenv("APP_SCHEMA", "prod")
 # JSON file path
 JSON_FILE_PATH = r"C:\Projects\mx_app\questions.json"
 
-# Hard-coded values
-TOPIC = "Algebra"
-SUBTOPIC = "Review"
-LEVEL = "I"
+
 
 
 def load_and_insert_questions():
@@ -52,25 +49,10 @@ def load_and_insert_questions():
         with open(JSON_FILE_PATH, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        # Try to parse JSON, with fallback to fix common issues
         try:
             questions = json.loads(content)
         except json.JSONDecodeError as e:
-            print(f"⚠️  JSON parse error: {e}")
-            print("Attempting to fix incomplete JSON...")
-            
-            # Fix incomplete JSON by removing trailing comma and closing array
-            content = content.rstrip()
-            if content.endswith(','):
-                content = content[:-1]
-            if not content.rstrip().endswith(']'):
-                content = content + '\n]'
-            
-            try:
-                questions = json.loads(content)
-                print("✓ Fixed JSON successfully")
-            except json.JSONDecodeError as e2:
-                raise ValueError(f"Could not fix JSON: {e2}")
+            raise ValueError(f"Invalid JSON: {e}")
         
         if not isinstance(questions, list):
             raise ValueError("JSON file must contain an array of questions")
@@ -97,17 +79,14 @@ def load_and_insert_questions():
                 
                 # Prepare SQL insert
                 insert_sql = text(f"""
-                    INSERT INTO {SCHEMA}.q_bank (id, type, json, topic, subtopic, level)
-                    VALUES (:id, :type, :json, :topic, :subtopic, :level)
+                    INSERT INTO {SCHEMA}.q_bank (id, type, json)
+                    VALUES (:id, :type, :json)
                 """)
-                
+
                 session.execute(insert_sql, {
                     'id': question_id,
                     'type': q_type,
                     'json': json.dumps(question),
-                    'topic': TOPIC,
-                    'subtopic': SUBTOPIC,
-                    'level': LEVEL
                 })
                 
                 inserted_count += 1
@@ -135,9 +114,6 @@ if __name__ == "__main__":
     print("Question Loader Script")
     print("=" * 60)
     print(f"Database Schema: {SCHEMA}")
-    print(f"Topic: {TOPIC}")
-    print(f"Subtopic: {SUBTOPIC}")
-    print(f"Level: {LEVEL}")
     print("=" * 60)
     
     load_and_insert_questions()

@@ -807,12 +807,14 @@ def get_questions_paginated():
         pagination = query.paginate(page=page, per_page=per_page)
         items = []
 
+        import re as _re
         for q in pagination.items:
             stem_text = ""
             if isinstance(q.json.get('stem'), dict):
-                stem_text = q.json['stem'].get('html', '')
-                if not stem_text and 'latex' in q.json['stem']:
-                    stem_text = latex_to_html(q.json['stem']['latex'])
+                stem_text = q.json['stem'].get('latex') or \
+                    _re.sub(r'<[^>]+>', '', q.json['stem'].get('html', ''))
+            elif q.json.get('stem'):
+                stem_text = str(q.json['stem'])
 
             input_text = ""
             if q.type in ('mcq', 'mr', 'ohs') and 'options' in q.json.get('input', {}):

@@ -886,8 +886,8 @@
         const useSympy   = document.getElementById('algebra-use-sympy').checked;
 
         if (accepted.length === 0) throw new Error('Enter at least one accepted answer string');
-        if (!canonical)            throw new Error('Canonical form is required');
-        if (variables.length === 0) throw new Error('Declare at least one variable (e.g. x)');
+        if (useSympy && !canonical)             throw new Error('Canonical form is required');
+        if (useSympy && variables.length === 0)  throw new Error('Declare at least one variable (e.g. x)');
 
         // Parse label field: "label before | label after"
         const labelRaw    = document.getElementById('algebra-label').value;

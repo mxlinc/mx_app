@@ -1,1142 +1,754 @@
 [
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Evaluate the expression $\\frac{3a+2b}{2}$ when $a=-3$ and $b=-4$."
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$-\\frac{1}{2}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-\\frac{17}{2}$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$\\frac{1}{2}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$\\frac{17}{2}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
+    "topic": "Algebra",
+    "subtopic": "Expressions, Equations, and Variables",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which one is an expression?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$7+4$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$7+4=11$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$x=3$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$9>5$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Simplify: $3+5 \\cdot 6-4$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "17"
-        },
-        {
-          "id": "opt2",
-          "latex": "29"
-        },
-        {
-          "id": "opt3",
-          "latex": "16"
-        },
-        {
-          "id": "opt4",
-          "latex": "30"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
+    "topic": "Algebra",
+    "subtopic": "Expressions, Equations, and Variables",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which one is an equation?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$5\\times n$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$12-4$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$8+x=15$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$y+3$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt3"
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Simplify: $6-2 \\cdot 2+2^{5}$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "40"
-        },
-        {
-          "id": "opt2",
-          "latex": "18"
-        },
-        {
-          "id": "opt3",
-          "latex": "34"
-        },
-        {
-          "id": "opt4",
-          "latex": "12"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
+    "topic": "Algebra",
+    "subtopic": "Variables",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "In the expression $6+k$, what is the variable?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$6$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$+$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$k$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$6+k$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt3"
+      }
+    }
+  },
+  {
+    "type": "mr",
+    "topic": "Algebra",
+    "subtopic": "Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Select all expressions."
+      },
+      "type": "mr",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$4+9$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$a-3$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$10=6+4$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$7m$"
+          },
+          {
+            "id": "opt5",
+            "latex": "$p\\div 2=5$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_ids": [
+          "opt1",
+          "opt2",
+          "opt4"
+        ]
+      }
+    }
+  },
+  {
+    "type": "mr",
+    "topic": "Algebra",
+    "subtopic": "Equations",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Select all equations."
+      },
+      "type": "mr",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$x+5=12$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$9-4$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$3n=18$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$15\\div 3$"
+          },
+          {
+            "id": "opt5",
+            "latex": "$y-2=6$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_ids": [
+          "opt1",
+          "opt3",
+          "opt5"
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "Algebra",
+    "subtopic": "Multiplication Convention",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Write $4\\times n$ using the common algebra convention without the multiplication sign."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Expression:"
+            },
+            "placeholder": "text",
+            "response_type": "string"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "string",
+            "accepted_text": [
+              "4n",
+              "4*n",
+              "4 n"
+            ]
+          }
+        ]
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Evaluate: $\\frac{3x-y}{6z-x}$ if $x=2$, $y=8$, and $z=-2$."
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$\\frac{1}{7}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-\\frac{1}{7}$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$\\frac{1}{5}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$-\\frac{1}{5}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt1"
+    "topic": "Algebra",
+    "subtopic": "Multiplication Convention",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which expression means $5$ multiplied by $x$?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$5+x$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$5x$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$5-x$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$5\\div x$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt2"
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Simplify: $\\frac{14-30}{2(-4)}$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$-2$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$2$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$\\frac{11}{2}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$-\\frac{11}{2}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
+    "topic": "Algebra",
+    "subtopic": "Multiplication Convention",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which symbol is usually avoided for multiplication in algebra because it can look like a variable?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$+$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$-$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$\\times$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$=$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt3"
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "Algebra",
+    "subtopic": "Evaluating Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Evaluate the expression $3x+2$ when $x=4$."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$3x+2=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              14
+            ]
+          }
+        ]
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Use the distributive property to simplify: $-3(x-10)+x$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$-4x+30$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-4x-30$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$-2x+30$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$-2x-30$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
+    "topic": "Algebra",
+    "subtopic": "Evaluating Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Evaluate $5a-6$ when $a=3$."
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$9$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$11$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$15$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$21$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
+    }
+  },
+  {
+    "type": "mr",
+    "topic": "Algebra",
+    "subtopic": "Evaluating Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which expressions are equal to $24$ when $n=6$?"
+      },
+      "type": "mr",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$4n$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$n+18$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$30-n$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$n\\div 4$"
+          },
+          {
+            "id": "opt5",
+            "latex": "$3n+6$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_ids": [
+          "opt1",
+          "opt2",
+          "opt3",
+          "opt5"
+        ]
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Simplify: $8y-2-3(y-4)$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$11y-6$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$5y-6$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$5y-14$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$5y+10$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
+    "topic": "Algebra",
+    "subtopic": "Division Convention",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which expression means $m$ divided by $3$?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$3m$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$m-3$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$\\frac{m}{3}$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$\\frac{3}{m}$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt3"
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "Algebra",
+    "subtopic": "Evaluating Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Evaluate $18\\div b$ when $b=3$."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$18\\div b=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              6
+            ]
+          }
+        ]
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Write the fraction in lowest terms: $\\frac{36 a^{3} b c^{2}}{24 a b^{4} c^{2}}$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$\\frac{3 b^{2}}{2 a^{3}}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$\\frac{2 b^{3}}{3 a^{2}}$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$\\frac{3 a^{2}}{2 b^{3}}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$\\frac{2 a^{2}}{3 b^{3}}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
+    "topic": "Algebra",
+    "subtopic": "Writing Equations",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which equation matches this sentence?\\nA number plus $7$ is $20$."
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$n-7=20$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$n+7=20$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$7n=20$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$n\\div 7=20$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt2"
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "Algebra",
+    "subtopic": "Writing Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Write an expression for: $8$ more than a number."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "Expression:"
+            },
+            "placeholder": "text",
+            "response_type": "string"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "string",
+            "accepted_text": [
+              "x+8",
+              "8+x",
+              "n+8",
+              "8+n"
+            ]
+          }
+        ]
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Solve for $x$: $3(x+1)=-6$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$-2$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-3$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$1$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$\\frac{7}{3}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
+    "topic": "Algebra",
+    "subtopic": "Writing Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which expression represents twice a number plus $5$?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "$2+n+5$"
+          },
+          {
+            "id": "opt2",
+            "latex": "$2n+5$"
+          },
+          {
+            "id": "opt3",
+            "latex": "$n+2\\times 5$"
+          },
+          {
+            "id": "opt4",
+            "latex": "$5n+2$"
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt2"
+      }
+    }
+  },
+  {
+    "type": "mr",
+    "topic": "Algebra",
+    "subtopic": "Expressions and Equations",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Select all correct statements."
+      },
+      "type": "mr",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "An expression does not need an equal sign."
+          },
+          {
+            "id": "opt2",
+            "latex": "An equation must have an equal sign."
+          },
+          {
+            "id": "opt3",
+            "latex": "A variable always has to be $x$."
+          },
+          {
+            "id": "opt4",
+            "latex": "$6p$ means $6\\times p$."
+          },
+          {
+            "id": "opt5",
+            "latex": "$\\frac{20}{y}$ means $20-y$."
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_ids": [
+          "opt1",
+          "opt2",
+          "opt4"
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "Algebra",
+    "subtopic": "Evaluating Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Evaluate $2m+3n$ when $m=5$ and $n=4$."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$2m+3n=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              22
+            ]
+          }
+        ]
+      }
+    }
+  },
+  {
+    "type": "fill",
+    "topic": "Algebra",
+    "subtopic": "Evaluating Expressions",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Evaluate $\\frac{x}{4}+3$ when $x=12$."
+      },
+      "type": "fill",
+      "input": {
+        "blanks": [
+          {
+            "id": "blank1",
+            "input_label": {
+              "latex": "$\\frac{x}{4}+3=$"
+            },
+            "placeholder": "numeric",
+            "response_type": "numeric"
+          }
+        ]
+      },
+      "answer": {
+        "correct": [
+          {
+            "blank_id": "blank1",
+            "response_type": "numeric",
+            "accepted_numeric": [
+              6
+            ]
+          }
+        ]
+      }
     }
   },
   {
     "type": "mcq",
-    "stem": {
-      "latex": "Add the polynomials: $2a+3b+5a-7b$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$7a-4b$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$7a+4b$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$3ab$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$7a-10b$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt1"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Subtract the polynomials: $(9x^{2}-4x+11)-(3x^{2}-2x+2)$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$6x^{2}-2x+9$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$6x^{2}-2x+13$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$6x^{2}-6x+9$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$6x^{2}-6x+13$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt1"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "$(x+2)(x^{2}-2x+4)=$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$x^{3}+8$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x^{3}+4x^{2}-8x+8$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x^{3}-4x^{2}+8x+8$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x^{3}+8x+8$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt1"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "The difference of twice a number and six is four times the number. Find an equation to solve for the number."
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$2x-6=4$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$2x-6=4x$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$2x+6=4x$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$2x-6=x+4$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Expand: $(2x-3)^{2}$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$4x^{2}-9$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$4x^{2}+9$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$2x^{2}-12x+9$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$4x^{2}-12x+9$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Which of the following numbers is the smallest?"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$-\\frac{3}{4}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-\\frac{3}{2}$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$-1$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$-\\frac{2}{3}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Which of the following is the largest?"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$|5-2|$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$|2-5|$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$|-2-5|$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$|5-2|+|2-5|$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Solve: $3(x-5) \\leq x-8$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$x \\leq \\frac{7}{2}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x \\leq \\frac{2}{7}$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x \\leq -1$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x \\geq -1$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt1"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "A flower-bed is in the shape of a triangle with one side twice the length of the shortest side and the third side 15 feet longer than the shortest side. If the perimeter is 100 feet and if $x$ represents the length of the shortest side, find an equation to solve for the lengths of the three sides."
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$x+2x+x+15=100$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x+15=2x$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x+15+2x=100$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x+2x=x+115$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt1"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "If John has $\\$50$ more money than Mary and you choose to represent John's amount of money as $X$, how should you represent Mary's amount of money in terms of $X$?"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$X+\\$50$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$X-\\$50$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$\\$50-X$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$\\$50 \\cdot X$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Multiply: $2x(3x^{2}-5x-3)$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$6x^{3}-5x^{2}-6x$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$6x^{3}-5x-3$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$6x^{3}-10x^{2}-3x$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$6x^{3}-10x^{2}-6x$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Divide: $\\frac{14m^{2}-28m^{8}+7m}{7m}$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$2m-28m^{8}+7m$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$2m-4m^{7}+1$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$2m-4m^{7}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$2m^{2}-4m^{8}+m$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Factor completely: $12x^{4}-20x^{3}+4x^{2}$\nOne factor is:"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$4x^{4}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$3x+1$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x-1$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$3x^{2}-5x+1$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Factor completely: $x^{2}-12x+36$\nOne factor is:"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$6x$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x-6$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x-12$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x+3$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Factor completely: $7x^{2}+14x-21$\nOne factor is:"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$7x$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x+1$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x-3$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x+3$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Solve: $x^{2}-3x-10=0$\nOne solution is:"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$x=10$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x=1$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x=-2$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x=2$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Solve: $2x^{2}-5x=0$\nThe solutions are:"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$x=0$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x=0, x=5$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x=0, x=-5$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x=0, x=\\frac{5}{2}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Simplify and reduce: $\\frac{3x^{2}-12}{9x+18}$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$\\frac{x-2}{6}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$3x-\\frac{2}{3}$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$\\frac{x+2}{3}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$\\frac{x-2}{3}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Given the equation $-2x+3y=12$, find the missing value in the ordered pair $(-3, \\_\\_)$."
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$-6$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-2$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$6$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$2$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Solve and simplify if possible: $\\frac{x^{2}}{x-3}-\\frac{9}{x-3}=$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$\\frac{x}{-3}-\\frac{3}{x}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-1$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$x+3$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x-3$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Solve the following system of equations for the $y$-value:\n$x+2y=7$\n$2x+2y=13$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$y=\\frac{1}{2}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$y=6$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$y=5$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$y=\\frac{13}{4}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt1"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "$\\frac{5}{6a}-\\frac{2}{3a^{2}}=$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$\\frac{3}{6a^{2}}$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$\\frac{3}{3a}$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$\\frac{1}{6a^{2}}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$\\frac{5a-4}{6a^{2}}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "$\\frac{9b^{2}-3b}{3b}=$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$9b^{2}-1$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$3b-1$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$b-1$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$9b$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "The DoBee.Com Corporation has 5 more than three times as many female as male supervisors. If \"$x$\" represents the number of male supervisors, write an expression that would represent the total number of female supervisors in terms of \"$x$\"."
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$x+5$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$3x+5$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$4x+5$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$9x$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Which of the following is not an equivalent statement?"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$4-\\frac{b^{2}}{25}=\\left(2-\\frac{b}{5}\\right)\\left(2+\\frac{b}{5}\\right)$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$x^{5}-3x^{2}=x^{2}(x^{3}-3)$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$(x^{4})^{3}=x^{7}$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$x^{-4}=\\frac{1}{x^{4}}$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Charles needs enough fencing to enclose a rectangular garden with a perimeter of 140 feet. If the width of his garden is to be 30 feet, write the equation that can be used to solve for the length of the garden."
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$x+30=140$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$2x+30=140$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$2x+60=140$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$140-x=60$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Which one of the following ordered pairs is NOT a solution for the equation: $3x+y=12$?"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$\\left(\\frac{1}{2}, 10\\frac{1}{2}\\right)$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$(6, 2)$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$(12, -24)$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$(2, 6)$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt2"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "For what value(s) of $x$ will each expression be undefined? $\\frac{x^{2}+4x+4}{x^{2}+x-6}$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$6$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$-2$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$-2$ and $3$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$2$ and $-3$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt4"
-    }
-  },
-  {
-    "type": "mcq",
-    "stem": {
-      "latex": "Which of the following is a factor of both expressions?\n$x^{2}+4x-5$\n$2x^{2}+3x-5$"
-    },
-    "input": {
-      "options": [
-        {
-          "id": "opt1",
-          "latex": "$(x+5)$"
-        },
-        {
-          "id": "opt2",
-          "latex": "$(x-5)$"
-        },
-        {
-          "id": "opt3",
-          "latex": "$(x-1)$"
-        },
-        {
-          "id": "opt4",
-          "latex": "$(x-3)$"
-        }
-      ],
-      "shuffle": true
-    },
-    "answer": {
-      "correct_option_id": "opt3"
+    "topic": "Algebra",
+    "subtopic": "Expression vs Equation",
+    "level": "Grade 4-6",
+    "question": {
+      "stem": {
+        "latex": "Which statement best describes $4y+9$?"
+      },
+      "type": "mcq",
+      "input": {
+        "options": [
+          {
+            "id": "opt1",
+            "latex": "It is an expression because it does not have an equal sign."
+          },
+          {
+            "id": "opt2",
+            "latex": "It is an equation because it has a variable."
+          },
+          {
+            "id": "opt3",
+            "latex": "It is a number sentence because it has no variable."
+          },
+          {
+            "id": "opt4",
+            "latex": "It is an equation because it can be solved."
+          }
+        ],
+        "shuffle": true
+      },
+      "answer": {
+        "correct_option_id": "opt1"
+      }
     }
   }
 ]

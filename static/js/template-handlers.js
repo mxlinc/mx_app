@@ -182,7 +182,7 @@ class TemplateHandlerMR extends TemplateHandler {
             }
         });
 
-        if (message) super.showFeedback(isCorrect, message);
+        if (message && !isCorrect) super.showFeedback(isCorrect, message);
     }
 
     attachListeners() {
@@ -454,19 +454,21 @@ class TemplateHandlerOHS extends TemplateHandler {
             rect.setAttribute('height',       hs.height * sy);
             rect.setAttribute('rx',           '4');
             rect.setAttribute('stroke-width', '2.5');
-            if (isCorrect) {
-                rect.setAttribute('fill',   'rgba(76,175,80,0.25)');
-                rect.setAttribute('stroke', '#4caf50');
-            } else {
-                rect.setAttribute('fill',   'rgba(244,67,54,0.25)');
-                rect.setAttribute('stroke', '#f44336');
-            }
+            rect.setAttribute('fill',   'rgba(76,175,80,0.25)');
+            rect.setAttribute('stroke', '#4caf50');
             this._feedbackEl.innerHTML = '';
             this._feedbackEl.appendChild(rect);
             this._feedbackEl.style.display = '';
         }
 
-        if (message) super.showFeedback(isCorrect, message);
+        // If incorrect, turn the selection ball red
+        if (!isCorrect && this._selectionEl) {
+            const circles = this._selectionEl.querySelectorAll('circle');
+            if (circles[1]) circles[1].setAttribute('fill', '#f44336');
+        }
+
+        const band = message || (!isCorrect ? '\u2717 Incorrect' : null);
+        if (band) super.showFeedback(isCorrect, band);
     }
 }
 
@@ -518,7 +520,7 @@ class TemplateHandlerFEVAL extends TemplateHandler {
                 ? results.filter(r => !r.passed).map(r => r.feedback).join('<br>')
                 : null
         );
-        if (feedbackMsg) super.showFeedback(isCorrect, feedbackMsg);
+        if (feedbackMsg && !isCorrect) super.showFeedback(isCorrect, feedbackMsg);
     }
 
     attachListeners() {
