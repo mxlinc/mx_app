@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload MCQ — MX Admin</title>
+    <style>
+        :root {
+            --color-bg: #f5f7fa;
+            --color-surface: #ffffff;
+            --color-border: #dde3ec;
+            --color-primary: #2c6e9e;
+            --color-text: #1a202c;
+            --color-muted: #64748b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--color-bg); color: var(--color-text); }
+        .page { max-width: 760px; margin: 0 auto; padding: 2rem 1.5rem; }
+        h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
+        .sub { font-size: 0.85rem; color: var(--color-muted); margin: 0.25rem 0 1.5rem; }
+        .back-link { font-size: 0.84rem; color: var(--color-primary); text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+        .back-link:hover { text-decoration: underline; }
+        .card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card-label { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--color-muted); margin-bottom: 1rem; }
+        .field-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem; }
+        label { font-size: 0.8rem; font-weight: 600; color: var(--color-muted); display: block; margin-bottom: 0.3rem; }
+        input[type=text], input[type=file] {
+            width: 100%; border: 1px solid var(--color-border); border-radius: 6px;
+            padding: 0.45rem 0.65rem; font-size: 0.88rem; color: var(--color-text); background: #fff;
+        }
+        input[type=file] { padding: 0.3rem 0.5rem; cursor: pointer; }
+        .file-row { margin-bottom: 1.1rem; }
+        .upload-btn {
+            background: var(--color-primary); color: #fff; border: none; border-radius: 6px;
+            padding: 0.55rem 1.4rem; font-size: 0.9rem; font-weight: 600; cursor: pointer;
+        }
+        .upload-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        /* Log panel */
+        #logPanel { display: none; }
+        #logList { list-style: none; font-size: 0.86rem; line-height: 1.8; max-height: 440px; overflow-y: auto; }
+        #logList li { padding: 2px 0; border-bottom: 1px solid #f0f2f5; }
+        #logList li.ok  { color: #1a6e2e; }
+        #logList li.err { color: #b91c1c; }
+        #summary { margin-top: 0.9rem; font-weight: 700; font-size: 0.9rem; }
+        .hint {
+            background: #f0f6ff; border: 1px solid #c3d9f0; border-radius: 8px;
+            padding: 0.85rem 1rem; font-size: 0.82rem; color: #2c4a6e;
+            margin-bottom: 1.5rem; line-height: 1.7;
+        }
+        .hint code { background: #dbe8f5; padding: 0 4px; border-radius: 3px; font-size: 0.81rem; }
+    </style>
+</head>
+<body>
+  {% set page_title = 'Upload MCQ' %}
+  {% include '_admin_header.html' %}
+
+  <div class="page">
+    <a class="back-link" href="{{ url_for('lms.admin_home_new') }}">← Admin Dashboard</a>
+    <h1>Upload MCQ</h1>
+    <p class="sub">Bulk-import MCQ questions from a plain text file. Each <code>question=</code> line starts a new block; <code>opt1</code> is always the correct answer.</p>
+
+    <div class="hint">
+      <strong>File format:</strong><br>
+      <code>question=Emma has x stickers. She buys 4 more. Which expression shows the total?</code><br>
+      <code>opt1=$x+4$</code><br>
+      <code>opt2=$4x$</code><br>
+      <code>opt3=$x-4$</code><br>
+      <code>opt4=$4-x$</code><br><br>
+      Blank lines between blocks are optional. Any number of options per question.
+    </div>
+
+    <div class="card">
+      <div class="card-label">Metadata — applied to all questions in the file</div>
+      <div class="field-row">
+        <div>
+          <label for="inp-topic">Topic</label>
+          <input type="text" id="inp-topic" placeholder="e.g. Algebra">
+        </div>
+        <div>
+          <label for="inp-subtopic">Subtopic</label>
+          <input type="text" id="inp-subtopic" placeholder="e.g. Expressions">
+        </div>
+        <div>
+          <label for="inp-level">Level</label>
+          <input type="text" id="inp-level" placeholder="e.g. Grade 6">
+        </div>
+      </div>
+      <div class="file-row">
+        <label for="inp-file">Questions file (.txt)</label>
+        <input type="file" id="inp-file" accept=".txt">
+      </div>
+      <button class="upload-btn" id="uploadBtn" onclick="doUpload()">Upload</button>
+    </div>
+
+    <div class="card" id="logPanel">
+      <div class="card-label">Upload Log</div>
+      <ul id="logList"></ul>
+      <div id="summary"></div>
+    </div>
+  </div>
+
+  <script>
+    async function doUpload() {
+      const file = document.getElementById('inp-file').files[0];
+      if (!file) { alert('Please select a .txt file'); return; }
+
+      const topic    = document.getElementById('inp-topic').value.trim();
+      const subtopic = document.getElementById('inp-subtopic').value.trim();
+      const level    = document.getElementById('inp-level').value.trim();
+
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('topic', topic);
+      fd.append('subtopic', subtopic);
+      fd.append('level', level);
+
+      const btn     = document.getElementById('uploadBtn');
+      const panel   = document.getElementById('logPanel');
+      const list    = document.getElementById('logList');
+      const summary = document.getElementById('summary');
+
+      btn.textContent = 'Uploading…';
+      btn.disabled    = true;
+      panel.style.display = 'block';
+      list.innerHTML  = '';
+      summary.textContent = 'Processing…';
+      summary.style.color = '';
+
+      try {
+        const res  = await fetch('/question/api/upload-mcq', { method: 'POST', body: fd });
+        const data = await res.json();
+
+        if (!data.ok && !data.results) {
+          summary.textContent = '✗ ' + (data.error || 'Upload failed');
+          summary.style.color = '#b91c1c';
+        } else {
+          (data.results || []).forEach(r => {
+            const li = document.createElement('li');
+            if (r.ok) {
+              li.className   = 'ok';
+              li.textContent = `✓ Q${r.n} saved as ID ${r.id} — "${r.preview}"`;
+            } else {
+              li.className   = 'err';
+              li.textContent = `✗ Q${r.n} failed: ${r.error}${r.preview ? ' — "' + r.preview + '"' : ''}`;
+            }
+            list.appendChild(li);
+          });
+          summary.textContent = `Done — ${data.saved} saved, ${data.failed} failed`;
+          summary.style.color = data.failed > 0 ? '#b91c1c' : '#1a6e2e';
+        }
+      } catch (e) {
+        summary.textContent = '✗ Network error — ' + e.message;
+        summary.style.color = '#b91c1c';
+      }
+
+      btn.textContent = 'Upload';
+      btn.disabled    = false;
+    }
+  </script>
+</body>
+</html>

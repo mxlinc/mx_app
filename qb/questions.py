@@ -916,3 +916,111 @@ def duplicate_question_page(question_id):
     except Exception as e:
         logger.exception(e)
         return redirect(url_for('question.list_questions_page'))
+
+
+# ==================== UPLOAD MCQ ==================== #
+
+def _parse_mcq_upload(text):
+    """Parse a .txt file into MCQ question blocks.
+
+    Format — each question= line starts a new block; opt#= lines add options:
+        question=<stem latex>
+        opt1=<option latex>
+        opt2=<option latex>
+        ...
+    Empty lines and unrecognised keys are ignored.
+    Returns: [{'question': str, 'options': [{'id': str, 'latex': str}, ...]}, ...]
+    """
+    blocks = []
+    current = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or '=' not in line:
+            continue
+        key, _, value = line.partition('=')
+        key = key.strip().lower()
+        value = value.strip()
+        if key == 'question':
+            if current is not None:
+                blocks.append(current)
+            current = {'question': value, 'options': []}
+        elif key.startswith('opt') and current is not None:
+            current['options'].append({'id': key, 'latex': value})
+    if current is not None:
+        blocks.append(current)
+    return blocks
+
+
+@question_bp.route("/upload-mcq", methods=["GET"])
+@login_required
+def upload_mcq_page():
+    return render_template("upload_mcq.html")
+
+
+@question_bp.route("/api/upload-mcq", methods=["POST"])
+@login_required
+def upload_mcq():
+    """Parse a .txt file of question=/opt#= blocks and save each as an MCQ."""
+    from qb.handlers.mcq import MCQHandler
+
+    topic    = (request.form.get('topic',    '') or '').strip()
+    subtopic = (request.form.get('subtopic', '') or '').strip()
+    level    = (request.form.get('level',    '') or '').strip()
+
+    file = request.files.get('file')
+    if not file or not file.filename.lower().endswith('.txt'):
+        return jsonify({'ok': False, 'error': 'A .txt file is required'}), 400
+
+    try:
+        text = file.read().decode('utf-8')
+    except Exception:
+        return jsonify({'ok': False, 'error': 'Could not read file — ensure it is UTF-8 encoded'}), 400
+
+    blocks = _parse_mcq_upload(text)
+    if not blocks:
+        return jsonify({'ok': False, 'error': 'No question= blocks found in file'}), 400
+
+    results = []
+    for n, block in enumerate(blocks, 1):
+        preview = block['question'][:60] + ('…' if len(block['question']) > 60 else '')
+
+        if not block['question']:
+            results.append({'n': n, 'ok': False, 'error': 'Empty question text — skipped'})
+            continue
+        if not block['options']:
+            results.append({'n': n, 'ok': False, 'preview': preview, 'error': 'No options found — skipped'})
+            continue
+
+        data = {
+            'type': 'mcq',
+            'topic': topic,
+            'subtopic': subtopic,
+            'level': level,
+            'question': {
+                'stem': {'latex': block['question']},
+                'type': 'mcq',
+                'input': {
+                    'options': block['options'],
+                    'shuffle': True,
+                },
+                'answer': {
+                    'correct_option_id': 'opt1',
+                },
+            },
+        }
+
+        try:
+            q, error = MCQHandler.save_question(data)
+            if error:
+                results.append({'n': n, 'ok': False, 'preview': preview, 'error': error})
+            else:
+                q.sync_required = True
+                db.session.commit()
+                results.append({'n': n, 'ok': True, 'id': q.id, 'preview': preview})
+        except Exception as e:
+            logger.exception("upload_mcq: error saving question %d", n)
+            results.append({'n': n, 'ok': False, 'preview': preview, 'error': str(e)})
+
+    saved  = sum(1 for r in results if r.get('ok'))
+    failed = len(results) - saved
+    return jsonify({'ok': True, 'results': results, 'saved': saved, 'failed': failed})
