@@ -610,14 +610,13 @@
 
         <div class="filter-section">
             <div class="filter-group">
-                <label for="topicFilter">Filter by Topic</label>
-                <select id="topicFilter">
-                    <option value="">All Topics</option>
-                </select>
-            </div>
-            <div class="filter-buttons">
-                <button class="btn-search" onclick="loadQuestions(1)">Search</button>
-                <button class="btn-reset" onclick="resetFilters()">Reset</button>
+                <label for="idRange">Jump to ID Range</label>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input type="text" id="idRange" placeholder="e.g. 47-68 or 47" style="width:140px;"
+                           onkeydown="if(event.key==='Enter')loadByRange()">
+                    <button class="btn-search" onclick="loadByRange()">Show</button>
+                    <button class="btn-reset" onclick="clearRange()">Clear</button>
+                </div>
             </div>
             <div class="filter-group" style="align-self:center;">
                 <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;font-size:0.9em;white-space:nowrap;">
@@ -743,7 +742,6 @@
 
         // Load topics on page load
         document.addEventListener('DOMContentLoaded', function() {
-            loadTopics();
             loadQuestions(1);
             loadResyncCount();
         });
@@ -802,42 +800,28 @@
                 });
         }
 
-        function loadTopics() {
-            fetch('/quiz/api/topics')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.ok) {
-                        const select = document.getElementById('topicFilter');
-                        const currentValue = select.value;
-                        
-                        // Clear existing options except the first one
-                        while (select.options.length > 1) {
-                            select.remove(1);
-                        }
-                        
-                        // Add topics
-                        data.topics.forEach(topic => {
-                            const option = document.createElement('option');
-                            option.value = topic;
-                            option.textContent = topic;
-                            select.appendChild(option);
-                        });
-                        
-                        // Restore previous selection
-                        select.value = currentValue;
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading topics:', error);
-                    showError('Failed to load topics');
-                });
+        let _rangeFrom = null, _rangeTo = null;
+
+        function loadByRange() {
+            const val = document.getElementById('idRange').value.trim();
+            if (!val) { _rangeFrom = null; _rangeTo = null; loadQuestions(1); return; }
+            const parts = val.split('-');
+            _rangeFrom = parseInt(parts[0], 10);
+            _rangeTo   = parts.length >= 2 ? parseInt(parts[1], 10) : null;
+            if (isNaN(_rangeFrom)) { _rangeFrom = null; _rangeTo = null; }
+            loadQuestions(1);
+        }
+
+        function clearRange() {
+            _rangeFrom = null; _rangeTo = null;
+            document.getElementById('idRange').value = '';
+            loadQuestions(1);
         }
 
         function loadQuestions(page) {
             currentPage = page;
-            const topic = document.getElementById('topicFilter').value;
             const unused = document.getElementById('unusedFilter').checked;
-            
+
             showLoading(true);
             hideError();
             isLoadingPage = true; // Set flag to prevent onchange during load
@@ -845,10 +829,12 @@
             let url = `/question/api/page?page=${page}`;
             if (_urlIds) {
                 url += `&ids=${encodeURIComponent(_urlIds)}`;
-            } else if (topic) {
-                url += `&topic=${encodeURIComponent(topic)}`;
+            } else if (_rangeFrom !== null) {
+                url += `&id_from=${_rangeFrom}`;
+                if (_rangeTo !== null) url += `&id_to=${_rangeTo}`;
+            } else {
+                if (unused) url += `&unused=1`;
             }
-            if (unused && !_urlIds) url += `&unused=1`;
 
             fetch(url)
                 .then(response => response.json())
@@ -1135,9 +1121,7 @@
         }
 
         function resetFilters() {
-            document.getElementById('topicFilter').value = '';
-            document.getElementById('unusedFilter').checked = true;
-            loadQuestions(1);
+            clearRange();
         }
 
         function showLoading(show) {

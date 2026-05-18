@@ -783,15 +783,22 @@ def get_questions_paginated():
         per_page = 50
         topic = request.args.get('topic', '').strip()
         ids_param = request.args.get('ids', '').strip()
+        id_from   = request.args.get('id_from', type=int)
+        id_to     = request.args.get('id_to',   type=int)
         unused = request.args.get('unused', '0') == '1'
 
         query = QBank.query
         if ids_param:
             id_list = [int(i) for i in ids_param.split(',') if i.strip().isdigit()]
             query = query.filter(QBank.id.in_(id_list))
+        elif id_from is not None:
+            if id_to is not None:
+                query = query.filter(QBank.id >= id_from, QBank.id <= id_to)
+            else:
+                query = query.filter(QBank.id == id_from)
         elif topic:
             query = query.filter_by(topic=topic)
-        if unused and not ids_param:
+        if unused and not ids_param and id_from is None:
             used_ids = set()
             for row in Quiz.query.with_entities(Quiz.question_ids).all():
                 if row.question_ids:
@@ -801,7 +808,10 @@ def get_questions_paginated():
                             used_ids.add(int(qid))
             if used_ids:
                 query = query.filter(~QBank.id.in_(used_ids))
-        query = query.order_by(QBank.id.desc())
+        if id_from is not None:
+            query = query.order_by(QBank.id.asc())
+        else:
+            query = query.order_by(QBank.id.desc())
 
         total = query.count()
         pagination = query.paginate(page=page, per_page=per_page)
