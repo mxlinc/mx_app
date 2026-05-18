@@ -90,8 +90,7 @@
         {% for item in unit.work_items %}
           {% set unread_cls = 'item-unread' if item.views == 0 else '' %}
           {% if item.type == 'quiz' %}
-          <a class="item-row item-quiz {{ unread_cls }}" href="/quiz/execute?user={{ user_id }}&quiz={{ item.quiz_id }}"
-             data-mark-viewed="{{ item.code }}">
+          <a class="item-row item-quiz {{ unread_cls }}" href="/quiz/execute?user={{ user_id }}&quiz={{ item.quiz_id }}">
             <span class="item-badge badge-quiz">📝</span>
             <span class="item-name"><span class="item-code-tag">{{ item.code }}</span> : {{ item.name }}</span>
             {% if item.answered > 0 and item.answered < item.total_q %}

@@ -57,6 +57,20 @@ def execute_quiz():
         user_id, quiz_id, len(questions), starting_index, already_complete,
     )
 
+    # Increment view counter when a student opens the quiz (reliable server-side
+    # alternative to sendBeacon which is dropped on same-tab navigation).
+    if current_user.user_role in ('student_new', 'new'):
+        q_code = quiz_code(quiz_id)
+        mwl = MyWorkList.query.filter_by(
+            user=current_user.username, item_code=q_code
+        ).first()
+        if mwl:
+            mwl.views = (mwl.views or 0) + 1
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+
     streak_row    = UserStreak.query.get(user_id)
     initial_streak = streak_row.streak if streak_row else 0
 
