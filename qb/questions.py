@@ -822,11 +822,38 @@ def get_questions_paginated():
             elif q.type == 'fill' and 'blanks' in q.json.get('input', {}):
                 input_text = f"{len(q.json['input']['blanks'])} blanks"
 
+            # Build answer_text
+            ans = q.json.get('answer', {})
+            answer_text = "—"
+            if q.type in ('mcq', 'ohs'):
+                cid = ans.get('correct_option_id') or ans.get('correct_option_ids')
+                if isinstance(cid, list):
+                    cid = cid[0] if cid else None
+                opts = {o['id']: o.get('latex', o.get('html', o['id']))
+                        for o in q.json.get('input', {}).get('options', [])}
+                answer_text = opts.get(cid, cid or '—')
+            elif q.type == 'mr':
+                cids = ans.get('correct_option_ids') or ans.get('correct_option_id') or []
+                if isinstance(cids, str):
+                    cids = [cids]
+                opts = {o['id']: o.get('latex', o.get('html', o['id']))
+                        for o in q.json.get('input', {}).get('options', [])}
+                answer_text = ', '.join(opts.get(c, c) for c in cids) or '—'
+            elif q.type == 'fill':
+                correct = ans.get('correct', [])
+                if isinstance(correct, list):
+                    answer_text = ' | '.join(
+                        (v[0] if isinstance(v, list) and v else str(v))
+                        for v in correct
+                    ) or '—'
+            elif q.type == 'feval':
+                answer_text = 'computed'
+
             items.append({
                 "id": q.id, "type": q.type, "topic": q.topic or "—",
                 "stem": (stem_text[:100] + '...') if len(stem_text) > 100 else stem_text,
                 "input": (input_text[:100] + '...') if len(input_text) > 100 else input_text,
-                "created_at": q.created_at.strftime("%Y-%m-%d %H:%M") if q.created_at else "—"
+                "answer_text": (answer_text[:80] + '...') if len(str(answer_text)) > 80 else answer_text
             })
 
         return jsonify({

@@ -249,6 +249,16 @@
             word-break: break-word;
         }
 
+        .answer-cell {
+            font-size: 0.9em;
+            max-width: 180px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            color: #2c7a3f;
+            font-weight: 500;
+        }
+
         .empty-state {
             padding: 60px 20px;
             text-align: center;
@@ -645,7 +655,7 @@
                             <th style="width: 150px;">Topic</th>
                             <th>Question (Stem)</th>
                             <th>Input Details</th>
-                            <th style="width: 140px;">Created</th>
+                            <th style="width: 180px;">Answer</th>
                         </tr>
                     </thead>
                     <tbody id="questionsTable">
@@ -904,7 +914,7 @@
                     <td><strong>${question.topic}</strong></td>
                     <td class="stem-cell" title="${question.stem}">${question.stem}</td>
                     <td class="input-cell" title="${question.input}">${question.input}</td>
-                    <td>${question.created_at}</td>
+                    <td class="answer-cell" title="${question.answer_text}">${question.answer_text}</td>
                 `;
                 
                 tbody.appendChild(row);
