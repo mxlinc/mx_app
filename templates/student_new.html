@@ -92,7 +92,7 @@
           {% if item.type == 'quiz' %}
           <a class="item-row item-quiz {{ unread_cls }}" href="/quiz/execute?user={{ user_id }}&quiz={{ item.quiz_id }}">
             <span class="item-badge badge-quiz">📝</span>
-            <span class="item-name"><span class="item-code-tag">{{ item.code }}</span> : {{ item.name }}</span>
+            <span class="item-name"><span class="item-code-tag">{{ item.code }}</span> : {{ item.name.rsplit('_', 1)[0] }}</span>
             {% if item.answered > 0 and item.answered < item.total_q %}
             <span class="item-progress-badge" title="Quiz in progress">In Progress ({{ item.total_q - item.answered }} remaining)</span>
             {% endif %}
