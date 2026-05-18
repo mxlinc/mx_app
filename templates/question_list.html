@@ -832,9 +832,8 @@
             } else if (_rangeFrom !== null) {
                 url += `&id_from=${_rangeFrom}`;
                 if (_rangeTo !== null) url += `&id_to=${_rangeTo}`;
-            } else {
-                if (unused) url += `&unused=1`;
             }
+            if (unused) url += `&unused=1`;
 
             fetch(url)
                 .then(response => response.json())
