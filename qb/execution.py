@@ -115,6 +115,30 @@ def check_expr_equiv():
         )
         local_dict = {name: Symbol(name) for name in variables}
 
+        # ── Equation mode ────────────────────────────────────────────────────
+        # Both strings contain '=': treat as equations A=B.
+        # Two equations are equivalent when (A-B) = ±(C-D), i.e. they express
+        # the same constraint up to flipping sides / rearranging terms.
+        # e.g.  2x+8=3x-2  ≡  3x-2=8+2x  ≡  x=10
+        if '=' in user_str and '=' in correct_str:
+            def _parse_eq(s):
+                lhs, rhs = s.split('=', 1)
+                return (parse_expr(lhs.strip(), local_dict=local_dict, transformations=TRANSFORMS),
+                        parse_expr(rhs.strip(), local_dict=local_dict, transformations=TRANSFORMS))
+            u_lhs, u_rhs = _parse_eq(user_str)
+            c_lhs, c_rhs = _parse_eq(correct_str)
+            d_user    = u_lhs - u_rhs
+            d_correct = c_lhs - c_rhs
+            logger.info("check_expr_equiv equation mode: d_user=%r  d_correct=%r", d_user, d_correct)
+            if expand(d_user - d_correct) == S.Zero: return jsonify({'equivalent': True})
+            if expand(d_user + d_correct) == S.Zero: return jsonify({'equivalent': True})
+            return jsonify({'equivalent': False})
+
+        # One side is an equation, the other is a bare expression — reject
+        if '=' in user_str or '=' in correct_str:
+            return jsonify({'equivalent': False})
+
+        # ── Expression mode (original behaviour) ─────────────────────────────
         e1 = parse_expr(user_str,    local_dict=local_dict, transformations=TRANSFORMS)
         e2 = parse_expr(correct_str, local_dict=local_dict, transformations=TRANSFORMS)
         logger.info("check_expr_equiv: e1=%r  e2=%r", e1, e2)
