@@ -798,7 +798,7 @@ def get_questions_paginated():
                 query = query.filter(QBank.id == id_from)
         elif topic:
             query = query.filter_by(topic=topic)
-        if unused and not ids_param and id_from is None:
+        if unused and not ids_param:
             used_ids = set()
             for row in Quiz.query.with_entities(Quiz.question_ids).all():
                 if row.question_ids:
