@@ -11,6 +11,10 @@
     font-size: 1.1rem;
     font-weight: 600;
   }
+  .admin-nav .nav-links {
+    display: flex;
+    align-items: center;
+  }
   .admin-nav .nav-links a {
     color: rgba(255,255,255,0.85);
     text-decoration: none;
@@ -18,11 +22,99 @@
     font-size: 0.9rem;
   }
   .admin-nav .nav-links a:hover { color: #fff; }
+
+  /* Dropdown */
+  .nav-dropdown {
+    position: relative;
+    margin-left: 1.25rem;
+  }
+  .nav-dropdown-btn {
+    color: rgba(255,255,255,0.85);
+    font-size: 0.9rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .nav-dropdown-btn:hover { color: #fff; }
+  .nav-dropdown-btn::after {
+    content: '▾';
+    font-size: 0.75rem;
+  }
+  .nav-dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    right: 0;
+    background: #fff;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    min-width: 190px;
+    z-index: 999;
+    overflow: hidden;
+  }
+  .nav-dropdown:hover .nav-dropdown-menu,
+  .nav-dropdown:focus-within .nav-dropdown-menu {
+    display: block;
+  }
+  .nav-dropdown-menu a {
+    display: block;
+    padding: 0.6rem 1rem;
+    color: #1a2d3d !important;
+    text-decoration: none;
+    font-size: 0.88rem;
+    margin: 0 !important;
+    white-space: nowrap;
+  }
+  .nav-dropdown-menu a:hover {
+    background: #d6eaf8;
+    color: #2c6e9e !important;
+  }
+  .nav-dropdown-divider {
+    height: 1px;
+    background: #e8eef3;
+    margin: 0.25rem 0;
+  }
+  .nav-dropdown-label {
+    padding: 0.4rem 1rem 0.2rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6c8a9e;
+  }
 </style>
 
 <nav class="admin-nav">
   <span class="page-title">{{ page_title }}</span>
   <div class="nav-links">
+
+    <!-- Content dropdown -->
+    <div class="nav-dropdown">
+      <button class="nav-dropdown-btn">Content</button>
+      <div class="nav-dropdown-menu">
+        <a href="{{ url_for('question.list_questions_page') }}">&#10067; Question Bank</a>
+        <a href="{{ url_for('qb.quiz_list_page') }}">&#128221; Quizzes</a>
+        <a href="{{ url_for('lms.lesson_list') }}">&#127910; Videos</a>
+        <a href="{{ url_for('lms.units_list') }}">&#128203; Units</a>
+        <div class="nav-dropdown-divider"></div>
+        <a href="/question/api/export">&#8681; Export Questions</a>
+      </div>
+    </div>
+
+    <!-- Actions dropdown -->
+    <div class="nav-dropdown">
+      <button class="nav-dropdown-btn">Actions</button>
+      <div class="nav-dropdown-menu">
+        <a href="{{ url_for('lms.unit_assign_page') }}">&#127979; Assign Unit</a>
+        <a href="{{ url_for('qb.assign_page') }}">&#128100; Quiz Assign</a>
+        <a href="{{ url_for('lms.unit_finetune_page') }}">&#127891; Fine Tune</a>
+      </div>
+    </div>
+
     <a href="{{ url_for('lms.admin_home_new') }}">&#8962; Dashboard</a>
     <a href="{{ url_for('lms.logout') }}">Sign Out</a>
   </div>
