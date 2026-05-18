@@ -12,20 +12,13 @@
  */
 
 // ── Streak tier config ─────────────────────────────────────────────────────────
-// TEST thresholds (easy to test — swap comments below for production):
 const STREAK_TIERS = [
-    { min:  2, max:  4, flames: '\uD83D\uDD25',             cls: 'tier-1' }, // prod: 2–9
-    { min:  5, max:  6, flames: '\uD83D\uDD25\uD83D\uDD25', cls: 'tier-2' }, // prod: 10–19
-    { min:  7, max:  8, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-3' }, // prod: 20–49
-    { min:  9, max: Infinity, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-4' }, // prod: 50+
+    { min:   2, max:   9, flames: '\uD83D\uDD25',                                                         cls: 'tier-1' },
+    { min:  10, max:  19, flames: '\uD83D\uDD25\uD83D\uDD25',                                             cls: 'tier-2' },
+    { min:  20, max:  49, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25',                                 cls: 'tier-3' },
+    { min:  50, max:  99, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25',                   cls: 'tier-4' },
+    { min: 100, max: Infinity, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-5' },
 ];
-// ── Production thresholds (comment out the block above and uncomment this): ────
-// const STREAK_TIERS = [
-//     { min:  2, max:  9, flames: '\uD83D\uDD25',             cls: 'tier-1' },
-//     { min: 10, max: 19, flames: '\uD83D\uDD25\uD83D\uDD25', cls: 'tier-2' },
-//     { min: 20, max: 49, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-3' },
-//     { min: 50, max: Infinity, flames: '\uD83D\uDD25\uD83D\uDD25\uD83D\uDD25', cls: 'tier-4' },
-// ];
 
 
 class QuizController {
@@ -246,7 +239,7 @@ class QuizController {
         const countEl  = document.getElementById('streakCount');
         const wasVisible = this._streakBadge.style.display !== 'none';
 
-        this._streakBadge.classList.remove('broken', 'tier-1', 'tier-2', 'tier-3', 'tier-4');
+        this._streakBadge.classList.remove('broken', 'tier-1', 'tier-2', 'tier-3', 'tier-4', 'tier-5');
 
         if (streak === 0) {
             if (wasVisible) {
