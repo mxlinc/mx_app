@@ -1673,6 +1673,10 @@
                             .join('\n');
                     }
                     document.getElementById('shuffle').checked = question.input?.shuffle !== false;
+                    // Restore correct answer text so save doesn't default to opt1
+                    const correctId = question.answer?.correct_option_id;
+                    const correctOpt = (question.input?.options || []).find(o => o.id === correctId);
+                    document.getElementById('correct').value = correctOpt ? correctOpt.latex : '';
                 } else if (questionType === 'mr') {
                     // Populate MR options
                     if (question.input?.options) {
