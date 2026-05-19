@@ -857,22 +857,24 @@
 
     <!-- Template-based question rendering system -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/question-templates.css') }}">
-    <!-- Override: unconstrain image height now that the page scrolls -->
+    <!-- Override: force image to exactly 30vh so zoom works on both small and large images -->
     <style>
         .question-block .template-image {
-            max-height: 30vh;
-            overflow: hidden;
+            height: 30vh;
+            overflow: visible;
             flex-shrink: 0;
             cursor: zoom-in;
-            transition: max-height 0.3s ease;
+            transition: height 0.3s ease;
             display: inline-flex;
+            align-items: center;
         }
         .question-block .template-image.img-expanded {
-            max-height: 75vh;
+            height: 75vh;
             cursor: zoom-out;
         }
         .question-block .template-image img {
-            max-height: 100%;
+            height: 100%;
+            width: auto;
             max-width: 100%;
             object-fit: contain;
         }
