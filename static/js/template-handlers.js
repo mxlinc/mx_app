@@ -566,6 +566,17 @@ class TemplateHandlerALGEBRA extends TemplateHandler {
             return false;
         }
         console.log('[ALGEBRA] sending to sympy:', { user_expr: answer, correct_expr: this.question.answer?.canonical, variables: this.question.answer?.variables });
+
+        // Show validating indicator next to the input
+        const input = this.container?.querySelector('.template-algebra-input');
+        let indicator = null;
+        if (input) {
+            indicator = document.createElement('span');
+            indicator.className = 'algebra-validating';
+            indicator.textContent = 'Validating\u2026';
+            input.insertAdjacentElement('afterend', indicator);
+        }
+
         try {
             const res = await fetch('/quiz/api/check-expr-equiv', {
                 method:  'POST',
@@ -583,6 +594,8 @@ class TemplateHandlerALGEBRA extends TemplateHandler {
         } catch (err) {
             console.log('[ALGEBRA] fetch error:', err);
             return false;
+        } finally {
+            if (indicator) indicator.remove();
         }
     }
 

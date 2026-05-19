@@ -626,6 +626,19 @@
     font-size: 0.9em;
 }
 
+.algebra-validating {
+    display: inline-block;
+    margin-left: 10px;
+    font-size: 0.82rem;
+    color: #1976d2;
+    font-style: italic;
+    animation: algebra-pulse 1s ease-in-out infinite;
+}
+@keyframes algebra-pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.35; }
+}
+
 /* Inline layout (with label_after) reuses fill's .template-blank-inline — constrain width */
 .template-blank-inline .template-algebra-input {
     width: 160px;

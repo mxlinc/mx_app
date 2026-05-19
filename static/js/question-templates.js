@@ -91,10 +91,7 @@
         } else {
             fieldHtml = inputEl;
         }
-        const hint = question.answer?.use_sympy
-            ? `<p class="template-algebra-hint">For entering algebraic expressions: Use <code>^</code> for powers, <code>( )</code> for grouping &mdash; e.g. <code>(x+1)/2</code> not <code>x+1/2</code></p>`
-            : '';
-        return `<div class="template-question template-algebra">${hint}<div class="template-stem">${question.stem || ''}</div>${img}<div class="template-algebra-container">${fieldHtml}</div></div>`;
+        return `<div class="template-question template-algebra"><div class="template-stem">${question.stem || ''}</div>${img}<div class="template-algebra-container">${fieldHtml}</div></div>`;
     }
     static getTemplate(question) {
         const q = Object.assign({}, question);
