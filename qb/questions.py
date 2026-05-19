@@ -861,10 +861,16 @@ def get_questions_paginated():
             elif q.type == 'fill':
                 correct = ans.get('correct', [])
                 if isinstance(correct, list):
-                    answer_text = ' | '.join(
-                        (v[0] if isinstance(v, list) and v else str(v))
-                        for v in correct
-                    ) or '—'
+                    parts = []
+                    for item in correct:
+                        if isinstance(item, dict):
+                            nums = item.get('accepted_numeric', [])
+                            parts.append(str(nums[0]) if nums else item.get('blank_id', '—'))
+                        elif isinstance(item, list) and item:
+                            parts.append(str(item[0]))
+                        else:
+                            parts.append(str(item))
+                    answer_text = ' | '.join(parts) or '—'
             elif q.type == 'feval':
                 answer_text = 'computed'
 
