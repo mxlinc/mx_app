@@ -36,6 +36,28 @@
             z-index: 100;
         }
 
+        #quizBanner {
+            display: none;
+            background: #37474f;
+            color: #eceff1;
+            padding: 7px 20px;
+            font-size: 0.88em;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        #quizBanner.show { display: flex; }
+        #quizBanner .qb-title { font-weight: 600; }
+        #quizBanner .qb-progress { color: #b0bec5; margin-left: 6px; }
+        #quizBanner .qb-exit {
+            margin-left: auto;
+            color: #ef9a9a;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        #quizBanner .qb-exit:hover { color: #fff; }
+
         .top-band .id-section {
             display: flex;
             align-items: center;
@@ -791,6 +813,13 @@
         </div>
     </div>
 
+    <div id="quizBanner">
+        <span>&#x1F4CB;</span>
+        <span class="qb-title" id="quizBannerTitle"></span>
+        <span class="qb-progress" id="quizBannerProgress"></span>
+        <a class="qb-exit" href="/quiz/list">&#x2715; Exit quiz</a>
+    </div>
+
     <div class="container">
         <div class="question-block" id="questionContainer">
             <!-- Template questions will be injected here -->
@@ -854,13 +883,58 @@
          * Uses template-based rendering for consistent display across all contexts
          */
 
+        // ── Quiz-mode state ──────────────────────────────────────────────
+        window._quizMode = null; // { quizId, quizCode, title, ids:[], total }
+
+        async function _initQuizMode() {
+            const quizId = new URLSearchParams(location.search).get('quiz_id');
+            if (!quizId) return;
+            try {
+                const res = await fetch(`/quiz/api/${quizId}`);
+                const data = await res.json();
+                if (!data.ok) return;
+                const ids = (data.questions || []).map(q => q.id);
+                if (!ids.length) return;
+                window._quizMode = {
+                    quizId: parseInt(quizId),
+                    quizCode: data.quiz_code || '',
+                    title: data.title || '',
+                    ids,
+                    total: ids.length
+                };
+                _updateQuizBanner(parseInt(document.getElementById('questionId').textContent));
+            } catch (e) { /* non-fatal */ }
+        }
+
+        function _updateQuizBanner(currentId) {
+            if (!window._quizMode) return;
+            const m = window._quizMode;
+            const pos = m.ids.indexOf(currentId);
+            const label = [m.quizCode, m.title].filter(Boolean).join(' · ');
+            document.getElementById('quizBannerTitle').textContent = label;
+            document.getElementById('quizBannerProgress').textContent =
+                pos >= 0 ? `${pos + 1} / ${m.total}` : `? / ${m.total}`;
+            document.getElementById('quizBanner').classList.add('show');
+        }
+
+        function _getNextInQuiz(currentId) {
+            const m = window._quizMode;
+            if (!m || m.ids.length <= 1) return null;
+            const pos = m.ids.indexOf(currentId);
+            return m.ids[(pos + 1) % m.total];
+        }
+        // ─────────────────────────────────────────────────────────────────
+
         async function initializeQuiz() {
             try {
                 // Get initial question ID
                 const questionId = document.getElementById('questionId').textContent;
-                
+
+                // Initialize quiz-scoped mode if ?quiz_id= present
+                await _initQuizMode();
+
                 // Load the question
-                await loadQuestion(questionId);
+                await loadQuestion(questionId, false);
                 
                 // Setup submit button
                 const submitBtn = document.getElementById('submitBtn');
@@ -877,19 +951,29 @@
 
                     // Always switch button to Next mode
                     const currentId = document.getElementById('questionId').textContent.trim();
-                    try {
-                        const res = await fetch(`/question/api/next-id/${currentId}`);
-                        const data = await res.json();
-                        if (data.ok) {
-                            submitBtn.textContent = `Next: ${data.next_id}`;
+                    if (window._quizMode) {
+                        const nextId = _getNextInQuiz(parseInt(currentId));
+                        if (nextId) {
+                            submitBtn.textContent = `Next: ${nextId}`;
                             submitBtn.dataset.mode = 'next';
-                            submitBtn.dataset.nextId = data.next_id;
+                            submitBtn.dataset.nextId = nextId;
                             submitBtn.disabled = false;
-                        } else if (data.all_used) {
-                            submitBtn.textContent = 'No unused questions left';
-                            submitBtn.disabled = true;
                         }
-                    } catch (e) { /* leave as-is */ }
+                    } else {
+                        try {
+                            const res = await fetch(`/question/api/next-id/${currentId}`);
+                            const data = await res.json();
+                            if (data.ok) {
+                                submitBtn.textContent = `Next: ${data.next_id}`;
+                                submitBtn.dataset.mode = 'next';
+                                submitBtn.dataset.nextId = data.next_id;
+                                submitBtn.disabled = false;
+                            } else if (data.all_used) {
+                                submitBtn.textContent = 'No unused questions left';
+                                submitBtn.disabled = true;
+                            }
+                        } catch (e) { /* leave as-is */ }
+                    }
                 });
 
                 document.addEventListener('keydown', async (e) => {
@@ -908,19 +992,29 @@
 
                     // Always switch button to Next mode
                     const currentId = document.getElementById('questionId').textContent.trim();
-                    try {
-                        const res = await fetch(`/question/api/next-id/${currentId}`);
-                        const data = await res.json();
-                        if (data.ok) {
-                            btn.textContent = `Next: ${data.next_id}`;
+                    if (window._quizMode) {
+                        const nextId = _getNextInQuiz(parseInt(currentId));
+                        if (nextId) {
+                            btn.textContent = `Next: ${nextId}`;
                             btn.dataset.mode = 'next';
-                            btn.dataset.nextId = data.next_id;
+                            btn.dataset.nextId = nextId;
                             btn.disabled = false;
-                        } else if (data.all_used) {
-                            btn.textContent = 'No unused questions left';
-                            btn.disabled = true;
                         }
-                    } catch (e) { /* leave as-is */ }
+                    } else {
+                        try {
+                            const res = await fetch(`/question/api/next-id/${currentId}`);
+                            const data = await res.json();
+                            if (data.ok) {
+                                btn.textContent = `Next: ${data.next_id}`;
+                                btn.dataset.mode = 'next';
+                                btn.dataset.nextId = data.next_id;
+                                btn.disabled = false;
+                            } else if (data.all_used) {
+                                btn.textContent = 'No unused questions left';
+                                btn.disabled = true;
+                            }
+                        } catch (e) { /* leave as-is */ }
+                    }
                 });
                 
                 // Show container
@@ -1062,6 +1156,7 @@
         async function updateTopNext(questionId) {
             const btn = document.getElementById('nextTopLink');
             if (!btn) return;
+            if (window._quizMode) { btn.style.display = 'none'; return; }
             try {
                 const res = await fetch(`/question/api/next-id/${questionId}`);
                 const data = await res.json();
@@ -1084,8 +1179,10 @@
                 // Update ID display and URL
                 document.getElementById('questionId').textContent = questionId;
                 if (pushState) {
-                    history.pushState({ questionId }, '', `/question/display/${questionId}`);
+                    const qs = window._quizMode ? `?quiz_id=${window._quizMode.quizId}` : '';
+                    history.pushState({ questionId }, '', `/question/display/${questionId}${qs}`);
                 }
+                _updateQuizBanner(questionId);
                 
                 // Fetch question data
                 const response = await fetch(`/question/api/display/${questionId}`);

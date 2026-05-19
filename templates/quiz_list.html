@@ -1008,7 +1008,7 @@
                                ${isSelected ? 'checked' : ''} 
                                onchange="updateSelectedQuizzes()">
                     </td>
-                    <td class="id-cell"><a href="/question/list?ids=${encodeURIComponent(quiz.question_ids)}" title="View questions in this quiz">${quiz.id}</a></td>
+                    <td class="id-cell">${(() => { const fid = quiz.question_ids ? quiz.question_ids.split(',')[0].trim() : null; return fid ? `<a href="/question/display/${fid}?quiz_id=${quiz.id}" title="Browse questions in this quiz">${quiz.id}</a>` : quiz.id; })()}</td>
                     <td><strong>${quiz.quiz_code ? quiz.quiz_code + ': ' : ''}${quiz.title}</strong></td>
                     <td>${quiz.description}</td>
                     <td>${quiz.topic}</td>
