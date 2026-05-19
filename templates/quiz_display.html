@@ -860,12 +860,21 @@
     <!-- Override: unconstrain image height now that the page scrolls -->
     <style>
         .question-block .template-image {
-            max-height: none;
-            overflow: visible;
+            max-height: 30vh;
+            overflow: hidden;
             flex-shrink: 0;
+            cursor: zoom-in;
+            transition: max-height 0.3s ease;
+            display: inline-flex;
+        }
+        .question-block .template-image.img-expanded {
+            max-height: 75vh;
+            cursor: zoom-out;
         }
         .question-block .template-image img {
-            max-height: none;
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
         }
     </style>
     <script src="{{ url_for('static', filename='js/question-templates.js') }}"></script>
@@ -1225,6 +1234,12 @@
             }
         }
 
+    </script>
+    <script>
+        document.getElementById('questionContainer').addEventListener('click', function(e) {
+            const imgBox = e.target.closest('.template-image');
+            if (imgBox) imgBox.classList.toggle('img-expanded');
+        });
     </script>
 </body>
 </html>
