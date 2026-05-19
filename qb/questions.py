@@ -161,15 +161,24 @@ def delete_question(question_id):
 @question_bp.route("/api/next-id/<int:question_id>", methods=["GET"])
 @login_required
 def get_next_question_id(question_id):
-    """Get the next question ID (wraps to first if at end)."""
+    """Get the next unused question ID (not in any quiz); wraps to first unused if at end."""
     try:
-        next_q = QBank.query.filter(QBank.id > question_id).order_by(QBank.id).first()
+        used_ids = set()
+        for qz in Quiz.query.filter(Quiz.question_ids.isnot(None)).all():
+            for i in qz.question_ids.split(','):
+                if i.strip().isdigit():
+                    used_ids.add(int(i.strip()))
+
+        base = QBank.query if not used_ids else QBank.query.filter(~QBank.id.in_(used_ids))
+
+        next_q = base.filter(QBank.id > question_id).order_by(QBank.id).first()
         if next_q:
             return jsonify({"ok": True, "next_id": next_q.id})
-        min_q = QBank.query.order_by(QBank.id).first()
-        if min_q:
-            return jsonify({"ok": True, "next_id": min_q.id})
-        return jsonify({"ok": False, "error": "No questions found"}), 404
+        # Wrap around to the first unused question
+        first_q = base.order_by(QBank.id).first()
+        if first_q:
+            return jsonify({"ok": True, "next_id": first_q.id})
+        return jsonify({"ok": False, "all_used": True, "error": "No unused questions left"}), 200
     except Exception as e:
         logger.exception(e)
         return jsonify({"ok": False, "error": str(e)}), 500

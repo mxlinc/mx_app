@@ -885,6 +885,9 @@
                             submitBtn.dataset.mode = 'next';
                             submitBtn.dataset.nextId = data.next_id;
                             submitBtn.disabled = false;
+                        } else if (data.all_used) {
+                            submitBtn.textContent = 'No unused questions left';
+                            submitBtn.disabled = true;
                         }
                     } catch (e) { /* leave as-is */ }
                 });
@@ -913,6 +916,9 @@
                             btn.dataset.mode = 'next';
                             btn.dataset.nextId = data.next_id;
                             btn.disabled = false;
+                        } else if (data.all_used) {
+                            btn.textContent = 'No unused questions left';
+                            btn.disabled = true;
                         }
                     } catch (e) { /* leave as-is */ }
                 });
