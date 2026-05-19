@@ -919,7 +919,7 @@
         function _updateQuizBanner(currentId) {
             if (!window._quizMode) return;
             const m = window._quizMode;
-            const pos = m.ids.indexOf(currentId);
+            const pos = m.ids.indexOf(+currentId);
             const label = [m.quizCode, m.title].filter(Boolean).join(' · ');
             document.getElementById('quizBannerTitle').textContent = label;
             document.getElementById('quizBannerProgress').textContent =
