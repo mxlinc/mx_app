@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload MCQ — MX Admin</title>
+    <title>Upload Questions — MX Admin</title>
     <style>
         :root {
             --color-bg: #f5f7fa;
@@ -35,6 +35,10 @@
             padding: 0.55rem 1.4rem; font-size: 0.9rem; font-weight: 600; cursor: pointer;
         }
         .upload-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+        /* Type selector */
+        .type-row { display: flex; gap: 1.5rem; margin-bottom: 1.2rem; align-items: center; }
+        .type-option { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+        .type-option input[type=radio] { width: 16px; height: 16px; cursor: pointer; }
         /* Log panel */
         #logPanel { display: none; }
         #logList { list-style: none; font-size: 0.86rem; line-height: 1.8; max-height: 440px; overflow-y: auto; }
@@ -51,25 +55,47 @@
     </style>
 </head>
 <body>
-  {% set page_title = 'Upload MCQ' %}
+  {% set page_title = 'Upload Questions' %}
   {% include '_admin_header.html' %}
 
   <div class="page">
     <a class="back-link" href="{{ url_for('lms.admin_home_new') }}">← Admin Dashboard</a>
-    <h1>Upload MCQ</h1>
-    <p class="sub">Bulk-import MCQ questions from a plain text file. Each <code>question=</code> line starts a new block; <code>opt1</code> is always the correct answer.</p>
+    <h1>Upload Questions</h1>
+    <p class="sub">Bulk-import questions from a plain text file.</p>
 
-    <div class="hint">
-      <strong>File format:</strong><br>
+    <div class="hint" id="hint-mcq">
+      <strong>MCQ format:</strong><br>
       <code>question=Emma has x stickers. She buys 4 more. Which expression shows the total?</code><br>
       <code>opt1=$x+4$</code><br>
       <code>opt2=$4x$</code><br>
       <code>opt3=$x-4$</code><br>
       <code>opt4=$4-x$</code><br><br>
-      Blank lines between blocks are optional. Any number of options per question.
+      <code>opt1</code> is always the correct answer. Blank lines between blocks are optional.
+    </div>
+
+    <div class="hint" id="hint-fill" style="display:none;">
+      <strong>Fill format:</strong><br>
+      <code>question=Evaluate the following:</code><br>
+      <code>label1=$-3+4$</code><br>
+      <code>answer:1</code><br>
+      <code>label2=$3+4$</code><br>
+      <code>answer:7</code><br><br>
+      <code>question=What is the value of $x$ in $2x-2=0$?</code><br>
+      <code>label1=$x=$</code><br>
+      <code>answer:1</code><br><br>
+      One or more <code>label/answer</code> pairs per question. Missing or non-numeric answers default to <strong>0</strong>. All blanks are numeric type.
     </div>
 
     <div class="card">
+      <div class="card-label">Question Type</div>
+      <div class="type-row">
+        <label class="type-option">
+          <input type="radio" name="qtype" value="mcq" checked onchange="onTypeChange()"> MCQ
+        </label>
+        <label class="type-option">
+          <input type="radio" name="qtype" value="fill" onchange="onTypeChange()"> Fill in the Blank
+        </label>
+      </div>
       <div class="card-label">Metadata — applied to all questions in the file</div>
       <div class="field-row">
         <div>
@@ -100,10 +126,17 @@
   </div>
 
   <script>
+    function onTypeChange() {
+      const type = document.querySelector('input[name=qtype]:checked').value;
+      document.getElementById('hint-mcq').style.display  = type === 'mcq'  ? '' : 'none';
+      document.getElementById('hint-fill').style.display = type === 'fill' ? '' : 'none';
+    }
+
     async function doUpload() {
       const file = document.getElementById('inp-file').files[0];
       if (!file) { alert('Please select a .txt file'); return; }
 
+      const type     = document.querySelector('input[name=qtype]:checked').value;
       const topic    = document.getElementById('inp-topic').value.trim();
       const subtopic = document.getElementById('inp-subtopic').value.trim();
       const level    = document.getElementById('inp-level').value.trim();
@@ -114,6 +147,7 @@
       fd.append('subtopic', subtopic);
       fd.append('level', level);
 
+      const endpoint = type === 'fill' ? '/question/api/upload-fill' : '/question/api/upload-mcq';
       const btn     = document.getElementById('uploadBtn');
       const panel   = document.getElementById('logPanel');
       const list    = document.getElementById('logList');
@@ -127,7 +161,7 @@
       summary.style.color = '';
 
       try {
-        const res  = await fetch('/question/api/upload-mcq', { method: 'POST', body: fd });
+        const res  = await fetch(endpoint, { method: 'POST', body: fd });
         const data = await res.json();
 
         if (!data.ok && !data.results) {

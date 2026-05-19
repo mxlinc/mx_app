@@ -997,9 +997,9 @@ def _parse_mcq_upload(text):
     return blocks
 
 
-@question_bp.route("/upload-mcq", methods=["GET"])
+@question_bp.route("/upload", methods=["GET"])
 @login_required
-def upload_mcq_page():
+def upload_page():
     return render_template("upload_mcq.html")
 
 
@@ -1065,6 +1065,136 @@ def upload_mcq():
                 results.append({'n': n, 'ok': True, 'id': q.id, 'preview': preview})
         except Exception as e:
             logger.exception("upload_mcq: error saving question %d", n)
+            results.append({'n': n, 'ok': False, 'preview': preview, 'error': str(e)})
+
+    saved  = sum(1 for r in results if r.get('ok'))
+    failed = len(results) - saved
+    return jsonify({'ok': True, 'results': results, 'saved': saved, 'failed': failed})
+
+
+# ==================== UPLOAD FILL ==================== #
+
+def _parse_fill_upload(text):
+    """Parse a .txt file into Fill question blocks.
+
+    Format:
+        question=<stem latex>
+        label1=<input_label latex>
+        answer:<numeric value>
+        label2=<input_label latex>
+        answer:<numeric value>
+    - answer: lines use colon separator
+    - Missing or non-numeric answer defaults to 0
+    - One or more label/answer pairs per question
+    Returns: [{'question': str, 'blanks': [{'label': str, 'answer': float}, ...]}, ...]
+    """
+    blocks = []
+    current = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        # answer: uses colon separator
+        if line.lower().startswith('answer:'):
+            _, _, value = line.partition(':')
+            value = value.strip()
+            if current is not None and current['blanks']:
+                try:
+                    current['blanks'][-1]['answer'] = float(value) if value else 0.0
+                except ValueError:
+                    current['blanks'][-1]['answer'] = 0.0
+            continue
+        if '=' not in line:
+            continue
+        key, _, value = line.partition('=')
+        key = key.strip().lower()
+        value = value.strip()
+        if key == 'question':
+            if current is not None:
+                blocks.append(current)
+            current = {'question': value, 'blanks': []}
+        elif key.startswith('label') and current is not None:
+            current['blanks'].append({'label': value, 'answer': 0.0})
+    if current is not None:
+        blocks.append(current)
+    return blocks
+
+
+@question_bp.route("/api/upload-fill", methods=["POST"])
+@login_required
+def upload_fill():
+    """Parse a .txt file of fill question blocks and save each as a FILL question."""
+    from qb.handlers.fill import FILLHandler
+
+    topic    = (request.form.get('topic',    '') or '').strip()
+    subtopic = (request.form.get('subtopic', '') or '').strip()
+    level    = (request.form.get('level',    '') or '').strip()
+
+    file = request.files.get('file')
+    if not file or not file.filename.lower().endswith('.txt'):
+        return jsonify({'ok': False, 'error': 'A .txt file is required'}), 400
+
+    try:
+        text = file.read().decode('utf-8')
+    except Exception:
+        return jsonify({'ok': False, 'error': 'Could not read file — ensure it is UTF-8 encoded'}), 400
+
+    blocks = _parse_fill_upload(text)
+    if not blocks:
+        return jsonify({'ok': False, 'error': 'No question= blocks found in file'}), 400
+
+    results = []
+    for n, block in enumerate(blocks, 1):
+        preview = block['question'][:60] + ('…' if len(block['question']) > 60 else '')
+
+        if not block['question']:
+            results.append({'n': n, 'ok': False, 'error': 'Empty question text — skipped'})
+            continue
+        if not block['blanks']:
+            results.append({'n': n, 'ok': False, 'preview': preview, 'error': 'No label= entries found — skipped'})
+            continue
+
+        data = {
+            'type': 'fill',
+            'topic': topic,
+            'subtopic': subtopic,
+            'level': level,
+            'question': {
+                'stem': {'latex': block['question']},
+                'type': 'fill',
+                'input': {
+                    'blanks': [
+                        {
+                            'id': f'blank{i + 1}',
+                            'input_label': {'latex': blank['label']},
+                            'response_type': 'numeric',
+                        }
+                        for i, blank in enumerate(block['blanks'])
+                    ],
+                },
+                'answer': {
+                    'correct': [
+                        {
+                            'blank_id': f'blank{i + 1}',
+                            'response_type': 'numeric',
+                            'accepted_numeric': [blank['answer']],
+                        }
+                        for i, blank in enumerate(block['blanks'])
+                    ],
+                },
+            },
+        }
+
+        try:
+            q, error = FILLHandler.save_question(data)
+            if error:
+                results.append({'n': n, 'ok': False, 'preview': preview, 'error': error})
+            else:
+                q.sync_required = True
+                db.session.commit()
+                results.append({'n': n, 'ok': True, 'id': q.id, 'preview': preview})
+        except Exception as e:
+            logger.exception("upload_fill: error saving question %d", n)
             results.append({'n': n, 'ok': False, 'preview': preview, 'error': str(e)})
 
     saved  = sum(1 for r in results if r.get('ok'))
