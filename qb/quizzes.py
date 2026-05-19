@@ -104,6 +104,41 @@ def resync_quizzes():
     return jsonify({"ok": not errors, "message": message, "synced": synced, "failed": errors})
 
 
+# ==================== QUESTION PREVIEW LOOKUP ==================== #
+
+@qb_bp.route("/api/questions-info", methods=["GET"])
+@login_required
+def questions_info():
+    """Return lightweight preview data for a comma-separated list of question IDs."""
+    ids_param = request.args.get('ids', '')
+    ids = [int(i.strip()) for i in ids_param.split(',') if i.strip().isdigit()]
+    if not ids:
+        return jsonify({"ok": True, "questions": []})
+    rows = QBank.query.filter(QBank.id.in_(ids)).all()
+    by_id = {q.id: q for q in rows}
+    result = []
+    for qid in ids:
+        q = by_id.get(qid)
+        if not q:
+            continue
+        j = q.json or {}
+        stem = j.get('stem', '')
+        if isinstance(stem, dict):
+            preview = stem.get('latex', '') or stem.get('html', '') or ''
+        elif isinstance(stem, str):
+            preview = stem
+        else:
+            preview = ''
+        result.append({
+            'id': q.id,
+            'type': q.type,
+            'topic': q.topic or '',
+            'subtopic': q.subtopic or '',
+            'preview': preview[:120].strip(),
+        })
+    return jsonify({"ok": True, "questions": result})
+
+
 # ==================== TOPICS ==================== #
 
 @qb_bp.route("/api/topics", methods=["GET"])

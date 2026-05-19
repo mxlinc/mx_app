@@ -40,13 +40,13 @@
 
         .filter-section {
             background: white;
-            padding: 20px;
+            padding: 14px 20px;
             border-radius: 8px;
             margin-bottom: 30px;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             display: flex;
-            gap: 15px;
-            align-items: flex-end;
+            gap: 20px;
+            align-items: center;
             flex-wrap: wrap;
         }
 
@@ -619,13 +619,13 @@
                 </div>
             </div>
             <div class="filter-group" style="align-self:center;">
-                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-weight:600;font-size:0.9em;white-space:nowrap;">
-                    <input type="checkbox" id="unusedFilter" checked onchange="loadQuestions(1)" style="width:18px;height:18px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:600;font-size:0.9em;white-space:nowrap;">
+                    <input type="checkbox" id="unusedFilter" checked onchange="loadQuestions(1)" style="width:16px;height:16px;min-width:16px;cursor:pointer;">
                     Show Unused Only
                 </label>
             </div>
-            <div style="align-self:center;">
-                <button class="btn-resync" id="resyncBtn" onclick="runResync()" title="Rebuild quiz snapshots for all recently edited questions">🔄 Re-sync Quizzes <span id="resyncCount"></span></button>
+            <div style="margin-left:auto;">
+                <button class="btn-resync" id="resyncBtn" onclick="runResync()" title="Rebuild quiz snapshots for all recently edited questions">&#x1F504; Re-sync Quizzes <span id="resyncCount"></span></button>
             </div>
         </div>
 

@@ -852,6 +852,14 @@
               Propagate topic, subtopic &amp; level to all questions
             </label>
           </div>
+          <div class="form-group">
+            <label for="addQIds">Add Questions by ID</label>
+            <div style="display:flex;gap:6px;">
+              <input type="text" id="addQIds" placeholder="e.g. 12, 34, 56" style="flex:1;">
+              <button type="button" onclick="addQuestionsById()" class="btn-save" style="padding:6px 14px;white-space:nowrap;">Add</button>
+            </div>
+            <div id="addQError" style="color:#c62828;font-size:0.78rem;margin-top:4px;"></div>
+          </div>
         </div>
         <!-- Right: question list -->
         <div class="eq-questions">
@@ -1167,6 +1175,64 @@
         function removeEq(btn) {
             btn.closest('.eq-q-row').remove();
             renumberEq();
+        }
+
+        async function addQuestionsById() {
+            const input = document.getElementById('addQIds');
+            const errDiv = document.getElementById('addQError');
+            errDiv.textContent = '';
+            const rawIds = input.value.split(',').map(s => s.trim()).filter(s => /^\d+$/.test(s));
+            if (!rawIds.length) return;
+
+            const existingIds = new Set([...document.querySelectorAll('#eqQuestionList .eq-q-row')].map(r => r.dataset.id));
+            const dupes = rawIds.filter(id => existingIds.has(id));
+            const newIds = rawIds.filter(id => !existingIds.has(id));
+
+            if (!newIds.length) {
+                errDiv.textContent = `Already in quiz: ${dupes.join(', ')}`;
+                return;
+            }
+
+            let data;
+            try {
+                const res = await fetch(`/quiz/api/questions-info?ids=${newIds.join(',')}`);
+                data = await res.json();
+            } catch (e) {
+                errDiv.textContent = 'Request failed.';
+                return;
+            }
+            if (!data.ok) { errDiv.textContent = data.error || 'Error'; return; }
+
+            const list = document.getElementById('eqQuestionList');
+            data.questions.forEach(q => {
+                const row = document.createElement('div');
+                row.className = 'eq-q-row';
+                row.dataset.id = q.id;
+                const color = _EQ_TYPE_COLORS[q.type] || '#607d8b';
+                const meta = [q.topic, q.subtopic].filter(Boolean).join(' / ');
+                const preview = q.preview || meta || '—';
+                const safePreview = preview.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const n = list.querySelectorAll('.eq-q-row').length + 1;
+                row.innerHTML = `
+                    <span class="eq-drag-handle" title="Drag to reorder">⠿</span>
+                    <span class="eq-q-num">${n}</span>
+                    <span class="eq-q-id">#${q.id}</span>
+                    <span class="eq-q-type" style="background:${color};color:#fff;">${q.type}</span>
+                    <span class="eq-q-preview" title="${safePreview}">${safePreview}</span>
+                    ${meta ? `<span class="eq-q-meta">${meta}</span>` : ''}
+                    <button class="eq-q-btn remove" onclick="removeEq(this)" title="Remove from quiz">×</button>
+                `;
+                list.appendChild(row);
+            });
+            renumberEq();
+
+            const foundIds = new Set(data.questions.map(q => String(q.id)));
+            const notFound = newIds.filter(id => !foundIds.has(id));
+            const msgs = [];
+            if (dupes.length) msgs.push(`Already in quiz: ${dupes.join(', ')}`);
+            if (notFound.length) msgs.push(`Not found: ${notFound.join(', ')}`);
+            errDiv.textContent = msgs.join(' · ');
+            if (!msgs.length) input.value = '';
         }
 
         function renumberEq() {
