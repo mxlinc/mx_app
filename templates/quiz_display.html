@@ -57,6 +57,7 @@
             font-size: 0.9em;
         }
         #quizBanner .qb-exit:hover { color: #fff; }
+        #quizBanner .qb-ids { color: #78909c; font-size: 0.82em; margin-left: 4px; }
 
         .top-band .id-section {
             display: flex;
@@ -805,6 +806,7 @@
         <span>&#x1F4CB;</span>
         <span class="qb-title" id="quizBannerTitle"></span>
         <span class="qb-progress" id="quizBannerProgress"></span>
+        <span class="qb-ids" id="quizBannerIds"></span>
         <a class="qb-exit" href="/quiz/list">&#x2715; Exit quiz</a>
     </div>
 
@@ -925,6 +927,7 @@
             document.getElementById('quizBannerTitle').textContent = label;
             document.getElementById('quizBannerProgress').textContent =
                 pos >= 0 ? `${pos + 1} / ${m.total}` : `? / ${m.total}`;
+            document.getElementById('quizBannerIds').textContent = m.ids.join(', ');
             document.getElementById('quizBanner').classList.add('show');
         }
 
