@@ -857,6 +857,17 @@
 
     <!-- Template-based question rendering system -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/question-templates.css') }}">
+    <!-- Override: unconstrain image height now that the page scrolls -->
+    <style>
+        .question-block .template-image {
+            max-height: none;
+            overflow: visible;
+            flex-shrink: 0;
+        }
+        .question-block .template-image img {
+            max-height: none;
+        }
+    </style>
     <script src="{{ url_for('static', filename='js/question-templates.js') }}"></script>
     <script src="{{ url_for('static', filename='js/template-handlers.js') }}"></script>
     <script src="{{ url_for('static', filename='js/unified-question-component.js') }}"></script>
