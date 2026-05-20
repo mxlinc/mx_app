@@ -1057,7 +1057,7 @@ def student_home_new():
 
     # Achievement stats
     total_done      = sum(1 for _r in all_rows if _r.status == 'done')
-    total_remaining = sum(1 for _r in all_rows if _r.status == 'assigned')
+    total_remaining = sum(1 for _r in all_rows if _r.status == 'assigned' and _r.item_code.startswith('Q-'))
     streak_row = UserStreak.query.get(current_user.id)
     stats = {'done': total_done, 'remaining': total_remaining, 'streak': streak_row.streak if streak_row else 0}
 
@@ -1693,7 +1693,7 @@ def student_preview(user_id):
                 q_progress[r.au_name]['done'] += 1
 
     total_done = sum(1 for r in all_rows if r.status == 'done')
-    total_remaining = sum(1 for r in all_rows if r.status == 'assigned')
+    total_remaining = sum(1 for r in all_rows if r.status == 'assigned' and r.item_code.startswith('Q-'))
     streak_row = UserStreak.query.get(user_id)
     stats = {'done': total_done, 'remaining': total_remaining, 'streak': streak_row.streak if streak_row else 0}
     preview_banner = f"Preview — viewing as: {student.full_name or username}"
