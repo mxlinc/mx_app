@@ -64,7 +64,8 @@
   <div class="main-content pb-5">
 
     <!-- Select-all / deselect-all -->
-    <div class="d-flex justify-content-end align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <button class="btn btn-sm btn-primary" id="btn-add-video">+ Add New Video</button>
       <div class="d-flex gap-2">
         <button class="btn btn-sm btn-outline-primary" id="btn-select-all">Select All</button>
         <button class="btn btn-sm btn-outline-secondary" id="btn-deselect-all">Deselect All</button>
@@ -106,6 +107,51 @@
       {% endfor %}
     </div>
 
+  </div>
+
+  <!-- Add New Video Modal -->
+  <div id="anv-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1040;"></div>
+  <div id="anv-modal" role="dialog" aria-modal="true" aria-labelledby="anv-title"
+       style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+              background:#fff;border-radius:10px;padding:2rem;width:min(480px,95vw);
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1050;">
+    <h2 id="anv-title" style="font-size:1.15rem;font-weight:600;color:var(--color-primary);margin:0 0 1.25rem;">Add New Video</h2>
+    <div id="anv-error" style="display:none;color:#c0392b;font-size:0.88rem;margin-bottom:0.75rem;"></div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">File Name</label>
+      <input id="anv-file-name" type="text" placeholder="e.g. linear_eq_intro.html"
+             style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;" />
+    </div>
+
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Display Name</label>
+      <input id="anv-display-name" type="text" placeholder="e.g. Introduction to Linear Equations"
+             style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;" />
+    </div>
+
+    <div style="margin-bottom:0.5rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Broad Area</label>
+      <select id="anv-area-select" onchange="anvAreaChanged()"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+        <option value="">— select area —</option>
+        {% for ba in broad_areas %}
+        <option value="{{ ba }}">{{ ba }}</option>
+        {% endfor %}
+        <option value="__new__">➕ Enter new area…</option>
+      </select>
+    </div>
+    <div id="anv-area-new-wrap" style="display:none;margin-bottom:1rem;">
+      <input id="anv-area-new" type="text" placeholder="New broad area name"
+             style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;margin-top:0.4rem;" />
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.25rem;">
+      <button onclick="anvClose()"
+              style="padding:0.5rem 1.25rem;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;font-size:0.95rem;">Cancel</button>
+      <button id="anv-save-btn" onclick="anvSave()"
+              style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:var(--color-primary);color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;">Save</button>
+    </div>
   </div>
 
   <!-- Add-to-Unit Modal -->
@@ -319,6 +365,72 @@
     }
 
     document.getElementById('atu-backdrop').addEventListener('click', atuClose);
+
+    // ── Add New Video modal ───────────────────────────────────────
+    document.getElementById('btn-add-video').addEventListener('click', () => {
+      document.getElementById('anv-file-name').value = '';
+      document.getElementById('anv-display-name').value = '';
+      document.getElementById('anv-area-select').value = '';
+      document.getElementById('anv-area-new-wrap').style.display = 'none';
+      document.getElementById('anv-area-new').value = '';
+      document.getElementById('anv-error').style.display = 'none';
+      document.getElementById('anv-backdrop').style.display = 'block';
+      document.getElementById('anv-modal').style.display = 'block';
+    });
+
+    function anvAreaChanged() {
+      const val = document.getElementById('anv-area-select').value;
+      document.getElementById('anv-area-new-wrap').style.display = val === '__new__' ? 'block' : 'none';
+    }
+
+    function anvClose() {
+      document.getElementById('anv-backdrop').style.display = 'none';
+      document.getElementById('anv-modal').style.display = 'none';
+    }
+
+    function anvSave() {
+      const file_name    = document.getElementById('anv-file-name').value.trim();
+      const display_name = document.getElementById('anv-display-name').value.trim();
+      const areaSelect   = document.getElementById('anv-area-select').value;
+      const broad_area   = areaSelect === '__new__'
+                             ? document.getElementById('anv-area-new').value.trim()
+                             : areaSelect;
+      const errEl = document.getElementById('anv-error');
+      errEl.style.display = 'none';
+      if (!file_name || !display_name) {
+        errEl.textContent = 'file_name and display_name are required.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const btn = document.getElementById('anv-save-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      fetch('/videos/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ file_name, display_name, broad_area })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          anvClose();
+          location.reload();
+        } else {
+          errEl.textContent = data.error || 'An error occurred.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Save';
+        }
+      })
+      .catch(() => {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      });
+    }
+
+    document.getElementById('anv-backdrop').addEventListener('click', anvClose);
   </script>
 </body>
 </html>

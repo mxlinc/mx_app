@@ -1235,7 +1235,29 @@ def lesson_list():
         grouped[video.broad_area or 'Uncategorised'].append(video)
     # Sort keys, put Uncategorised last
     areas = sorted(grouped.keys(), key=lambda k: (k == 'Uncategorised', k))
-    return render_template("lesson_list.html", grouped=grouped, areas=areas)
+    broad_areas = sorted(set(v.broad_area for v in videos if v.broad_area))
+    return render_template("lesson_list.html", grouped=grouped, areas=areas, broad_areas=broad_areas)
+
+
+@lms_bp.route('/videos/create', methods=['POST'])
+@login_required
+def videos_create():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data         = request.get_json(force=True)
+    file_name    = (data.get('file_name') or '').strip()
+    display_name = (data.get('display_name') or '').strip()
+    broad_area   = (data.get('broad_area') or '').strip()
+    if not file_name or not display_name:
+        return jsonify({'ok': False, 'error': 'file_name and display_name are required'}), 400
+    video = Video(
+        file_name=file_name,
+        display_name=display_name,
+        broad_area=broad_area or None
+    )
+    db.session.add(video)
+    db.session.commit()
+    return jsonify({'ok': True, 'id': video.id})
 
 
 # ==================== ASSIGNMENT UNITS ==================== #
