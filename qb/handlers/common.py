@@ -126,6 +126,10 @@ def latex_to_html(latex):
             else:
                 result.append('$$')
                 i += 2
+        elif i < length - 1 and latex[i:i+2] == '\\$':
+            # Escaped dollar sign (literal currency symbol, e.g. \$50)
+            result.append('$')
+            i += 2
         elif latex[i] == '$':
             # Inline math mode: $ ... $ → MathML inline
             j = latex.find('$', i + 1)
