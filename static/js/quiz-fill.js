@@ -374,7 +374,7 @@ class QuizFILL {
             let isCorrect = false;
             if (correct.response_type === 'text') {
                 const acceptedAnswers = correct.accepted_text || [];
-                const normalize = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+                const normalize = s => s.replace(/\s+/g, '').toLowerCase();
                 const userVal = normalize(userAnswer);
                 isCorrect = acceptedAnswers.some(ans => normalize(ans) === userVal);
             } else if (correct.response_type === 'numeric') {

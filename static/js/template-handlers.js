@@ -239,7 +239,7 @@ class TemplateHandlerFILL extends TemplateHandler {
             });
         }
         // text
-        const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+        const norm = s => s.replace(/\s+/g, '').toLowerCase();
         return (entry.accepted_text || []).some(ca => norm(ca) === norm(userValue));
     }
 
