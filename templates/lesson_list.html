@@ -100,7 +100,7 @@
                    target="_blank" rel="noopener">{{ lesson.lesson_code }}: {{ lesson.display_name }}</a>
               </label>
               <a href="#" class="flex-shrink-0"
-                 onclick="vdOpen({{ lesson.id }}, {{ (lesson.details or '') | tojson }}, {{ lesson.display_name | tojson }});return false;"
+                 onclick="vdOpen({{ lesson.id }}, {{ (lesson.details or '') | tojson | e }}, {{ lesson.display_name | tojson | e }});return false;"
                  style="font-size:0.8rem;color:var(--color-muted);white-space:nowrap;">Details</a>
             </div>
             {% endfor %}

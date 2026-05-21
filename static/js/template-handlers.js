@@ -239,8 +239,7 @@ class TemplateHandlerFILL extends TemplateHandler {
             });
         }
         // text
-        const cs   = entry.case_sensitive === true;
-        const norm = s => cs ? s.trim() : s.toLowerCase().trim();
+        const norm = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
         return (entry.accepted_text || []).some(ca => norm(ca) === norm(userValue));
     }
 
