@@ -1098,19 +1098,7 @@ def _parse_fill_upload(text):
     current = None
     for raw_line in text.splitlines():
         line = raw_line.strip()
-        if not line:
-            continue
-        # answer: uses colon separator
-        if line.lower().startswith('answer:'):
-            _, _, value = line.partition(':')
-            value = value.strip()
-            if current is not None and current['blanks']:
-                try:
-                    current['blanks'][-1]['answer'] = float(value) if value else 0.0
-                except ValueError:
-                    current['blanks'][-1]['answer'] = 0.0
-            continue
-        if '=' not in line:
+        if not line or '=' not in line:
             continue
         key, _, value = line.partition('=')
         key = key.strip().lower()
@@ -1121,6 +1109,11 @@ def _parse_fill_upload(text):
             current = {'question': value, 'blanks': []}
         elif key.startswith('label') and current is not None:
             current['blanks'].append({'label': value, 'answer': 0.0})
+        elif key == 'answer' and current is not None and current['blanks']:
+            try:
+                current['blanks'][-1]['answer'] = float(value) if value else 0.0
+            except ValueError:
+                current['blanks'][-1]['answer'] = 0.0
     if current is not None:
         blocks.append(current)
     return blocks
