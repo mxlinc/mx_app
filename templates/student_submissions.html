@@ -72,7 +72,7 @@
         {% for s in submissions %}
         <tr id="row-{{ loop.index }}">
           <td class="td-code">{{ s.code }}</td>
-          <td class="td-name">{{ s.name }}</td>
+          <td class="td-name">{{ s.name.rsplit('_', 1)[0] }}</td>
           <td class="td-unit">{{ s.au_name }}</td>
           <td class="td-score">{{ s.score }}</td>
           <td class="td-incorrect {% if s.incorrect == 'All Correct' %}all-correct{% endif %}">{{ s.incorrect }}</td>
