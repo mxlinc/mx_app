@@ -1260,6 +1260,24 @@ def videos_create():
     return jsonify({'ok': True, 'id': video.id})
 
 
+@lms_bp.route('/videos/update-details', methods=['POST'])
+@login_required
+def videos_update_details():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data     = request.get_json(force=True)
+    video_id = data.get('id')
+    details  = (data.get('details') or '').strip()
+    if not video_id:
+        return jsonify({'ok': False, 'error': 'id is required'}), 400
+    video = Video.query.get(video_id)
+    if not video:
+        return jsonify({'ok': False, 'error': 'Video not found'}), 404
+    video.details = details or None
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 # ==================== ASSIGNMENT UNITS ==================== #
 
 @lms_bp.route('/units/options', methods=['GET'])

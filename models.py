@@ -107,6 +107,7 @@ class Video(db.Model):
     file_name    = db.Column(db.String(255), nullable=False)
     display_name = db.Column(db.String(255), nullable=False)
     broad_area   = db.Column(db.String(100))
+    details      = db.Column(db.Text)
 
 
 class AUnit(db.Model):

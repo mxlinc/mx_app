@@ -99,6 +99,9 @@
                 <a href="https://mx-app-mm.onrender.com/packages/advanced/{{ lesson.file_name }}"
                    target="_blank" rel="noopener">{{ lesson.lesson_code }}: {{ lesson.display_name }}</a>
               </label>
+              <a href="#" class="flex-shrink-0"
+                 onclick="vdOpen({{ lesson.id }}, {{ (lesson.details or '') | tojson }}, {{ lesson.display_name | tojson }});return false;"
+                 style="font-size:0.8rem;color:var(--color-muted);white-space:nowrap;">Details</a>
             </div>
             {% endfor %}
           </div>
@@ -107,6 +110,26 @@
       {% endfor %}
     </div>
 
+  </div>
+
+  <!-- Video Details Modal -->
+  <div id="vd-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1040;"></div>
+  <div id="vd-modal" role="dialog" aria-modal="true" aria-labelledby="vd-title"
+       style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+              background:#fff;border-radius:10px;padding:2rem;width:min(520px,95vw);
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1050;">
+    <h2 id="vd-title" style="font-size:1.15rem;font-weight:600;color:var(--color-primary);margin:0 0 0.35rem;"></h2>
+    <p style="font-size:0.8rem;color:var(--color-muted);margin:0 0 1rem;">Video details / notes</p>
+    <div id="vd-error" style="display:none;color:#c0392b;font-size:0.88rem;margin-bottom:0.75rem;"></div>
+    <textarea id="vd-textarea" rows="6"
+              style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;
+                     font-size:0.93rem;resize:vertical;font-family:inherit;"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.25rem;">
+      <button onclick="vdClose()"
+              style="padding:0.5rem 1.25rem;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;font-size:0.95rem;">Cancel</button>
+      <button id="vd-save-btn" onclick="vdSave()"
+              style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:var(--color-primary);color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;">Save</button>
+    </div>
   </div>
 
   <!-- Add New Video Modal -->
@@ -431,6 +454,68 @@
     }
 
     document.getElementById('anv-backdrop').addEventListener('click', anvClose);
+
+    // ── Video Details modal ───────────────────────────────────────
+    let vdCurrentId = null;
+
+    function vdOpen(id, details, name) {
+      vdCurrentId = id;
+      document.getElementById('vd-title').textContent = name;
+      document.getElementById('vd-textarea').value = details;
+      document.getElementById('vd-error').style.display = 'none';
+      const btn = document.getElementById('vd-save-btn');
+      btn.disabled = false;
+      btn.textContent = 'Save';
+      document.getElementById('vd-backdrop').style.display = 'block';
+      document.getElementById('vd-modal').style.display = 'block';
+      document.getElementById('vd-textarea').focus();
+    }
+
+    function vdClose() {
+      document.getElementById('vd-backdrop').style.display = 'none';
+      document.getElementById('vd-modal').style.display = 'none';
+      vdCurrentId = null;
+    }
+
+    function vdSave() {
+      if (!vdCurrentId) return;
+      const details = document.getElementById('vd-textarea').value;
+      const errEl   = document.getElementById('vd-error');
+      errEl.style.display = 'none';
+      const btn = document.getElementById('vd-save-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving\u2026';
+      fetch('/videos/update-details', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ id: vdCurrentId, details })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          // Update the onclick so re-opening shows the saved value
+          const link = document.querySelector(`a[onclick*="vdOpen(${vdCurrentId},"]`);
+          if (link) {
+            const name = document.getElementById('vd-title').textContent;
+            link.setAttribute('onclick', `vdOpen(${vdCurrentId}, ${JSON.stringify(details)}, ${JSON.stringify(name)});return false;`);
+          }
+          vdClose();
+        } else {
+          errEl.textContent = data.error || 'An error occurred.';
+          errEl.style.display = 'block';
+          btn.disabled = false;
+          btn.textContent = 'Save';
+        }
+      })
+      .catch(() => {
+        errEl.textContent = 'Network error. Please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      });
+    }
+
+    document.getElementById('vd-backdrop').addEventListener('click', vdClose);
   </script>
 </body>
 </html>

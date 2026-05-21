@@ -374,12 +374,9 @@ class QuizFILL {
             let isCorrect = false;
             if (correct.response_type === 'text') {
                 const acceptedAnswers = correct.accepted_text || [];
-                const caseSensitive = correct.case_sensitive !== false;
-                const userVal = caseSensitive ? userAnswer : userAnswer.toLowerCase();
-                isCorrect = acceptedAnswers.some(ans => {
-                    const checkVal = caseSensitive ? ans : ans.toLowerCase();
-                    return userVal === checkVal;
-                });
+                const normalize = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
+                const userVal = normalize(userAnswer);
+                isCorrect = acceptedAnswers.some(ans => normalize(ans) === userVal);
             } else if (correct.response_type === 'numeric') {
                 const acceptedValues = correct.accepted_numeric || [];
                 isCorrect = acceptedValues.includes(userAnswer);
