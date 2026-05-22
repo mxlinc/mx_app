@@ -1371,18 +1371,37 @@ def units_content(au_id):
         return jsonify({'ok': False, 'error': 'Not found'}), 404
     codes = [c for c in (unit.au_content or '').split('|') if c]
     # Build lookup maps
-    video_map = {v.lesson_code: v.display_name for v in Video.query.filter(Video.lesson_code.in_(codes)).all()}
-    quiz_map  = {q.quiz_code:   q.title         for q in Quiz.query.filter(Quiz.quiz_code.in_(codes)).all()}
+    video_map = {
+        v.lesson_code: {'name': v.display_name, 'file_name': v.file_name}
+        for v in Video.query.filter(Video.lesson_code.in_(codes)).all()
+    }
+    quiz_map = {}
+    for q in Quiz.query.filter(Quiz.quiz_code.in_(codes)).all():
+        parts = [p.strip() for p in (q.question_ids or '').split(',') if p.strip()]
+        quiz_map[q.quiz_code] = {
+            'title': q.title,
+            'quiz_id': q.id,
+            'first_question_id': int(parts[0]) if parts else None,
+        }
     items = []
     for code in codes:
         if code.startswith('V-'):
-            name  = video_map.get(code)
-            found = name is not None
-            items.append({'code': code, 'name': name or code, 'found': found, 'type': 'video'})
+            info  = video_map.get(code)
+            found = info is not None
+            items.append({
+                'code': code, 'name': info['name'] if info else code,
+                'found': found, 'type': 'video',
+                'file_name': info['file_name'] if info else None,
+            })
         elif code.startswith('Q-'):
-            name  = quiz_map.get(code)
-            found = name is not None
-            items.append({'code': code, 'name': name or code, 'found': found, 'type': 'quiz'})
+            info  = quiz_map.get(code)
+            found = info is not None
+            items.append({
+                'code': code, 'name': info['title'] if info else code,
+                'found': found, 'type': 'quiz',
+                'quiz_id': info['quiz_id'] if info else None,
+                'first_question_id': info['first_question_id'] if info else None,
+            })
         else:
             items.append({'code': code, 'name': code, 'found': False, 'type': 'unknown'})
     return jsonify({'ok': True, 'au_name': unit.au_name, 'items': items})

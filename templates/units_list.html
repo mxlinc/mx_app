@@ -169,11 +169,20 @@
         const badgeLabel = item.type === 'video' ? 'V' : item.type === 'quiz' ? 'Q' : '?';
         const warnHtml   = item.found ? '' : ' <span class="warn">&#9888; not found</span>';
 
+        let nameHtml;
+        if (item.found && item.type === 'video' && item.file_name) {
+          nameHtml = `<a href="https://mx-app-mm.onrender.com/packages/advanced/${escHtml(item.file_name)}" target="_blank" rel="noopener">${escHtml(item.name)}</a>`;
+        } else if (item.found && item.type === 'quiz' && item.first_question_id) {
+          nameHtml = `<a href="/question/display/${item.first_question_id}?quiz_id=${item.quiz_id}" target="_blank" rel="noopener">${escHtml(item.name)}</a>`;
+        } else {
+          nameHtml = escHtml(item.name);
+        }
+
         li.innerHTML = `
           <span class="cu-drag-handle">&#8597;</span>
           <span class="${badgeClass}">${badgeLabel}</span>
           <span class="cu-item-label">
-            <span class="code">${item.code}</span>: <span class="name">${escHtml(item.name)}</span>${warnHtml}
+            <span class="code">${item.code}</span>: <span class="name">${nameHtml}</span>${warnHtml}
           </span>
           <button class="cu-remove" title="Remove" onclick="removeItem(this)">&#10005;</button>
         `;
