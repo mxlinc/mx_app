@@ -1050,7 +1050,7 @@ def student_home_new():
     from collections import defaultdict as _dd
     q_progress = _dd(lambda: {'total': 0, 'done': 0})
     for _r in all_rows:
-        if _r.item_code.startswith('Q-'):
+        if _r.item_code.startswith('Q-') and _r.status in ('assigned', 'done'):
             q_progress[_r.au_name]['total'] += 1
             if _r.status == 'done':
                 q_progress[_r.au_name]['done'] += 1
@@ -1724,7 +1724,7 @@ def student_preview(user_id):
 
     q_progress = defaultdict(lambda: {'total': 0, 'done': 0})
     for r in all_rows:
-        if r.item_code.startswith('Q-'):
+        if r.item_code.startswith('Q-') and r.status in ('assigned', 'done'):
             q_progress[r.au_name]['total'] += 1
             if r.status == 'done':
                 q_progress[r.au_name]['done'] += 1

@@ -102,7 +102,9 @@ class Video(db.Model):
     __tablename__ = 'videos'
     __table_args__ = {'schema': CURRENT_SCHEMA}
     id           = db.Column(db.Integer, primary_key=True)
-    lesson_code  = db.Column(db.String(10))
+    lesson_code  = db.Column(db.Text, server_default=db.text(
+        "('V-'::text || lpad(nextval('prod.videos_code_seq'::regclass)::text, 4, '0'::text))"
+    ))
     last_updated = db.Column(db.DateTime, server_default=db.func.now())
     file_name    = db.Column(db.String(255), nullable=False)
     display_name = db.Column(db.String(255), nullable=False)

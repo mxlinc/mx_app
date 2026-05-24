@@ -5,10 +5,13 @@ git status
 git add .
 
 # commit with a message
-git commit -m "comment"
+git commit -m "
+git push origin main
 
 
-git push origin qb
+QB is gone
+git push origin 
+qb
 
 
 
