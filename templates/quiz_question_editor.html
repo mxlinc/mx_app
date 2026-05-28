@@ -590,7 +590,9 @@
         try {
             const resp = await fetch(`/question/api/display/${questionId}`);
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-            const question = await resp.json();
+            const data = await resp.json();
+            if (!data.ok || !data.question) throw new Error('Invalid question data');
+            const question = data.question;
             panel.innerHTML = '';
             const component = new UnifiedQuestionComponent({
                 question: question,
@@ -647,7 +649,7 @@
                 const chip = document.createElement('div');
                 chip.className = 'chip';
                 chip.dataset.qid = q.id;
-                chip.textContent = `#${q.id}`;
+                chip.textContent = `${q.id}`;
                 chip.title = q.preview ? q.preview.substring(0, 80) : '';
                 chip.addEventListener('click', () => selectQuestion(q.id));
                 chipsRow.appendChild(chip);
