@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Question Editor – {{ quiz_code or quiz_title }}</title>
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- FontAwesome & Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            font-family: 'Poppins', sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            overflow: hidden;
+        }
+
+        /* ── Top bar ── */
+        #topBar {
+            height: 48px;
+            background: #1b3a6f;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 16px;
+            flex-shrink: 0;
+        }
+
+        #topBar a {
+            color: #a8c4e0;
+            text-decoration: none;
+            font-size: 0.88rem;
+            white-space: nowrap;
+        }
+
+        #topBar a:hover { color: white; }
+
+        #quizHeading {
+            font-size: 0.95rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* ── Chips row ── */
+        #chipsRow {
+            background: white;
+            border-bottom: 1px solid #dde4ed;
+            padding: 8px 16px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+            flex-shrink: 0;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+
+        .chip {
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid #b0c4d8;
+            background: #f4f7fb;
+            font-size: 0.78rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            color: #1b3a6f;
+        }
+
+        .chip:hover { background: #dce8f5; border-color: #7aaac8; }
+
+        .chip.active {
+            background: #1b3a6f;
+            color: white;
+            border-color: #1b3a6f;
+        }
+
+        /* ── Two-panel layout ── */
+        #panels {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            height: calc(100vh - 48px - 56px); /* subtract topBar + chipsRow approx */
+        }
+
+        /* Left: builder */
+        #leftPanel {
+            width: 45%;
+            overflow-y: auto;
+            border-right: 2px solid #dde4ed;
+            background: #faf7f5;
+            padding: 12px;
+            flex-shrink: 0;
+        }
+
+        /* Right: preview */
+        #rightPanel {
+            flex: 1;
+            overflow-y: auto;
+            background: #f8fafc;
+            padding: 20px;
+        }
+
+        #rightPanelPlaceholder {
+            color: #aaa;
+            text-align: center;
+            margin-top: 80px;
+            font-size: 0.95rem;
+        }
+
+        /* ── Builder styles (copied from quiz_builder.html) ── */
+        .builder-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+
+        .form-section {
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .section-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: #1b3a6f;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .form-row.three-column { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .form-row.full         { grid-template-columns: 1fr; }
+
+        .form-group { display: flex; flex-direction: column; }
+
+        label {
+            font-weight: 500;
+            margin-bottom: 3px;
+            color: #333;
+            font-size: 0.82em;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select,
+        textarea {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 0.83em;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #0077cc;
+            box-shadow: 0 0 0 3px rgba(0,119,204,0.1);
+        }
+
+        textarea { resize: vertical; min-height: 80px; font-family: 'Poppins', sans-serif; }
+
+        input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 5px 0;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .image-upload-box {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .image-upload-box:hover { border-color: #0077cc; background: #f0f7ff; }
+        .image-upload-box input[type="file"] { display: none; }
+
+        .image-preview {
+            margin-top: 8px;
+            max-width: 130px;
+            max-height: 130px;
+            border-radius: 6px;
+        }
+
+        .message {
+            padding: 7px 10px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: none;
+            font-size: 0.85em;
+        }
+
+        .message.show  { display: block; }
+        .message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .message.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+        .input-type-label { font-size: 0.78em; color: #666; font-weight: normal; }
+
+        button {
+            padding: 8px 12px;
+            font-size: 0.87em;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-family: 'Poppins', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        #saveBtn    { background: #0077cc; color: white; }
+        #saveBtn:hover { background: #005fa3; }
+
+        #discardBtn { background: #6c757d; color: white; }
+        #discardBtn:hover { background: #5a6268; }
+
+        /* toolbar at top of left panel */
+        #builderToolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0 10px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            flex-wrap: wrap;
+        }
+
+        .question-type-selector,
+        .format-helper-selector {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 8px;
+            background: white;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            height: 34px;
+        }
+
+        .question-type-selector label,
+        .format-helper-selector label {
+            font-weight: 600;
+            color: #333;
+            font-size: 0.82em;
+            white-space: nowrap;
+        }
+
+        .question-type-selector select,
+        .format-helper-selector select {
+            border: none;
+            background: transparent;
+            font-size: 0.82em;
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .format-helper-selector select { max-width: 170px; }
+
+        /* MR correct options container */
+        #mr-correct-options {
+            border: 1px solid #ddd;
+            padding: 8px;
+            border-radius: 6px;
+            background: #f9f9f9;
+            max-height: 180px;
+            overflow-y: auto;
+            min-height: 60px;
+        }
+
+        /* preview section hidden */
+        .preview-section { display: none !important; }
+    </style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div id="topBar">
+    <a href="/quiz/list"><i class="fas fa-arrow-left"></i> Exit</a>
+    <div id="quizHeading">
+        {% if quiz_code %}{{ quiz_code }}: {% endif %}{{ quiz_title }}
+    </div>
+</div>
+
+<!-- ── Chips Row ── -->
+<div id="chipsRow">
+    <span style="font-size:0.8rem;color:#888;">Loading questions…</span>
+</div>
+
+<!-- ── Two-panel layout ── -->
+<div id="panels">
+
+    <!-- LEFT: Builder Form -->
+    <div id="leftPanel">
+
+        <!-- Toolbar -->
+        <div id="builderToolbar">
+            <div class="question-type-selector">
+                <label for="questionType">Type:</label>
+                <select id="questionType">
+                    <option value="mcq">MCQ</option>
+                    <option value="mr">MR</option>
+                    <option value="fill">FILL</option>
+                    <option value="ohs">OHS</option>
+                    <option value="feval">FEVAL</option>
+                    <option value="algebra">Algebra</option>
+                </select>
+            </div>
+            <div class="format-helper-selector">
+                <label for="formatHelper">Copy:</label>
+                <select id="formatHelper">
+                    <option value="">— Format Helper —</option>
+                </select>
+            </div>
+            <button id="saveBtn"><i class="fas fa-save"></i> Save</button>
+            <button id="discardBtn"><i class="fas fa-times"></i> Discard</button>
+        </div>
+
+        <!-- Form -->
+        <div class="builder-card">
+            <div id="message" class="message"></div>
+
+            <!-- Edit Mode bar -->
+            <div id="editModeBar" style="display:none;background:#f0f7ff;border:1px solid #0077cc;border-radius:6px;padding:10px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="color:#0077cc;font-weight:600;font-size:0.88em;">
+                        Editing Question ID: <span id="displayId"></span>
+                    </div>
+                    <a id="previewBtn" href="#" target="_blank" rel="noopener"
+                       style="font-size:0.82rem;padding:0.25rem 0.75rem;background:#2196F3;color:white;border-radius:5px;text-decoration:none;">
+                        Preview as Student
+                    </a>
+                </div>
+            </div>
+
+            <form id="quizForm">
+
+                <!-- Stem -->
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="stem_latex">Question * <span class="input-type-label">(LaTeX)</span></label>
+                        <textarea id="stem_latex" name="stem_latex" placeholder="Enter LaTeX question…" required></textarea>
+                    </div>
+                </div>
+
+                <!-- Image -->
+                <div class="form-section">
+                    <div class="image-upload-box" onclick="document.getElementById('image').click()">
+                        <input type="file" id="image" accept="image/*">
+                        <div>
+                            <i class="fas fa-cloud-upload-alt" style="font-size:1.8em;color:#0077cc;margin-bottom:6px;display:block;"></i>
+                            <div style="font-weight:500;font-size:0.85em;">Click to upload or drag & drop</div>
+                            <div style="font-size:0.78em;color:#666;">PNG, JPG up to 5MB</div>
+                        </div>
+                        <img id="imagePreview" class="image-preview" style="display:none;">
+                    </div>
+                    <button type="button" id="discardImageBtn" style="display:none;margin-top:8px;background:#f44336;color:white;padding:6px 14px;">
+                        <i class="fas fa-trash"></i> Remove Image
+                    </button>
+                </div>
+
+                <!-- MCQ -->
+                <div id="mcq-section" class="form-section">
+                    <div class="section-title"><i class="fas fa-list"></i> Options</div>
+                    <div class="form-group">
+                        <label>Options <span class="input-type-label">(one per line, LaTeX)</span></label>
+                        <textarea id="options" name="options" placeholder="$\frac{4}{3}$&#10;$\frac{3}{4}$&#10;None of the Above"></textarea>
+                    </div>
+                    <div class="checkbox-label">
+                        <input type="checkbox" id="shuffle" name="shuffle" checked>
+                        <label for="shuffle" style="margin:0;">Shuffle options</label>
+                    </div>
+                    <div class="form-group" style="margin-top:8px;">
+                        <label for="correct">Correct Option <span class="input-type-label">(optional – default is first)</span></label>
+                        <input type="text" id="correct" name="correct" placeholder="e.g., $\frac{3}{4}$">
+                    </div>
+                </div>
+
+                <!-- MR -->
+                <div id="mr-section" class="form-section" style="display:none;">
+                    <div class="section-title"><i class="fas fa-check-square"></i> Options</div>
+                    <div class="form-group">
+                        <label>Options <span class="input-type-label">(one per line, LaTeX)</span></label>
+                        <textarea id="mr-options" name="mr-options" placeholder="Option A&#10;Option B&#10;Option C"></textarea>
+                    </div>
+                    <div class="checkbox-label">
+                        <input type="checkbox" id="mr-shuffle" name="mr-shuffle" checked>
+                        <label for="mr-shuffle" style="margin:0;">Shuffle options</label>
+                    </div>
+                    <div class="form-group" style="margin-top:8px;">
+                        <label>Correct Options <span class="input-type-label">(select at least 2)</span></label>
+                        <div id="mr-correct-options">
+                            <p style="color:#999;text-align:center;margin:20px 0;font-size:0.85em;">Enter options above to select correct ones</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FILL -->
+                <div id="fill-section" class="form-section" style="display:none;">
+                    <div class="section-title"><i class="fas fa-edit"></i> Fill in the Blanks</div>
+                    <div id="fill-blanks-container" style="margin-bottom:12px;"></div>
+                    <button type="button" id="addBlankBtn" style="background:#4CAF50;color:white;padding:7px 14px;">
+                        <i class="fas fa-plus"></i> Add Blank
+                    </button>
+                </div>
+
+                <!-- OHS -->
+                <div id="ohs-section" class="form-section" style="display:none;">
+                    <div class="section-title"><i class="fas fa-crosshairs"></i> Define HotSpot</div>
+                    <div style="background:#f0f7ff;border:1px solid #0077cc;border-radius:6px;padding:10px;margin-bottom:12px;font-size:0.85em;color:#0077cc;">
+                        <strong>Instructions:</strong> Upload an image above, then click and drag on the canvas to draw the hotspot rectangle.
+                    </div>
+                    <div style="position:relative;background:#f5f5f5;border:2px dashed #ccc;border-radius:6px;padding:16px;text-align:center;margin-bottom:12px;">
+                        <canvas id="ohsCanvas" style="border:1px solid #ddd;border-radius:4px;cursor:crosshair;display:none;max-width:100%;"></canvas>
+                        <p id="ohsCanvasPlaceholder" style="color:#999;font-size:0.88em;margin:30px 0;">
+                            <i class="fas fa-image" style="font-size:1.8em;display:block;margin-bottom:8px;"></i>
+                            Upload an image above to enable hotspot drawing
+                        </p>
+                    </div>
+                    <div id="ohsCoordinatesDisplay" style="background:#f9f9f9;border:1px solid #ddd;border-radius:6px;padding:10px;margin-bottom:12px;display:none;">
+                        <div style="font-weight:600;margin-bottom:6px;font-size:0.85em;">HotSpot Coordinates:</div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82em;">
+                            <div><span style="color:#666;">X:</span> <span id="ohsCoordX" style="font-weight:600;">-</span></div>
+                            <div><span style="color:#666;">Y:</span> <span id="ohsCoordY" style="font-weight:600;">-</span></div>
+                            <div><span style="color:#666;">Width:</span> <span id="ohsCoordW" style="font-weight:600;">-</span></div>
+                            <div><span style="color:#666;">Height:</span> <span id="ohsCoordH" style="font-weight:600;">-</span></div>
+                        </div>
+                    </div>
+                    <button type="button" id="ohsClearBtn" style="background:#f44336;color:white;padding:7px 14px;display:none;">
+                        <i class="fas fa-redo"></i> Clear HotSpot
+                    </button>
+                </div>
+
+                <!-- FEVAL -->
+                <div id="feval-section" class="form-section" style="display:none;">
+                    <div class="section-title"><i class="fas fa-code"></i> Variables &amp; Rules</div>
+                    <div style="margin-bottom:16px;">
+                        <label style="font-weight:600;margin-bottom:8px;display:block;font-size:0.85em;">Input Variables</label>
+                        <div id="feval-variables-container" style="border:1px solid #ddd;padding:8px;border-radius:6px;background:#f9f9f9;margin-bottom:8px;min-height:40px;"></div>
+                        <button type="button" id="addFEVALVariableBtn" style="background:#4CAF50;color:white;padding:7px 14px;font-size:0.85em;">
+                            <i class="fas fa-plus"></i> Add Variable
+                        </button>
+                    </div>
+                    <div>
+                        <label style="font-weight:600;margin-bottom:8px;display:block;font-size:0.85em;">Validation Rules</label>
+                        <div id="feval-rules-container" style="border:1px solid #ddd;padding:8px;border-radius:6px;background:#f9f9f9;margin-bottom:8px;min-height:60px;"></div>
+                        <button type="button" id="addFEVALRuleBtn" style="background:#2196F3;color:white;padding:7px 14px;font-size:0.85em;">
+                            <i class="fas fa-plus"></i> Add Rule
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Algebra -->
+                <div id="algebra-section" class="form-section" style="display:none;">
+                    <div class="section-title"><i class="fas fa-square-root-alt"></i> Algebra Answer</div>
+                    <div class="form-group">
+                        <label for="algebra-label">Input Label <span class="input-type-label">(LaTeX, optional)</span></label>
+                        <input type="text" id="algebra-label" placeholder="e.g. Simplify: | units">
+                    </div>
+                    <div class="form-group">
+                        <label for="algebra-accepted">Accepted Answers <span class="input-type-label">(pipe-delimited)</span></label>
+                        <input type="text" id="algebra-accepted" placeholder="e.g. x+4 | 4+x">
+                    </div>
+                    <div class="form-group">
+                        <label for="algebra-canonical">Canonical Form <span class="input-type-label">(sympy)</span></label>
+                        <input type="text" id="algebra-canonical" placeholder="e.g. x+4" style="font-family:monospace;">
+                    </div>
+                    <div class="form-group">
+                        <label for="algebra-variables">Variables <span class="input-type-label">(comma-separated)</span></label>
+                        <input type="text" id="algebra-variables" placeholder="e.g. x, y" style="font-family:monospace;">
+                    </div>
+                    <div class="checkbox-label" style="margin-top:8px;">
+                        <input type="checkbox" id="algebra-use-sympy" checked>
+                        <label for="algebra-use-sympy" style="margin:0;">Enable sympy equivalence check</label>
+                    </div>
+                </div>
+
+                <!-- Feedback -->
+                <div class="form-section">
+                    <div class="form-group">
+                        <label for="feedback_latex">Feedback <span class="input-type-label">(LaTeX, optional)</span></label>
+                        <textarea id="feedback_latex" name="feedback_latex" placeholder="Shown on incorrect answer…"></textarea>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="form-section" style="background:#f9f9f9;border-top:2px solid #e8e8e8;margin-top:16px;">
+                    <div style="font-weight:600;margin-bottom:12px;color:#666;font-size:0.88em;">
+                        <i class="fas fa-tag" style="margin-right:5px;"></i>Metadata
+                    </div>
+                    <div class="form-row three-column">
+                        <div class="form-group">
+                            <label for="topic">Topic</label>
+                            <input type="text" id="topic" name="topic">
+                        </div>
+                        <div class="form-group">
+                            <label for="subtopic">Subtopic</label>
+                            <input type="text" id="subtopic" name="subtopic">
+                        </div>
+                        <div class="form-group">
+                            <label for="level">Level</label>
+                            <input type="text" id="level" name="level">
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div><!-- /leftPanel -->
+
+    <!-- RIGHT: Preview -->
+    <div id="rightPanel">
+        <div id="rightPanelPlaceholder">
+            <i class="fas fa-mouse-pointer" style="font-size:2rem;display:block;margin-bottom:12px;color:#ccc;"></i>
+            Select a question chip above to preview it here.
+        </div>
+    </div>
+
+</div><!-- /panels -->
+
+
+<!-- ── Question-type handler scripts ── -->
+<script src="{{ url_for('static', filename='js/quiz-common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-feval.js') }}"></script>
+
+<!-- ── Shared builder logic ── -->
+<script src="{{ url_for('static', filename='js/quiz-builder-form.js') }}"></script>
+
+<!-- ── UnifiedQuestionComponent dependencies ── -->
+<script src="{{ url_for('static', filename='js/question-templates.js') }}"></script>
+<script src="{{ url_for('static', filename='js/template-handlers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/unified-question-component.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-calculator.js') }}"></script>
+
+<script>
+    // Flask template data
+    const QUIZ_ID = {{ quiz_id }};
+
+    // ── Right-panel renderer ──────────────────────────────────────────────
+    async function renderRightPanel(questionId) {
+        const panel = document.getElementById('rightPanel');
+        panel.innerHTML = '<div style="padding:40px;text-align:center;color:#aaa;font-size:0.9em;">Loading preview…</div>';
+        try {
+            const resp = await fetch(`/question/api/display/${questionId}`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const question = await resp.json();
+            panel.innerHTML = '';
+            const component = new UnifiedQuestionComponent({
+                question: question,
+                container: panel,
+                readOnly: false
+            });
+            component.render();
+        } catch (err) {
+            panel.innerHTML = `<div style="padding:20px;color:#c00;">Error loading preview: ${err.message}</div>`;
+        }
+    }
+
+    // ── Chip selection ────────────────────────────────────────────────────
+    let activeChipId = null;
+
+    async function selectQuestion(questionId) {
+        // Highlight chip
+        document.querySelectorAll('.chip').forEach(c => {
+            c.classList.toggle('active', parseInt(c.dataset.qid) === questionId);
+        });
+        activeChipId = questionId;
+
+        // Load into left panel (builder) and right panel (preview) in parallel
+        await Promise.all([
+            loadQuestionForEdit(questionId),
+            renderRightPanel(questionId)
+        ]);
+    }
+
+    // ── After save: refresh only right panel ─────────────────────────────
+    window.onQuestionSaved = function(result) {
+        renderRightPanel(result.question_id);
+    };
+
+    // ── Bootstrap ─────────────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', async () => {
+        initBuilderForm();
+
+        try {
+            const resp = await fetch(`/quiz/api/${QUIZ_ID}`);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const data = await resp.json();
+
+            const chipsRow = document.getElementById('chipsRow');
+            const questions = data.questions || [];
+
+            if (questions.length === 0) {
+                chipsRow.innerHTML = '<span style="font-size:0.82rem;color:#888;">No questions in this quiz.</span>';
+                return;
+            }
+
+            chipsRow.innerHTML = '';
+            questions.forEach(q => {
+                const chip = document.createElement('div');
+                chip.className = 'chip';
+                chip.dataset.qid = q.id;
+                chip.textContent = `#${q.id}`;
+                chip.title = q.preview ? q.preview.substring(0, 80) : '';
+                chip.addEventListener('click', () => selectQuestion(q.id));
+                chipsRow.appendChild(chip);
+            });
+
+            // Auto-select first question
+            selectQuestion(questions[0].id);
+
+        } catch (err) {
+            document.getElementById('chipsRow').innerHTML =
+                `<span style="color:#c00;font-size:0.82rem;">Failed to load quiz questions: ${err.message}</span>`;
+        }
+    });
+</script>
+</body>
+</html>

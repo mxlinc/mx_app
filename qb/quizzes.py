@@ -249,6 +249,18 @@ def quiz_list_page():
     return render_template("quiz_list.html")
 
 
+@qb_bp.route("/<int:quiz_id>/question-editor", methods=["GET"])
+@login_required
+def question_editor_page(quiz_id):
+    quiz = Quiz.query.get_or_404(quiz_id)
+    return render_template(
+        'quiz_question_editor.html',
+        quiz_id=quiz_id,
+        quiz_title=quiz.title,
+        quiz_code=quiz.quiz_code or ''
+    )
+
+
 @qb_bp.route("/api/quizzes-page", methods=["GET"])
 @login_required
 def get_quizzes_page():
