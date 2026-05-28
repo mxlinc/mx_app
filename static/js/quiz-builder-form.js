@@ -318,7 +318,6 @@ async function save() {
         }
 
         if (result.ok) {
-            showMessage('✓ ' + result.message, 'success');
             // Save state for next question
             lastQuestion = {
                 topic: data.topic,
