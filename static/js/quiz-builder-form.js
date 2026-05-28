@@ -781,7 +781,6 @@ async function loadQuestionForEdit(questionId) {
             document.getElementById('algebra-label').value = la ? `${lb} | ${la}` : lb;
         }
 
-        showMessage('✓ Question loaded for editing', 'success');
     } catch (error) {
         showMessage('✗ Error loading question: ' + error.message, 'error');
         console.error(error);
