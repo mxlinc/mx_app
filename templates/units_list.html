@@ -49,6 +49,7 @@
     .cu-item-label .warn { color:var(--c-error); font-size:0.8rem; }
     .cu-badge-v { background:rgba(31,111,174,0.12); color:var(--c-primary); border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
     .cu-badge-q { background:rgba(34,166,166,0.12); color:#189e8a; border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
+    .cu-badge-i { background:rgba(106,13,173,0.12); color:#6a0dad; border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
     .cu-badge-u { background:#f0e68c55; color:#8a7a00; border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
     .cu-remove { background:none; border:none; color:var(--c-error); cursor:pointer; font-size:1rem; padding:0 0.2rem; line-height:1; flex-shrink:0; }
     .cu-remove:hover { color:#922b21; }
@@ -165,8 +166,8 @@
         li.className = 'cu-item';
         li.dataset.code = item.code;
 
-        const badgeClass = item.type === 'video' ? 'cu-badge-v' : item.type === 'quiz' ? 'cu-badge-q' : 'cu-badge-u';
-        const badgeLabel = item.type === 'video' ? 'V' : item.type === 'quiz' ? 'Q' : '?';
+        const badgeClass = item.type === 'video' ? 'cu-badge-v' : item.type === 'quiz' ? 'cu-badge-q' : item.type === 'interaction' ? 'cu-badge-i' : 'cu-badge-u';
+        const badgeLabel = item.type === 'video' ? 'V' : item.type === 'quiz' ? 'Q' : item.type === 'interaction' ? 'I' : '?';
         const warnHtml   = item.found ? '' : ' <span class="warn">&#9888; not found</span>';
 
         let nameHtml;
@@ -174,6 +175,8 @@
           nameHtml = `<a href="https://mx-app-mm.onrender.com/packages/advanced/${escHtml(item.file_name)}" target="_blank" rel="noopener">${escHtml(item.name)}</a>`;
         } else if (item.found && item.type === 'quiz' && item.first_question_id) {
           nameHtml = `<a href="/question/display/${item.first_question_id}?quiz_id=${item.quiz_id}" target="_blank" rel="noopener">${escHtml(item.name)}</a>`;
+        } else if (item.found && item.type === 'interaction' && item.file_name) {
+          nameHtml = `<a href="/static/interactions/${escHtml(item.file_name)}" target="_blank" rel="noopener">${escHtml(item.name)}</a>`;
         } else {
           nameHtml = escHtml(item.name);
         }

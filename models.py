@@ -112,6 +112,20 @@ class Video(db.Model):
     details      = db.Column(db.Text)
 
 
+class Interaction(db.Model):
+    __tablename__ = 'interactions'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+    id           = db.Column(db.Integer, primary_key=True)
+    lesson_code  = db.Column(db.Text, server_default=db.text(
+        "('I-'::text || lpad(nextval('prod.interactions_code_seq'::regclass)::text, 4, '0'::text))"
+    ))
+    last_updated = db.Column(db.DateTime, server_default=db.func.now())
+    file_name    = db.Column(db.String(255), nullable=False)
+    display_name = db.Column(db.String(255), nullable=False)
+    broad_area   = db.Column(db.String(100))
+    details      = db.Column(db.Text)
+
+
 class AUnit(db.Model):
     __tablename__ = 'a_unit'
     __table_args__ = {'schema': CURRENT_SCHEMA}

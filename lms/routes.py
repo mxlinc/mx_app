@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 from db import db
-from models import UserTable, UserWorks, MXWorks, MXWorkPacks, EmailMessage, DonePacks, ContactSubmission, Video, AUnit, Quiz, MyWorkList, UserStreak
+from models import UserTable, UserWorks, MXWorks, MXWorkPacks, EmailMessage, DonePacks, ContactSubmission, Video, Interaction, AUnit, Quiz, MyWorkList, UserStreak
 from lms.utils import parse_email_content, update_work_with_result
 
 logger = logging.getLogger(__name__)
@@ -1066,10 +1066,11 @@ def student_home_new():
                                student_name=current_user.full_name or username,
                                stats=stats)
 
-    # Keep only: assigned quizzes + all videos (videos have no completion state)
+    # Keep only: assigned quizzes + all videos + all interactions (neither has completion state)
     work_rows = [
         r for r in all_rows
         if r.item_code.startswith('V-')
+        or r.item_code.startswith('I-')
         or (r.item_code.startswith('Q-') and r.status == 'assigned')
     ]
 
@@ -1103,6 +1104,7 @@ def student_home_new():
     # ── 4. Build item lookup maps ──────────────────────────────────────────
     q_codes = {r.item_code for rows in work_by_unit.values() for r in rows if r.item_code.startswith('Q-')}
     v_codes = {r.item_code for rows in work_by_unit.values() for r in rows if r.item_code.startswith('V-')}
+    i_codes = {r.item_code for rows in work_by_unit.values() for r in rows if r.item_code.startswith('I-')}
 
     quiz_titles  = {}
     quiz_ids     = {}
@@ -1117,6 +1119,11 @@ def student_home_new():
     if v_codes:
         for v in Video.query.filter(Video.lesson_code.in_(v_codes)).all():
             video_names[v.lesson_code] = v.display_name
+
+    interaction_names = {}
+    if i_codes:
+        for i in Interaction.query.filter(Interaction.lesson_code.in_(i_codes)).all():
+            interaction_names[i.lesson_code] = i.display_name
 
     # ── 5. Assemble template-ready structure ───────────────────────────────
     # Only show a unit if it has at least one assigned quiz; videos ride along.
@@ -1149,6 +1156,14 @@ def student_home_new():
                     'code':  row.item_code,
                     'type':  'video',
                     'name':  video_names.get(row.item_code, row.item_code),
+                    'url':   row.item_detail,
+                    'views': row.views or 0,
+                })
+            elif row.item_code.startswith('I-'):
+                items.append({
+                    'code':  row.item_code,
+                    'type':  'interaction',
+                    'name':  interaction_names.get(row.item_code, row.item_code),
                     'url':   row.item_detail,
                     'views': row.views or 0,
                 })
@@ -1278,6 +1293,62 @@ def videos_update_details():
     return jsonify({'ok': True})
 
 
+# ==================== INTERACTIONS ==================== #
+
+@lms_bp.route('/interactions/list')
+@login_required
+def interactions_list():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return "Forbidden", 403
+    interactions = Interaction.query.order_by(Interaction.broad_area, Interaction.display_name).all()
+    from collections import defaultdict
+    grouped = defaultdict(list)
+    for item in interactions:
+        grouped[item.broad_area or 'Uncategorised'].append(item)
+    areas = sorted(grouped.keys(), key=lambda k: (k == 'Uncategorised', k))
+    broad_areas = sorted(set(i.broad_area for i in interactions if i.broad_area))
+    return render_template("interaction_list.html", grouped=grouped, areas=areas, broad_areas=broad_areas)
+
+
+@lms_bp.route('/interactions/create', methods=['POST'])
+@login_required
+def interactions_create():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data         = request.get_json(force=True)
+    file_name    = (data.get('file_name') or '').strip()
+    display_name = (data.get('display_name') or '').strip()
+    broad_area   = (data.get('broad_area') or '').strip()
+    if not file_name or not display_name:
+        return jsonify({'ok': False, 'error': 'file_name and display_name are required'}), 400
+    interaction = Interaction(
+        file_name=file_name,
+        display_name=display_name,
+        broad_area=broad_area or None
+    )
+    db.session.add(interaction)
+    db.session.commit()
+    return jsonify({'ok': True, 'id': interaction.id})
+
+
+@lms_bp.route('/interactions/update-details', methods=['POST'])
+@login_required
+def interactions_update_details():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data           = request.get_json(force=True)
+    interaction_id = data.get('id')
+    details        = (data.get('details') or '').strip()
+    if not interaction_id:
+        return jsonify({'ok': False, 'error': 'id is required'}), 400
+    interaction = Interaction.query.get(interaction_id)
+    if not interaction:
+        return jsonify({'ok': False, 'error': 'Interaction not found'}), 404
+    interaction.details = details or None
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
 # ==================== ASSIGNMENT UNITS ==================== #
 
 @lms_bp.route('/units/options', methods=['GET'])
@@ -1347,6 +1418,27 @@ def units_add_videos():
     return jsonify({'ok': True, 'au_content': unit.au_content})
 
 
+@lms_bp.route('/units/add-interactions', methods=['POST'])
+@login_required
+def units_add_interactions():
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data   = request.get_json(force=True)
+    au_id  = data.get('au_id')
+    codes  = [c.strip() for c in (data.get('codes') or []) if c.strip()]
+    if not au_id or not codes:
+        return jsonify({'ok': False, 'error': 'au_id and codes are required'}), 400
+    unit = AUnit.query.get(au_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Unit not found'}), 404
+    existing = [c for c in (unit.au_content or '').split('|') if c]
+    existing_set = set(existing)
+    new_codes = [c for c in codes if c not in existing_set]
+    unit.au_content = '|'.join(existing + new_codes)
+    db.session.commit()
+    return jsonify({'ok': True, 'au_content': unit.au_content})
+
+
 @lms_bp.route('/units/list')
 @login_required
 def units_list():
@@ -1383,6 +1475,10 @@ def units_content(au_id):
             'quiz_id': q.id,
             'first_question_id': int(parts[0]) if parts else None,
         }
+    interaction_map = {
+        i.lesson_code: {'name': i.display_name, 'file_name': i.file_name}
+        for i in Interaction.query.filter(Interaction.lesson_code.in_(codes)).all()
+    }
     items = []
     for code in codes:
         if code.startswith('V-'):
@@ -1401,6 +1497,14 @@ def units_content(au_id):
                 'found': found, 'type': 'quiz',
                 'quiz_id': info['quiz_id'] if info else None,
                 'first_question_id': info['first_question_id'] if info else None,
+            })
+        elif code.startswith('I-'):
+            info  = interaction_map.get(code)
+            found = info is not None
+            items.append({
+                'code': code, 'name': info['name'] if info else code,
+                'found': found, 'type': 'interaction',
+                'file_name': info['file_name'] if info else None,
             })
         else:
             items.append({'code': code, 'name': code, 'found': False, 'type': 'unknown'})
@@ -1498,14 +1602,19 @@ def unit_assign_submit():
             if c.strip():
                 all_codes.add(c.strip())
 
-    quiz_codes  = {c for c in all_codes if c.startswith('Q-')}
-    video_codes = {c for c in all_codes if c.startswith('V-')}
+    quiz_codes        = {c for c in all_codes if c.startswith('Q-')}
+    video_codes       = {c for c in all_codes if c.startswith('V-')}
+    interaction_codes = {c for c in all_codes if c.startswith('I-')}
 
-    # item_detail is only meaningful for videos (stores the URL).
+    # item_detail stores the URL for videos and interactions.
     # Quizzes are served via Quiz.questions_json at execution time — no copy needed.
     video_detail = {}
     for v in Video.query.filter(Video.lesson_code.in_(video_codes)).all():
         video_detail[v.lesson_code] = f'https://mx-app-mm.onrender.com/packages/advanced/{v.file_name}'
+
+    interaction_detail = {}
+    for i in Interaction.query.filter(Interaction.lesson_code.in_(interaction_codes)).all():
+        interaction_detail[i.lesson_code] = f'/static/interactions/{i.file_name}'
 
     created = 0
     skipped = 0
@@ -1533,6 +1642,8 @@ def unit_assign_submit():
 
                     if code.startswith('V-'):
                         detail = video_detail.get(code)
+                    elif code.startswith('I-'):
+                        detail = interaction_detail.get(code)
                     else:
                         detail = None
 

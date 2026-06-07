@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fractions · Decimals · Percentages</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(140deg, #e8f4fd 0%, #fef9e7 100%);
+      min-height: 100vh;
+      padding: 22px 16px 40px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.75rem;
+      margin-bottom: 20px;
+      letter-spacing: 0.5px;
+    }
+    h1 .h-frac { color: #6a0f0f; }
+    h1 .h-dec  { color: #1b5e20; }
+    h1 .h-pct  { color: #0d2472; }
+    h1 .h-bull { color: #aaa; font-weight: 300; }
+
+    /* ── Controls bar ────────────────────────────────────── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      background: #fff;
+      border-radius: 14px;
+      padding: 13px 20px;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.11);
+      max-width: 980px;
+      margin: 0 auto 28px;
+    }
+
+    .ctrl-label {
+      font-weight: 700;
+      font-size: 1rem;
+      color: #333;
+      white-space: nowrap;
+    }
+
+    select#type-select {
+      padding: 8px 14px;
+      border: 2px solid #1565c0;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1a237e;
+      background: #fff;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    select#type-select:focus { border-color: #e53935; }
+
+    .ctrl-divider {
+      width: 2px;
+      height: 32px;
+      background: #ddd;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    /* Radio pills */
+    .radio-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .radio-pill { position: relative; }
+
+    .radio-pill input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .radio-pill label {
+      display: inline-block;
+      padding: 7px 16px;
+      border-radius: 22px;
+      border: 2px solid #90caf9;
+      background: #e3f2fd;
+      color: #1565c0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+      user-select: none;
+      letter-spacing: 0.3px;
+    }
+    .radio-pill label:hover {
+      background: #bbdefb;
+      border-color: #1565c0;
+    }
+    .radio-pill input:checked + label {
+      background: #1565c0;
+      color: #fff;
+      border-color: #0d47a1;
+      box-shadow: 0 2px 8px rgba(21,101,192,0.35);
+    }
+
+    /* Fraction label in pill uses inline markup */
+    .radio-pill label .frac-inline {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      font-size: 0.75rem;
+      line-height: 1.1;
+      font-weight: 800;
+    }
+    .radio-pill label .frac-inline .fi-bar {
+      width: 100%;
+      min-width: 20px;
+      height: 2px;
+      background: currentColor;
+      border-radius: 1px;
+      margin: 1px 0;
+    }
+
+    /* ── Main area ───────────────────────────────────────── */
+    .main-area {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      max-width: 980px;
+      margin: 0 auto;
+    }
+
+    .grid-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .grid-caption {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #555;
+      letter-spacing: 0.3px;
+    }
+
+    #unit-grid {
+      display: grid;
+      grid-template-columns: repeat(10, 40px);
+      grid-template-rows: repeat(10, 40px);
+      border: 3px solid #1a237e;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .cell {
+      width: 40px;
+      height: 40px;
+      border-right: 1px solid #c5cae9;
+      border-bottom: 1px solid #c5cae9;
+      background: #fff;
+      transition: background-color 0.2s ease;
+    }
+    .cell:nth-child(10n)   { border-right: none; }
+    .cell:nth-child(n+91)  { border-bottom: none; }
+    .cell.shaded           { background: #42a5f5; }
+
+    .grid-counter {
+      font-size: 0.88rem;
+      color: #666;
+      font-weight: 600;
+    }
+    .grid-counter span {
+      color: #1565c0;
+      font-size: 1rem;
+    }
+
+    /* ── Equivalence panel ───────────────────────────────── */
+    .equiv-panel {
+      background: #fff;
+      border-radius: 18px;
+      padding: 28px 38px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+      min-width: 230px;
+      min-height: 406px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-around;
+      margin-top: 30px;
+    }
+
+    .equiv-empty {
+      color: #bbb;
+      font-size: 1rem;
+      line-height: 1.6;
+      padding: 16px 0;
+    }
+
+    .equiv-headline {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #1565c0;
+      font-weight: 700;
+      margin-bottom: 22px;
+    }
+
+    .equiv-row {
+      margin-bottom: 4px;
+      width: 100%;
+    }
+
+    .er-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1.8px;
+      color: #999;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .er-value {
+      font-size: 2.4rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+
+    /* Fraction layout in panel */
+    .er-value.is-frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .er-value.is-frac .fv-num,
+    .er-value.is-frac .fv-den {
+      font-size: 2.1rem;
+      font-weight: 900;
+      color: inherit;
+      line-height: 1;
+    }
+    .er-value.is-frac .fv-bar {
+      width: 110%;
+      height: 4px;
+      background: currentColor;
+      border-radius: 2px;
+    }
+
+    /* Per-type colours: fraction=maroon, decimal=green, percentage=blue */
+    .row-frac .er-label { color: #6a0f0f; }
+    .row-frac .er-value { color: #6a0f0f; }
+    .row-frac .fv-bar   { background: #6a0f0f; }
+
+    .row-dec .er-label  { color: #1b5e20; }
+    .row-dec .er-value  { color: #1b5e20; }
+
+    .row-pct .er-label  { color: #0d2472; }
+    .row-pct .er-value  { color: #0d2472; }
+  </style>
+</head>
+<body>
+
+  <h1><span class="h-frac">Fractions</span> <span class="h-bull">&bull;</span> <span class="h-dec">Decimals</span> <span class="h-bull">&bull;</span> <span class="h-pct">Percentages</span></h1>
+
+  <!-- Controls -->
+  <div class="controls">
+    <span class="ctrl-label">Show as:</span>
+    <select id="type-select" onchange="onTypeChange()">
+      <option value="">-- Choose --</option>
+      <option value="fraction">Fraction</option>
+      <option value="decimal">Decimal</option>
+      <option value="percentage">Percentage</option>
+    </select>
+    <div class="ctrl-divider" id="ctrl-divider"></div>
+    <div class="radio-group" id="radio-group"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="main-area">
+    <div class="grid-section">
+      <div class="grid-caption">Unit Square &mdash; 100 Equal Parts</div>
+      <div id="unit-grid"></div>
+      <div class="grid-counter" id="grid-counter">&nbsp;</div>
+    </div>
+    <div class="equiv-panel" id="equiv-panel">
+      <p class="equiv-empty">Select a type and a value<br>to explore equivalences</p>
+    </div>
+  </div>
+
+  <script>
+    /* ── Data ────────────────────────────────────────────── */
+    const benchmarks = [
+      { pct:   1, dec: '0.01', num: 1, den: 100 },
+      { pct:   5, dec: '0.05', num: 1, den: 20 },
+      { pct:  10, dec: '0.10', num: 1, den: 10 },
+      { pct:  20, dec: '0.20', num: 1, den:  5 },
+      { pct:  25, dec: '0.25', num: 1, den:  4 },
+      { pct:  50, dec: '0.50', num: 1, den:  2 },
+      { pct:  75, dec: '0.75', num: 3, den:  4 },
+      { pct: 100, dec: '1.00', num: 1, den:  1 },
+    ];
+
+    /* ── Build 10×10 grid ────────────────────────────────── */
+    const gridEl = document.getElementById('unit-grid');
+    for (let i = 0; i < 100; i++) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      gridEl.appendChild(c);
+    }
+    const cells = [...document.querySelectorAll('.cell')];
+
+    /* ── Type dropdown changed ───────────────────────────── */
+    function onTypeChange() {
+      const type = document.getElementById('type-select').value;
+      const rg   = document.getElementById('radio-group');
+      const div  = document.getElementById('ctrl-divider');
+
+      rg.innerHTML = '';
+      shadeGrid(0);
+      setCounter(null);
+      showEmpty();
+
+      if (!type) { div.style.display = 'none'; return; }
+      div.style.display = '';
+
+      benchmarks.forEach((b, i) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'radio-pill';
+
+        const inp = document.createElement('input');
+        inp.type  = 'radio';
+        inp.name  = 'bench';
+        inp.id    = `b${i}`;
+        inp.value = i;
+        inp.addEventListener('change', () => onSelect(i));
+
+        const lbl = document.createElement('label');
+        lbl.htmlFor = `b${i}`;
+        lbl.innerHTML = pillLabel(b, type);
+
+        wrapper.appendChild(inp);
+        wrapper.appendChild(lbl);
+        rg.appendChild(wrapper);
+      });
+    }
+
+    function pillLabel(b, type) {
+      if (type === 'fraction') {
+        if (b.den === 1) return '1';
+        return `<span class="frac-inline">
+          <span>${b.num}</span>
+          <span class="fi-bar"></span>
+          <span>${b.den}</span>
+        </span>`;
+      }
+      if (type === 'decimal')    return b.dec;
+      return b.pct + '%';
+    }
+
+    /* ── Radio selected ──────────────────────────────────── */
+    function onSelect(idx) {
+      const b    = benchmarks[idx];
+      const type = document.getElementById('type-select').value;
+      shadeGrid(b.pct);
+      setCounter(b.pct);
+      showEquiv(b, type);
+    }
+
+    /* ── Grid shading ────────────────────────────────────── */
+    function shadeGrid(pct) {
+      cells.forEach((c, i) => c.classList.toggle('shaded', i < pct));
+    }
+
+    function setCounter(pct) {
+      const el = document.getElementById('grid-counter');
+      el.innerHTML = pct === null
+        ? '&nbsp;'
+        : `<span>${pct}</span> out of 100 squares shaded`;
+    }
+
+    /* ── Equivalence panel ───────────────────────────────── */
+    function showEmpty() {
+      document.getElementById('equiv-panel').innerHTML =
+        '<p class="equiv-empty">Select a type and a value<br>to explore equivalences</p>';
+    }
+
+    function fracValueHTML(b) {
+      if (b.den === 1) return `<span class="er-value">1</span>`;
+      return `<span class="er-value is-frac">
+        <span class="fv-num">${b.num}</span>
+        <span class="fv-bar"></span>
+        <span class="fv-den">${b.den}</span>
+      </span>`;
+    }
+
+    function showEquiv(b, type) {
+      document.getElementById('equiv-panel').innerHTML = `
+        <div class="equiv-headline">All the same!</div>
+
+        <div class="equiv-row row-frac">
+          <div class="er-label">Fraction</div>
+          ${fracValueHTML(b)}
+        </div>
+
+        <div class="equiv-row row-dec">
+          <div class="er-label">Decimal</div>
+          <div class="er-value">${b.dec}</div>
+        </div>
+
+        <div class="equiv-row row-pct">
+          <div class="er-label">Percentage</div>
+          <div class="er-value">${b.pct}%</div>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

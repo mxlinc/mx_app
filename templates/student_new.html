@@ -105,6 +105,13 @@
             <span class="item-name"><span class="item-code-tag">{{ item.code }}</span> : {{ item.name }}</span>
             <span class="item-arrow">›</span>
           </a>
+          {% elif item.type == 'interaction' %}
+          <a class="item-row item-interaction {{ unread_cls }}" href="{{ item.url }}" target="_blank" rel="noopener"
+             data-mark-viewed="{{ item.code }}">
+            <span class="item-badge badge-interaction">🎮</span>
+            <span class="item-name"><span class="item-code-tag item-code-interaction">{{ item.code }}</span> : {{ item.name }}</span>
+            <span class="item-arrow">›</span>
+          </a>
           {% else %}
           <div class="item-row {{ unread_cls }}">
             <span class="item-badge badge-sheet">📄</span>

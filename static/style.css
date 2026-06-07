@@ -672,6 +672,7 @@ input::placeholder, textarea::placeholder {
 }
 .badge-quiz  { background: #E8F4FD; color: var(--c-primary); }
 .badge-video { background: var(--c-accent-lt); color: #189e8a; }
+.badge-interaction { background: rgba(106,13,173,0.10); color: #6a0dad; }
 .badge-sheet { background: var(--c-warn-lt); color: #c47b0a; }
 
 .item-name     { flex: 1; font-size: 0.88rem; color: var(--c-text); }
@@ -684,6 +685,12 @@ input::placeholder, textarea::placeholder {
 .item-row.item-video .item-code-tag { color: #6b0000; font-weight: 600; }
 .item-row.item-video:hover .item-name,
 .item-row.item-video:hover .item-code-tag { color: #4a0000; }
+.item-row.item-interaction .item-name,
+.item-row.item-interaction .item-code-tag,
+.item-row.item-interaction .item-code-interaction { color: #5b006e; font-weight: 600; }
+.item-row.item-interaction:hover .item-name,
+.item-row.item-interaction:hover .item-code-tag,
+.item-row.item-interaction:hover .item-code-interaction { color: #3d0049; }
 .item-arrow    { color: var(--c-border); font-size: 1.1rem; flex-shrink: 0; }
 .item-row:hover .item-arrow { color: var(--c-primary); }
 
