@@ -30,6 +30,11 @@ def video_code(video_id: int) -> str:
     return make_code('V', video_id)
 
 
+def interaction_code(interaction_id: int) -> str:
+    """Return the standard interaction code for an interaction ID.  interaction_code(1) -> 'I-0001'"""
+    return make_code('I', interaction_id)
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 
 

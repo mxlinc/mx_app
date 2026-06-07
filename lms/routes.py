@@ -1271,8 +1271,10 @@ def videos_create():
         broad_area=broad_area or None
     )
     db.session.add(video)
+    db.session.flush()  # assigns video.id from SERIAL before commit
+    video.lesson_code = f'V-{video.id:04d}'
     db.session.commit()
-    return jsonify({'ok': True, 'id': video.id})
+    return jsonify({'ok': True, 'id': video.id, 'lesson_code': video.lesson_code})
 
 
 @lms_bp.route('/videos/update-details', methods=['POST'])
@@ -1327,8 +1329,10 @@ def interactions_create():
         broad_area=broad_area or None
     )
     db.session.add(interaction)
+    db.session.flush()  # assigns interaction.id from SERIAL before commit
+    interaction.lesson_code = f'I-{interaction.id:04d}'
     db.session.commit()
-    return jsonify({'ok': True, 'id': interaction.id})
+    return jsonify({'ok': True, 'id': interaction.id, 'lesson_code': interaction.lesson_code})
 
 
 @lms_bp.route('/interactions/update-details', methods=['POST'])
