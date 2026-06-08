@@ -238,6 +238,24 @@ class TemplateHandlerFILL extends TemplateHandler {
                 return (ca.numerator / g2) === userN && (ca.denominator / g2) === userD;
             });
         }
+        if (rt === 'simplest_fraction') {
+            const parts = userValue.split('/');
+            if (parts.length !== 2) return false;
+            const [num, den] = parts.map(Number);
+            if (!Number.isFinite(num) || !Number.isFinite(den) || den === 0) return false;
+            const gcd = (a, b) => b === 0 ? Math.abs(a) : gcd(b, a % b);
+            const g1 = gcd(num, den);
+            const userN = num / g1, userD = den / g1;
+            // Must be equivalent AND already in simplest form
+            const isEquivalent = (entry.accepted_fraction || []).some(ca => {
+                if (ca.denominator === 0) return false;
+                const g2 = gcd(ca.numerator, ca.denominator);
+                return (ca.numerator / g2) === userN && (ca.denominator / g2) === userD;
+            });
+            if (!isEquivalent) return false;
+            // Check simplest form: user fraction must equal its own reduced form
+            return num === userN && den === userD;
+        }
         // text
         const norm = s => s.replace(/\s+/g, '').toLowerCase();
         return (entry.accepted_text || []).some(ca => norm(ca) === norm(userValue));
@@ -256,7 +274,7 @@ class TemplateHandlerFILL extends TemplateHandler {
 
     _formatCorrectAnswer(entry) {
         const rt = entry.response_type || 'text';
-        if (rt === 'fraction' && entry.accepted_fraction?.length) {
+        if ((rt === 'fraction' || rt === 'simplest_fraction') && entry.accepted_fraction?.length) {
             const f = entry.accepted_fraction[0];
             return { html: true, value: `<span class="hint-fraction"><span class="hint-fraction-num">${f.numerator}</span><span class="hint-fraction-bar"></span><span class="hint-fraction-den">${f.denominator}</span></span>` };
         }
@@ -303,7 +321,34 @@ class TemplateHandlerFILL extends TemplateHandler {
             if (!ok && correctArr[idx]) {
                 const hint = document.createElement('span');
                 hint.className = 'blank-correct-hint';
-                const formatted = this._formatCorrectAnswer(correctArr[idx]);
+                const entry = correctArr[idx];
+                const rt = entry.response_type || 'text';
+                // For simplest_fraction: check if equivalent-but-not-simplified vs truly wrong
+                if (rt === 'simplest_fraction') {
+                    const userVal = answer[blankId] || '';
+                    const parts = userVal.split('/');
+                    if (parts.length === 2) {
+                        const [uNum, uDen] = parts.map(Number);
+                        if (Number.isFinite(uNum) && Number.isFinite(uDen) && uDen !== 0) {
+                            const gcd = (a, b) => b === 0 ? Math.abs(a) : gcd(b, a % b);
+                            const g1 = gcd(uNum, uDen);
+                            const userN = uNum / g1, userD = uDen / g1;
+                            const isEquivalent = (entry.accepted_fraction || []).some(ca => {
+                                if (ca.denominator === 0) return false;
+                                const g2 = gcd(ca.numerator, ca.denominator);
+                                return (ca.numerator / g2) === userN && (ca.denominator / g2) === userD;
+                            });
+                            if (isEquivalent) {
+                                const f = entry.accepted_fraction[0];
+                                hint.innerHTML = `Expecting the answer in the simplest form <span class="blank-correct-value">${f.numerator}/${f.denominator}</span>`;
+                                feedbackRow.appendChild(hint);
+                                wrapper.appendChild(feedbackRow);
+                                return;
+                            }
+                        }
+                    }
+                }
+                const formatted = this._formatCorrectAnswer(entry);
                 if (formatted && formatted.html) {
                     hint.innerHTML = 'correct answer: <span class="blank-correct-value">' + formatted.value + '</span>';
                 } else {

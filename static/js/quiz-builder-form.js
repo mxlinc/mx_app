@@ -707,7 +707,7 @@ async function loadQuestionForEdit(questionId) {
                                     blankEl.querySelector('.blank-case-sensitive').checked = correctAnswer.case_sensitive !== false;
                                 } else if (correctAnswer.response_type === 'numeric' && correctAnswer.accepted_numeric) {
                                     blankEl.querySelector('.blank-correct-answers').value = correctAnswer.accepted_numeric.join(', ');
-                                } else if (correctAnswer.response_type === 'fraction' && correctAnswer.accepted_fraction) {
+                                } else if ((correctAnswer.response_type === 'fraction' || correctAnswer.response_type === 'simplest_fraction') && correctAnswer.accepted_fraction) {
                                     blankEl.querySelector('.blank-correct-answers').value = correctAnswer.accepted_fraction
                                         .map(f => `${f.numerator}/${f.denominator}`)
                                         .join('\n');

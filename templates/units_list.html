@@ -45,6 +45,8 @@
     .cu-drag-handle { color:var(--c-text-sm); font-size:1rem; flex-shrink:0; }
     .cu-item-label { flex:1; font-size:0.88rem; }
     .cu-item-label .code { font-weight:600; color:var(--c-primary); }
+    .cu-item-label .code-video { color:#7B1C1C; }
+    .cu-item-label .code-interaction { color:#4A0072; }
     .cu-item-label .name { color:var(--c-text); }
     .cu-item-label .warn { color:var(--c-error); font-size:0.8rem; }
     .cu-badge-v { background:rgba(31,111,174,0.12); color:var(--c-primary); border-radius:4px; padding:0.05rem 0.4rem; font-size:0.72rem; font-weight:600; }
@@ -169,6 +171,7 @@
         const badgeClass = item.type === 'video' ? 'cu-badge-v' : item.type === 'quiz' ? 'cu-badge-q' : item.type === 'interaction' ? 'cu-badge-i' : 'cu-badge-u';
         const badgeLabel = item.type === 'video' ? 'V' : item.type === 'quiz' ? 'Q' : item.type === 'interaction' ? 'I' : '?';
         const warnHtml   = item.found ? '' : ' <span class="warn">&#9888; not found</span>';
+        const codeClass  = item.type === 'video' ? 'code code-video' : item.type === 'interaction' ? 'code code-interaction' : 'code';
 
         let nameHtml;
         if (item.found && item.type === 'video' && item.file_name) {
@@ -185,7 +188,7 @@
           <span class="cu-drag-handle">&#8597;</span>
           <span class="${badgeClass}">${badgeLabel}</span>
           <span class="cu-item-label">
-            <span class="code">${item.code}</span>: <span class="name">${nameHtml}</span>${warnHtml}
+            <span class="${codeClass}">${item.code}</span>: <span class="name">${nameHtml}</span>${warnHtml}
           </span>
           <button class="cu-remove" title="Remove" onclick="removeItem(this)">&#10005;</button>
         `;

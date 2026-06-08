@@ -165,7 +165,7 @@ FILL_SCHEMA = {
                             },
                             "response_type": {
                                 "type": "string",
-                                "enum": ["text", "numeric", "fraction"]
+                                "enum": ["text", "numeric", "fraction", "simplest_fraction"]
                             },
                             "placeholder": {
                                 "type": "string"
@@ -194,7 +194,7 @@ FILL_SCHEMA = {
                             },
                             "response_type": {
                                 "type": "string",
-                                "enum": ["text", "numeric", "fraction"]
+                                "enum": ["text", "numeric", "fraction", "simplest_fraction"]
                             },
                             "accepted_text": {
                                 "type": "array",
@@ -258,6 +258,16 @@ FILL_SCHEMA = {
                                 "if": {
                                     "properties": {
                                         "response_type": {"const": "fraction"}
+                                    }
+                                },
+                                "then": {
+                                    "required": ["accepted_fraction"]
+                                }
+                            },
+                            {
+                                "if": {
+                                    "properties": {
+                                        "response_type": {"const": "simplest_fraction"}
                                     }
                                 },
                                 "then": {

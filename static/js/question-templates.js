@@ -48,7 +48,7 @@
             const isInline     = !!labelAfter;
 
             let inputHtml;
-            if (responseType === 'fraction') {
+            if (responseType === 'fraction' || responseType === 'simplest_fraction') {
                 inputHtml = `<div class="template-fraction-input" data-blank-id="${blankId}"><input type="number" class="template-fraction-num" placeholder="" step="1"><div class="template-fraction-bar"></div><input type="number" class="template-fraction-den" placeholder="" step="1"></div>`;
             } else {
                 const inputType  = responseType === 'numeric' ? 'number' : 'text';

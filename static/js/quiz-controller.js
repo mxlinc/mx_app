@@ -296,7 +296,7 @@ class QuizController {
     _formatCorrectEntry(entry) {
         if (!entry) return '';
         const rt = entry.response_type || 'text';
-        if (rt === 'fraction' && entry.accepted_fraction?.length) {
+        if ((rt === 'fraction' || rt === 'simplest_fraction') && entry.accepted_fraction?.length) {
             const f = entry.accepted_fraction[0];
             return `${f.numerator}/${f.denominator}`;
         }

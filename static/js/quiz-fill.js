@@ -66,7 +66,7 @@ function getFILLQuestion() {
                 throw new Error(`Blank ${idx + 1}: at least one numeric answer is required.`);
             }
             correctEl.accepted_numeric = answers;
-        } else if (response_type === 'fraction') {
+        } else if (response_type === 'fraction' || response_type === 'simplest_fraction') {
             const fractions = [];
             correctAnswers.split('\n').forEach(line => {
                 const match = line.trim().match(/^(\-?\d+)\s*\/\s*(\-?\d+)$/);
@@ -139,6 +139,7 @@ function addBlankUI() {
                         <option value="text">Text</option>
                         <option value="numeric">Numeric</option>
                         <option value="fraction">Fraction</option>
+                        <option value="simplest_fraction">Simplest Fraction</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -252,7 +253,7 @@ class QuizFILL {
                 const isInline     = !!labelAfter;
 
                 let inputField = '';
-                if (blank.response_type === 'fraction') {
+                if (blank.response_type === 'fraction' || blank.response_type === 'simplest_fraction') {
                     inputField = `
                         <div style="display: inline-flex; flex-direction: column; align-items: center; gap: 8px; border: none; border-radius: 4px; padding: 0; overflow: visible;">
                             <input type="number" id="${inputId}_num" class="blank-input" placeholder="numerator" style="width: 80px; border: 2px solid #999; padding: 10px; text-align: center; font-size: 0.95em; background: white; border-radius: 4px;" title="Enter numerator">
@@ -321,7 +322,7 @@ class QuizFILL {
         blanks.forEach((blank) => {
             const inputId = `blank_${blank.id}`;
             
-            if (blank.response_type === 'fraction') {
+            if (blank.response_type === 'fraction' || blank.response_type === 'simplest_fraction') {
                 const num = document.getElementById(`${inputId}_num`)?.value.trim();
                 const den = document.getElementById(`${inputId}_den`)?.value.trim();
                 if (!num || !den) {
@@ -395,9 +396,43 @@ class QuizFILL {
                         this.areFractionsEquivalent(userFrac, frac)
                     );
                 }
+            } else if (correct.response_type === 'simplest_fraction') {
+                const acceptedFractions = correct.accepted_fraction || [];
+                const fractionMatch = userAnswer.match(/^(-?\d+)\s*\/\s*(-?\d+)$/);
+                if (!fractionMatch) {
+                    isCorrect = false;
+                } else {
+                    const userFrac = {
+                        numerator: parseInt(fractionMatch[1]),
+                        denominator: parseInt(fractionMatch[2])
+                    };
+                    const isEquivalent = acceptedFractions.some(frac =>
+                        this.areFractionsEquivalent(userFrac, frac)
+                    );
+                    if (isEquivalent) {
+                        const simplified = this.simplifyFraction(userFrac.numerator, userFrac.denominator);
+                        const alreadySimplified = simplified.numerator === userFrac.numerator
+                                               && simplified.denominator === userFrac.denominator;
+                        if (alreadySimplified) {
+                            isCorrect = true;
+                        } else {
+                            isCorrect = false;
+                            // Mark as not-simplified so feedback message differs from plain wrong
+                            blankFeedback[blankId] = {
+                                isCorrect: false,
+                                notSimplified: true,
+                                correctDisplay: acceptedFractions.length ? `${acceptedFractions[0].numerator}/${acceptedFractions[0].denominator}` : ''
+                            };
+                        }
+                    }
+                    // if not equivalent: isCorrect stays false, no notSimplified flag
+                }
             }
 
-            if (isCorrect) {
+            if (blankFeedback[blankId]) {
+                // already set (e.g. notSimplified case above)
+                if (!blankFeedback[blankId].isCorrect) allCorrect = false;
+            } else if (isCorrect) {
                 blankFeedback[blankId] = { isCorrect: true, correctDisplay: '' };
             } else {
                 allCorrect = false;
@@ -409,7 +444,7 @@ class QuizFILL {
                 } else if (correct.response_type === 'numeric') {
                     const acceptedValues = correct.accepted_numeric || [];
                     correctDisplay = acceptedValues.join(' or ');
-                } else if (correct.response_type === 'fraction') {
+                } else if (correct.response_type === 'fraction' || correct.response_type === 'simplest_fraction') {
                     const acceptedFractions = correct.accepted_fraction || [];
                     correctDisplay = acceptedFractions.map(f => `${f.numerator}/${f.denominator}`).join(' or ');
                 }
@@ -424,8 +459,12 @@ class QuizFILL {
         // Store allCorrect for isAnswerCorrect() method
         this.isCorrect = allCorrect;
 
-        // Display question-level feedback on wrong answer if available
-        if (!allCorrect && this.common.question.stem?.feedback?.html) {
+        // Display question-level feedback only when there is a truly wrong answer
+        // (not when the only issue is "not in simplest form")
+        const hasNonSimplifiedError = Object.values(blankFeedback).some(
+            fb => !fb.isCorrect && !fb.notSimplified
+        );
+        if (hasNonSimplifiedError && this.common.question.stem?.feedback?.html) {
             this.common.showFeedback(this.common.question.stem.feedback.html, false);
         }
 
@@ -488,6 +527,22 @@ class QuizFILL {
                     fracDenElement.classList.remove('incorrect-answer');
                 }
                 indicator.innerHTML = '<span style="color: #4CAF50; font-size: 1.3em; margin-left: 12px; font-weight: bold;">✓</span>';
+            } else if (feedback.notSimplified) {
+                // Equivalent but not in simplest form — amber styling
+                if (inputElement) {
+                    inputElement.classList.add('incorrect-answer');
+                    inputElement.classList.remove('correct-answer');
+                }
+                if (fracNumElement) {
+                    fracNumElement.classList.add('incorrect-answer');
+                    fracNumElement.classList.remove('correct-answer');
+                }
+                if (fracDenElement) {
+                    fracDenElement.classList.add('incorrect-answer');
+                    fracDenElement.classList.remove('correct-answer');
+                }
+                indicator.innerHTML = `<span style="color: #FF8C00; font-size: 1.3em; margin-left: 12px; font-weight: bold;">✗</span>
+                                       <span style="color: #666; font-size: 0.9em; margin-left: 8px;">Expecting the answer in the simplest form ${feedback.correctDisplay}</span>`;
             } else {
                 // Apply incorrect styling to input(s)
                 if (inputElement) {
