@@ -1199,3 +1199,229 @@ def upload_fill():
     saved  = sum(1 for r in results if r.get('ok'))
     failed = len(results) - saved
     return jsonify({'ok': True, 'results': results, 'saved': saved, 'failed': failed})
+
+
+# ==================== UPLOAD MIXED ==================== #
+
+def _parse_mixed_upload(text):
+    """Parse a .txt file containing MCQ, MR, and FILL question blocks.
+
+    Each block starts with a question= line followed immediately by type=MCQ|MR|FILL.
+    MCQ/MR blocks use opt#= lines; MR blocks additionally have answer=opt1,opt2,...
+    FILL blocks use label#= / answer= pairs.
+
+    Returns a list of block dicts:
+      MCQ:  {'type':'MCQ', 'question':str, 'options':[{'id':str,'latex':str},...]}
+      MR:   {'type':'MR',  'question':str, 'options':[...], 'correct_ids':[str,...]}
+      FILL: {'type':'FILL','question':str, 'blanks':[{'label':str,'answer_raw':str},...]}
+    """
+    blocks = []
+    current = None
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or '=' not in line:
+            continue
+        key, _, value = line.partition('=')
+        key   = key.strip().lower()
+        value = value.strip()
+
+        if key == 'question':
+            if current is not None:
+                blocks.append(current)
+            current = {'type': None, 'question': value}
+        elif current is None:
+            continue
+        elif key == 'type':
+            current['type'] = value.upper()
+            # Initialise type-specific containers
+            if current['type'] in ('MCQ', 'MR'):
+                current.setdefault('options', [])
+                if current['type'] == 'MR':
+                    current.setdefault('correct_ids', [])
+            elif current['type'] == 'FILL':
+                current.setdefault('blanks', [])
+        elif key.startswith('opt') and current.get('type') in ('MCQ', 'MR'):
+            current.setdefault('options', []).append({'id': key, 'latex': value})
+        elif key == 'answer' and current.get('type') == 'MR':
+            current['correct_ids'] = [s.strip() for s in value.split(',') if s.strip()]
+        elif key.startswith('label') and current.get('type') == 'FILL':
+            current.setdefault('blanks', []).append({'label': value, 'answer_raw': ''})
+        elif key == 'answer' and current.get('type') == 'FILL':
+            if current.get('blanks'):
+                current['blanks'][-1]['answer_raw'] = value
+
+    if current is not None:
+        blocks.append(current)
+    return blocks
+
+
+def _parse_fill_answer(raw):
+    """Strip outer $…$ and parse a FILL answer.
+    Tries float first (numeric); falls back to text type.
+    Returns (response_type, value, None) or (None, None, error_str).
+    """
+    stripped = raw.strip()
+    if not stripped:
+        return None, None, "answer is empty"
+    if stripped.startswith('$') and stripped.endswith('$'):
+        stripped = stripped[1:-1].strip()
+    if not stripped:
+        return None, None, "answer is empty"
+    try:
+        return 'numeric', float(stripped), None
+    except ValueError:
+        return 'text', stripped, None
+
+
+@question_bp.route("/api/upload-mixed", methods=["POST"])
+@login_required
+def upload_mixed():
+    """Parse a mixed .txt file (MCQ / MR / FILL blocks) and save each question."""
+    from qb.handlers.mcq  import MCQHandler
+    from qb.handlers.mr   import MRHandler
+    from qb.handlers.fill import FILLHandler
+
+    topic    = (request.form.get('topic',    '') or '').strip()
+    subtopic = (request.form.get('subtopic', '') or '').strip()
+    level    = (request.form.get('level',    '') or '').strip()
+
+    file = request.files.get('file')
+    if not file or not file.filename.lower().endswith('.txt'):
+        return jsonify({'ok': False, 'error': 'A .txt file is required'}), 400
+
+    try:
+        text = file.read().decode('utf-8')
+    except Exception:
+        return jsonify({'ok': False, 'error': 'Could not read file — ensure it is UTF-8 encoded'}), 400
+
+    blocks = _parse_mixed_upload(text)
+    if not blocks:
+        return jsonify({'ok': False, 'error': 'No question= blocks found in file'}), 400
+
+    results = []
+    for n, block in enumerate(blocks, 1):
+        q_type   = block.get('type')
+        stem_raw = block.get('question', '')
+        preview  = stem_raw[:60] + ('…' if len(stem_raw) > 60 else '')
+
+        if not stem_raw:
+            results.append({'n': n, 'ok': False, 'error': 'Empty question text — skipped'})
+            continue
+        if q_type not in ('MCQ', 'MR', 'FILL'):
+            results.append({'n': n, 'ok': False, 'preview': preview,
+                            'error': f"Missing or unknown type= (got {q_type!r}) — skipped"})
+            continue
+
+        # Apply <br> prefix for short stems
+        if len(stem_raw.strip()) < 150:
+            stem_latex = ('<br><br>' if q_type == 'FILL' else '<br>') + stem_raw
+        else:
+            stem_latex = stem_raw
+
+        try:
+            if q_type == 'MCQ':
+                options = block.get('options', [])
+                if not options:
+                    results.append({'n': n, 'ok': False, 'preview': preview,
+                                    'error': 'No opt#= lines found — skipped'})
+                    continue
+                data = {
+                    'type': 'mcq',
+                    'topic': topic, 'subtopic': subtopic, 'level': level,
+                    'question': {
+                        'stem':  {'latex': stem_latex},
+                        'type':  'mcq',
+                        'input': {'options': options, 'shuffle': True},
+                        'answer': {'correct_option_id': 'opt1'},
+                    },
+                }
+                q, error = MCQHandler.save_question(data)
+
+            elif q_type == 'MR':
+                options     = block.get('options', [])
+                correct_ids = block.get('correct_ids', [])
+                if not options:
+                    results.append({'n': n, 'ok': False, 'preview': preview,
+                                    'error': 'No opt#= lines found — skipped'})
+                    continue
+                if len(correct_ids) < 2:
+                    results.append({'n': n, 'ok': False, 'preview': preview,
+                                    'error': f'MR requires at least 2 correct options in answer= (got {len(correct_ids)}) — skipped'})
+                    continue
+                data = {
+                    'type': 'mr',
+                    'topic': topic, 'subtopic': subtopic, 'level': level,
+                    'question': {
+                        'stem':  {'latex': stem_latex},
+                        'type':  'mr',
+                        'input': {'options': options, 'shuffle': True},
+                        'answer': {'correct_option_ids': correct_ids},
+                    },
+                }
+                q, error = MRHandler.save_question(data)
+
+            else:  # FILL
+                blanks = block.get('blanks', [])
+                if not blanks:
+                    results.append({'n': n, 'ok': False, 'preview': preview,
+                                    'error': 'No label#= lines found — skipped'})
+                    continue
+
+                input_blanks   = []
+                answer_correct = []
+                parse_error    = None
+                for i, blank in enumerate(blanks):
+                    blank_id = f'blank{i + 1}'
+                    resp_type, val, err = _parse_fill_answer(blank['answer_raw'])
+                    if err:
+                        parse_error = f"Blank {i + 1}: {err}"
+                        break
+                    input_blanks.append({
+                        'id':            blank_id,
+                        'input_label':   {'latex': blank['label']},
+                        'response_type': resp_type,
+                    })
+                    if resp_type == 'numeric':
+                        answer_correct.append({
+                            'blank_id':        blank_id,
+                            'response_type':   'numeric',
+                            'accepted_numeric': [val],
+                        })
+                    else:
+                        answer_correct.append({
+                            'blank_id':      blank_id,
+                            'response_type': 'text',
+                            'accepted_text': [val],
+                        })
+
+                if parse_error:
+                    results.append({'n': n, 'ok': False, 'preview': preview, 'error': parse_error})
+                    continue
+
+                data = {
+                    'type': 'fill',
+                    'topic': topic, 'subtopic': subtopic, 'level': level,
+                    'question': {
+                        'stem':   {'latex': stem_latex},
+                        'type':   'fill',
+                        'input':  {'blanks': input_blanks},
+                        'answer': {'correct': answer_correct},
+                    },
+                }
+                q, error = FILLHandler.save_question(data)
+
+            if error:
+                results.append({'n': n, 'ok': False, 'preview': preview, 'error': error})
+            else:
+                q.sync_required = True
+                db.session.commit()
+                results.append({'n': n, 'ok': True, 'id': q.id, 'preview': preview,
+                                'qtype': q_type})
+
+        except Exception as e:
+            logger.exception("upload_mixed: error saving question %d", n)
+            results.append({'n': n, 'ok': False, 'preview': preview, 'error': str(e)})
+
+    saved  = sum(1 for r in results if r.get('ok'))
+    failed = len(results) - saved
+    return jsonify({'ok': True, 'results': results, 'saved': saved, 'failed': failed})

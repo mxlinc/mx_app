@@ -86,6 +86,30 @@
       One or more <code>label=</code> / <code>answer=</code> pairs per question. Missing or non-numeric answers default to <strong>0</strong>. All blanks are numeric type.
     </div>
 
+    <div class="hint" id="hint-mixed" style="display:none;">
+      <strong>Mixed format — MCQ, MR, and Fill in one file. Add <code>type=</code> after each <code>question=</code>:</strong><br><br>
+      <code>question=Which negative integer is closest to $0$?</code><br>
+      <code>type=MCQ</code><br>
+      <code>opt1=$-1$</code><br>
+      <code>opt2=$-4$</code><br>
+      <code>opt3=$-7$</code><br>
+      <code>opt4=$-9$</code><br><br>
+      <code>question=Select all true statements.</code><br>
+      <code>type=MR</code><br>
+      <code>opt1=$+6$ and $6$ represent the same number.</code><br>
+      <code>opt2=Every negative number is to the left of $0$.</code><br>
+      <code>opt3=A negative number closer to $0$ is greater than one farther from $0$.</code><br>
+      <code>opt4=$-10$ is greater than $-3$ because $10$ is greater than $3$.</code><br>
+      <code>answer=opt1,opt2,opt3</code><br><br>
+      <code>question=Perform the following addition:</code><br>
+      <code>type=FILL</code><br>
+      <code>label1=$(-8)+(+6)=$</code><br>
+      <code>answer=$-2$</code><br>
+      <code>label2=$0+(-5)=$</code><br>
+      <code>answer=$-5$</code><br><br>
+      Rules: <code>opt1</code> is always the correct answer for MCQ. MR requires <code>answer=opt1,opt2,...</code> with at least 2 options. Fill answers can use <code>$...$</code> notation. Blank lines between blocks are optional.
+    </div>
+
     <div class="card">
       <div class="card-label">Question Type</div>
       <div class="type-row">
@@ -94,6 +118,9 @@
         </label>
         <label class="type-option">
           <input type="radio" name="qtype" value="fill" onchange="onTypeChange()"> Fill in the Blank
+        </label>
+        <label class="type-option">
+          <input type="radio" name="qtype" value="mixed" onchange="onTypeChange()"> Mixed (MCQ / MR / Fill)
         </label>
       </div>
       <div class="card-label">Metadata — applied to all questions in the file</div>
@@ -128,8 +155,9 @@
   <script>
     function onTypeChange() {
       const type = document.querySelector('input[name=qtype]:checked').value;
-      document.getElementById('hint-mcq').style.display  = type === 'mcq'  ? '' : 'none';
-      document.getElementById('hint-fill').style.display = type === 'fill' ? '' : 'none';
+      document.getElementById('hint-mcq').style.display   = type === 'mcq'   ? '' : 'none';
+      document.getElementById('hint-fill').style.display  = type === 'fill'  ? '' : 'none';
+      document.getElementById('hint-mixed').style.display = type === 'mixed' ? '' : 'none';
     }
 
     async function doUpload() {
@@ -147,7 +175,9 @@
       fd.append('subtopic', subtopic);
       fd.append('level', level);
 
-      const endpoint = type === 'fill' ? '/question/api/upload-fill' : '/question/api/upload-mcq';
+      const endpoint = type === 'fill'  ? '/question/api/upload-fill'
+                     : type === 'mixed' ? '/question/api/upload-mixed'
+                     : '/question/api/upload-mcq';
       const btn     = document.getElementById('uploadBtn');
       const panel   = document.getElementById('logPanel');
       const list    = document.getElementById('logList');
@@ -172,7 +202,8 @@
             const li = document.createElement('li');
             if (r.ok) {
               li.className   = 'ok';
-              li.textContent = `✓ Q${r.n} saved as ID ${r.id} — "${r.preview}"`;
+              const typeTag  = r.qtype ? ` [${r.qtype}]` : '';
+              li.textContent = `✓ Q${r.n}${typeTag} saved as ID ${r.id} — "${r.preview}"`;
             } else {
               li.className   = 'err';
               li.textContent = `✗ Q${r.n} failed: ${r.error}${r.preview ? ' — "' + r.preview + '"' : ''}`;
