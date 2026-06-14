@@ -1066,13 +1066,8 @@ def student_home_new():
                                student_name=current_user.full_name or username,
                                stats=stats)
 
-    # Keep only: assigned quizzes + all videos + all interactions (neither has completion state)
-    work_rows = [
-        r for r in all_rows
-        if r.item_code.startswith('V-')
-        or r.item_code.startswith('I-')
-        or (r.item_code.startswith('Q-') and r.status == 'assigned')
-    ]
+    # Keep only assigned items (quizzes, videos, and interactions)
+    work_rows = [r for r in all_rows if r.status == 'assigned']
 
     # ── 2. Determine au_name ordering from a_unit table ────────────────────
     au_names = list({row.au_name for row in work_rows})
