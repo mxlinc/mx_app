@@ -810,7 +810,8 @@ async function loadFormatSnippets() {
 function initBuilderForm() {
     // Save / Discard / Discard Image buttons
     document.getElementById('saveBtn').addEventListener('click', save);
-    document.getElementById('discardBtn').addEventListener('click', discard);
+    const _discardBtn = document.getElementById('discardBtn');
+    if (_discardBtn) _discardBtn.addEventListener('click', discard);
     document.getElementById('discardImageBtn').addEventListener('click', discardImage);
 
     // Image upload box

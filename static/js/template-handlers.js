@@ -484,25 +484,27 @@ class TemplateHandlerOHS extends TemplateHandler {
         this._locked = true;
         if (this._followerEl) this._followerEl.style.display = 'none';
 
-        const img = this.container.querySelector('.template-ohs-image');
-        const svg = this.container.querySelector('.template-ohs-overlay');
-        if (img && svg && this._hotspot && this._feedbackEl) {
-            const hs = this._hotspot;
-            const sx = img.naturalWidth  ? img.width  / img.naturalWidth  : 1;
-            const sy = img.naturalHeight ? img.height / img.naturalHeight : 1;
-            const ns = 'http://www.w3.org/2000/svg';
-            const rect = document.createElementNS(ns, 'rect');
-            rect.setAttribute('x',            hs.x * sx);
-            rect.setAttribute('y',            hs.y * sy);
-            rect.setAttribute('width',        hs.width  * sx);
-            rect.setAttribute('height',       hs.height * sy);
-            rect.setAttribute('rx',           '4');
-            rect.setAttribute('stroke-width', '2.5');
-            rect.setAttribute('fill',   'rgba(76,175,80,0.25)');
-            rect.setAttribute('stroke', '#4caf50');
-            this._feedbackEl.innerHTML = '';
-            this._feedbackEl.appendChild(rect);
-            this._feedbackEl.style.display = '';
+        if (!isCorrect) {
+            const img = this.container.querySelector('.template-ohs-image');
+            const svg = this.container.querySelector('.template-ohs-overlay');
+            if (img && svg && this._hotspot && this._feedbackEl) {
+                const hs = this._hotspot;
+                const sx = img.naturalWidth  ? img.width  / img.naturalWidth  : 1;
+                const sy = img.naturalHeight ? img.height / img.naturalHeight : 1;
+                const ns = 'http://www.w3.org/2000/svg';
+                const rect = document.createElementNS(ns, 'rect');
+                rect.setAttribute('x',            hs.x * sx);
+                rect.setAttribute('y',            hs.y * sy);
+                rect.setAttribute('width',        hs.width  * sx);
+                rect.setAttribute('height',       hs.height * sy);
+                rect.setAttribute('rx',           '4');
+                rect.setAttribute('stroke-width', '2.5');
+                rect.setAttribute('fill',   'rgba(76,175,80,0.25)');
+                rect.setAttribute('stroke', '#4caf50');
+                this._feedbackEl.innerHTML = '';
+                this._feedbackEl.appendChild(rect);
+                this._feedbackEl.style.display = '';
+            }
         }
 
         // If incorrect, turn the selection ball red

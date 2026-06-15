@@ -503,6 +503,55 @@ def delete_quizzes():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@qb_bp.route("/api/merge-quizzes", methods=["POST"])
+@login_required
+def merge_quizzes():
+    try:
+        data = request.get_json()
+        quiz_ids = data.get('quiz_ids', [])
+        if len(quiz_ids) < 2:
+            return jsonify({'ok': False, 'error': 'Select at least 2 quizzes to merge'}), 400
+
+        quizzes = Quiz.query.filter(Quiz.id.in_(quiz_ids)).all()
+        by_id = {q.id: q for q in quizzes}
+        ordered = [by_id[qid] for qid in quiz_ids if qid in by_id]
+
+        # Merge question_ids preserving order, deduplicating
+        seen = set()
+        merged_ids = []
+        for q in ordered:
+            for qid in [i.strip() for i in (q.question_ids or '').split(',') if i.strip()]:
+                if qid not in seen:
+                    seen.add(qid)
+                    merged_ids.append(qid)
+
+        title = 'merge-' + '-'.join(str(qid) for qid in quiz_ids)
+        new_quiz = Quiz(
+            title=title,
+            description='',
+            topic=ordered[0].topic or '',
+            subtopic=ordered[0].subtopic or '',
+            question_ids=','.join(merged_ids),
+            questions_json=build_questions_json(merged_ids)
+        )
+        db.session.add(new_quiz)
+        db.session.commit()
+        new_quiz.quiz_code = quiz_code(new_quiz.id)
+        db.session.commit()
+
+        return jsonify({
+            'ok': True,
+            'quiz_id': new_quiz.id,
+            'quiz_code': new_quiz.quiz_code,
+            'title': new_quiz.title,
+            'question_count': len(merged_ids)
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 # ==================== PREVIEW ==================== #
 
 @qb_bp.route("/play/<int:question_id>", methods=["GET"])

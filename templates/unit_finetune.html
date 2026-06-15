@@ -56,6 +56,14 @@
     .unit-header:hover { background: #ccd9e8; }
     .unit-chevron { margin-left: auto; font-size: 0.8rem; transition: transform 0.18s; }
     .unit-section.is-collapsed .unit-chevron { transform: rotate(-90deg); }
+    .btn-sync {
+      font-size: 0.75rem; font-weight: 600; padding: 2px 10px; border-radius: 4px;
+      border: 1px solid #2c6e9e; background: #eaf3fb; color: #1b5a80; cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-sync:hover { background: #2c6e9e; color: white; }
+    .sync-msg { font-size: 0.78rem; color: #27ae60; margin-left: 6px; }
+    .sync-msg.err { color: #c0392b; }
 
     /* ── Work rows ── */
     .work-row {
@@ -257,10 +265,14 @@
         return;
       }
       const html = units.map(unit => `
-        <div class="unit-section">
+        <div class="unit-section" data-au-id="${unit.au_id || ''}">
           <div class="unit-header" onclick="toggleUnit(this)">
             <span>${unit.au_name}</span>
             <span class="count-badge">${unit.items.length}</span>
+            ${unit.au_id
+              ? `<button class="btn-sync" onclick="syncUnit(event, this)" data-au-id="${unit.au_id}">&#x21bb; Sync</button><span class="sync-msg"></span>`
+              : `<span style="font-size:0.75rem;color:#c0392b;margin-left:6px;" title="Unit no longer exists in database">&#x26a0; Unit not found</span>`
+            }
             <span class="unit-chevron">&#9660;</span>
           </div>
           <div class="unit-body">
@@ -312,6 +324,45 @@
         applyFilter();
       } catch (e) {
         alert('Network error updating status.');
+      }
+    }
+
+    // ── Sync unit ────────────────────────────────────────────────────────────
+    async function syncUnit(event, btn) {
+      event.stopPropagation();
+      const auId = btn.dataset.auId;
+      const studentId = studentSel.value;
+      if (!studentId || !auId) return;
+      const msgEl = btn.nextElementSibling;
+      btn.disabled = true;
+      btn.textContent = '\u21bb Syncing\u2026';
+      msgEl.textContent = '';
+      msgEl.className = 'sync-msg';
+      try {
+        const res  = await fetch('/unit/api/sync-unit', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({student_id: parseInt(studentId), au_id: parseInt(auId)})
+        });
+        const data = await res.json();
+        if (data.ok) {
+          msgEl.textContent = data.message;
+          if (data.created > 0) {
+            // Reload work list to show new rows
+            const loadRes  = await fetch(`/unit/api/finetune-work?student_id=${studentId}`);
+            const loadData = await loadRes.json();
+            if (loadData.ok) renderUnits(loadData.units);
+          }
+        } else {
+          msgEl.textContent = data.error || 'Sync failed';
+          msgEl.className = 'sync-msg err';
+        }
+      } catch (e) {
+        msgEl.textContent = 'Network error';
+        msgEl.className = 'sync-msg err';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '\u21bb Sync';
       }
     }
 

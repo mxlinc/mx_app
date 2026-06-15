@@ -133,7 +133,11 @@ def delete_question(question_id):
     if not q:
         return jsonify({"ok": False, "error": "Question not found"}), 404
 
-    blocking = _quizzes_using_question(question_id)
+    payload = request.get_json(silent=True) or {}
+    exclude_quiz_id = payload.get("exclude_quiz_id")
+
+    blocking = [qz for qz in _quizzes_using_question(question_id)
+                if qz.id != exclude_quiz_id]
     if blocking:
         names = ', '.join(f"{qz.quiz_code} ({qz.title})" for qz in blocking)
         return jsonify({"ok": False,
@@ -152,6 +156,12 @@ def delete_question(question_id):
                 os.remove(img_path)
             except Exception:
                 pass
+
+    # Remove this question's ID from question_ids of all quizzes that reference it
+    for qz in _quizzes_using_question(question_id):
+        ids = [i.strip() for i in (qz.question_ids or '').split(',') if i.strip()]
+        ids = [i for i in ids if i != str(question_id)]
+        qz.question_ids = ','.join(ids)
 
     db.session.delete(q)
     db.session.commit()

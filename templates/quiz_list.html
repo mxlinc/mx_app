@@ -705,6 +705,7 @@
             <div style="display: flex; gap: 10px;">
                 <button class="btn-update" onclick="openUpdateModal()">✏️ Update</button>
                 <button class="btn-delete" onclick="deleteSelectedQuizzes()">🗑️ Delete</button>
+                <button class="btn-update" id="mergeBtn" onclick="mergeSelectedQuizzes()" style="background:#6a1b9a;display:none;">🔀 Merge</button>
                 <button class="btn-update" onclick="openAtuModal()" style="background:#2c6e9e;">📋 Add to Unit</button>
             </div>
         </div>
@@ -801,6 +802,23 @@
                 <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
                 <button id="deleteModalConfirmBtn" class="btn-save" style="background:#c0392b;"
                         onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merge Result Modal -->
+    <div class="modal" id="mergeModal">
+        <div class="modal-content" style="max-width:540px;">
+            <div class="modal-header">
+                <button class="close-btn" onclick="closeMergeModal()">&times;</button>
+                <h2>Merge Successful</h2>
+                <p id="mergeModalSubtitle"></p>
+            </div>
+            <div id="mergeModalBody" style="font-size:0.92em;padding:0 4px;"></div>
+            <div class="modal-footer">
+                <button class="btn-cancel" onclick="closeMergeModal()">No — Keep originals</button>
+                <button id="mergeDeleteBtn" class="btn-save" style="background:#c0392b;"
+                        onclick="confirmMergeDelete()">Yes — Delete originals</button>
             </div>
         </div>
     </div>
@@ -1067,6 +1085,7 @@
             } else {
                 selectionBar.classList.add('show');
                 document.getElementById('selectedCount').textContent = count;
+                document.getElementById('mergeBtn').style.display = count >= 2 ? 'inline-block' : 'none';
             }
         }
 
@@ -1438,6 +1457,83 @@
                 }
             })
             .catch(() => showError('Delete failed. Please try again.'));
+        }
+
+        // ==================== MERGE ====================
+        let _mergedOriginalIds = [];
+
+        async function mergeSelectedQuizzes() {
+            if (selectedQuizzes.size < 2) { showError('Select at least 2 quizzes to merge'); return; }
+            const quiz_ids = Array.from(selectedQuizzes);
+            const btn = document.getElementById('mergeBtn');
+            btn.textContent = '🔀 Merging…';
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/quiz/api/merge-quizzes', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({quiz_ids})
+                });
+                const data = await resp.json();
+                if (!data.ok) { showError(data.error || 'Merge failed'); return; }
+                _mergedOriginalIds = quiz_ids;
+                document.getElementById('mergeModalSubtitle').textContent =
+                    `${data.quiz_code} created with ${data.question_count} question${data.question_count !== 1 ? 's' : ''}.`;
+                document.getElementById('mergeModalBody').innerHTML =
+                    `<p style="margin:12px 0;">Delete the ${quiz_ids.length} original quizzes?</p>` +
+                    `<div id="mergeDeleteWarning" style="display:none;padding:8px 12px;background:#fdecea;border-radius:6px;color:#c0392b;margin-top:8px;"></div>`;
+                const delBtn = document.getElementById('mergeDeleteBtn');
+                delBtn.disabled = false;
+                delBtn.style.opacity = '1';
+                document.getElementById('mergeModal').classList.add('show');
+            } finally {
+                btn.textContent = '🔀 Merge';
+                btn.disabled = false;
+            }
+        }
+
+        async function confirmMergeDelete() {
+            if (!_mergedOriginalIds.length) return;
+            // Dry-run to check for blocked quizzes
+            const checkResp = await fetch('/quiz/api/delete-quizzes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({quiz_ids: _mergedOriginalIds})
+            });
+            const checkData = await checkResp.json();
+            if (checkData.any_blocked) {
+                const blocked = checkData.results.filter(r => r.blocking.length > 0);
+                const msg = blocked.map(r =>
+                    `${r.quiz_code}: ` + r.blocking.map(b => `${b.user} (${b.status})`).join(', ')
+                ).join('<br>');
+                const warn = document.getElementById('mergeDeleteWarning');
+                warn.innerHTML = '⛔ Cannot delete — active/future assignments exist:<br>' + msg;
+                warn.style.display = 'block';
+                const delBtn = document.getElementById('mergeDeleteBtn');
+                delBtn.disabled = true;
+                delBtn.style.opacity = '0.4';
+                return;
+            }
+            const resp = await fetch('/quiz/api/delete-quizzes', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({quiz_ids: _mergedOriginalIds, confirm_expire: true})
+            });
+            const data = await resp.json();
+            document.getElementById('mergeModal').classList.remove('show');
+            _mergedOriginalIds = [];
+            selectedQuizzes.clear();
+            updateSelectionUI();
+            if (!data.ok) { showError(data.error || 'Delete failed'); }
+            loadQuizzes(currentPage);
+        }
+
+        function closeMergeModal() {
+            document.getElementById('mergeModal').classList.remove('show');
+            _mergedOriginalIds = [];
+            selectedQuizzes.clear();
+            updateSelectionUI();
+            loadQuizzes(currentPage);
         }
 
         function renderPagination(data) {

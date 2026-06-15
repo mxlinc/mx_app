@@ -54,6 +54,15 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        #questionCount {
+            font-size: 0.82rem;
+            font-weight: 500;
+            color: #a8c4e0;
+            white-space: nowrap;
+            margin-left: auto;
         }
 
         /* ── Chips row ── */
@@ -259,8 +268,8 @@
         #saveBtn    { background: #0077cc; color: white; }
         #saveBtn:hover { background: #005fa3; }
 
-        #discardBtn { background: #6c757d; color: white; }
-        #discardBtn:hover { background: #5a6268; }
+        #deleteBtn { background: #dc3545; color: white; }
+        #deleteBtn:hover { background: #b02a37; }
 
         /* toolbar at top of left panel */
         #builderToolbar {
@@ -327,6 +336,7 @@
     <div id="quizHeading">
         {% if quiz_code %}{{ quiz_code }}: {% endif %}{{ quiz_title }}
     </div>
+    <div id="questionCount"></div>
 </div>
 
 <!-- ── Chips Row ── -->
@@ -360,7 +370,7 @@
                 </select>
             </div>
             <button id="saveBtn"><i class="fas fa-save"></i> Save</button>
-            <button id="discardBtn"><i class="fas fa-times"></i> Discard</button>
+            <button id="deleteBtn"><i class="fas fa-trash"></i> Delete</button>
         </div>
 
         <!-- Form -->
@@ -680,6 +690,9 @@
                 return;
             }
 
+            document.getElementById('questionCount').textContent =
+                `${questions.length} question${questions.length !== 1 ? 's' : ''}`;
+
             chipsRow.innerHTML = '';
             questions.forEach(q => {
                 const chip = document.createElement('div');
@@ -698,6 +711,23 @@
             document.getElementById('chipsRow').innerHTML =
                 `<span style="color:#c00;font-size:0.82rem;">Failed to load quiz questions: ${err.message}</span>`;
         }
+
+        // Delete button
+        document.getElementById('deleteBtn').addEventListener('click', async () => {
+            if (!activeChipId) return;
+            if (!confirm(`Permanently delete question ${activeChipId}? This cannot be undone.`)) return;
+            const resp = await fetch(`/question/api/delete/${activeChipId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ exclude_quiz_id: QUIZ_ID })
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                location.reload();
+            } else {
+                alert('Delete failed: ' + (data.error || 'Unknown error'));
+            }
+        });
     });
 </script>
 </body>

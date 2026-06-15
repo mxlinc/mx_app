@@ -1652,7 +1652,7 @@ def unit_assign_submit():
                         item_code=code,
                         item_detail=detail,
                         views=0,
-                        status='assigned',
+                        status='future',
                         user_id=user_id,
                     ))
                     created += 1
@@ -1731,6 +1731,7 @@ def unit_finetune_work():
         if name not in ordered_names:
             ordered_names.append(name)
 
+    au_name_to_id = {u.au_name: u.au_id for u in unit_rows}
     au_content_order = {}
     for unit in unit_rows:
         codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
@@ -1786,9 +1787,82 @@ def unit_finetune_work():
                     'views': row.views or 0,
                     'questions_answered': 0,
                 })
-        units.append({'au_name': au_name, 'items': items})
+        units.append({
+            'au_name': au_name,
+            'au_id': au_name_to_id.get(au_name),
+            'items': items
+        })
 
     return jsonify({'ok': True, 'units': units})
+
+
+@lms_bp.route('/unit/api/sync-unit', methods=['POST'])
+@login_required
+def unit_sync():
+    """Additively assign any new items in a unit to a student (status=future)."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    data = request.get_json(silent=True) or {}
+    student_id = data.get('student_id')
+    au_id = data.get('au_id')
+
+    if not student_id or not au_id:
+        return jsonify({'ok': False, 'error': 'student_id and au_id required'}), 400
+
+    student = UserTable.query.get(student_id)
+    if not student:
+        return jsonify({'ok': False, 'error': 'Student not found'}), 404
+
+    unit = AUnit.query.get(au_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Unit not found in database'}), 404
+
+    codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
+    video_codes       = {c for c in codes if c.startswith('V-')}
+    interaction_codes = {c for c in codes if c.startswith('I-')}
+
+    video_detail = {}
+    for v in Video.query.filter(Video.lesson_code.in_(video_codes)).all():
+        video_detail[v.lesson_code] = f'https://mx-app-mm.onrender.com/packages/advanced/{v.file_name}'
+
+    interaction_detail = {}
+    for i in Interaction.query.filter(Interaction.lesson_code.in_(interaction_codes)).all():
+        interaction_detail[i.lesson_code] = f'/static/interactions/{i.file_name}'
+
+    created = 0
+    try:
+        for code in codes:
+            exists = MyWorkList.query.filter_by(
+                user=student.username, au_name=unit.au_name, item_code=code
+            ).first()
+            if exists:
+                continue
+            if code.startswith('V-'):
+                detail = video_detail.get(code)
+            elif code.startswith('I-'):
+                detail = interaction_detail.get(code)
+            else:
+                detail = None
+            db.session.add(MyWorkList(
+                user=student.username,
+                au_name=unit.au_name,
+                item_code=code,
+                item_detail=detail,
+                views=0,
+                status='future',
+                user_id=student_id,
+            ))
+            created += 1
+        db.session.commit()
+        logger.info('Sync unit: au_id=%s student=%s created=%s by admin=%s',
+                    au_id, student.username, created, current_user.username)
+        msg = f'{created} new item(s) added.' if created else 'No new items — already up to date.'
+        return jsonify({'ok': True, 'created': created, 'message': msg})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @lms_bp.route('/unit/api/finetune-status', methods=['POST'])

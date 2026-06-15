@@ -625,7 +625,8 @@
                     Show Unused Only
                 </label>
             </div>
-            <div style="margin-left:auto;">
+            <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+                <a href="/question/builder" class="btn-resync" style="text-decoration:none;">&#x2795; New Question</a>
                 <button class="btn-resync" id="resyncBtn" onclick="runResync()" title="Rebuild quiz snapshots for all recently edited questions">&#x1F504; Re-sync Quizzes <span id="resyncCount"></span></button>
             </div>
         </div>
@@ -1028,7 +1029,7 @@
                     selectedQuestions.clear();
                     updateSelectionUI();
                     setTimeout(() => {
-                        window.location.href = `/quiz/list`;
+                        loadQuestions(currentPage);
                     }, 1000);
                 } else {
                     showError(result.error || 'Failed to create quiz');
