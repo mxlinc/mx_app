@@ -65,6 +65,43 @@
     .sync-msg { font-size: 0.78rem; color: #27ae60; margin-left: 6px; }
     .sync-msg.err { color: #c0392b; }
 
+    .btn-park {
+      font-size: 0.75rem; font-weight: 600; padding: 2px 10px; border-radius: 4px;
+      border: 1px solid #7d4b8a; background: #f5edf8; color: #5c2a72; cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-park:hover { background: #7d4b8a; color: white; }
+
+    /* ── Parked units section ── */
+    .parked-section-label {
+      margin-top: 2rem;
+      padding: 0.45rem 1rem;
+      background: #ede8f5;
+      border: 1px solid #c8b8e0;
+      border-radius: 6px 6px 0 0;
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: #4a2070;
+    }
+    .parked-row {
+      display: flex;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      border: 1px solid #c8b8e0;
+      border-top: none;
+      background: var(--surface);
+      gap: 0.65rem;
+    }
+    .parked-row:last-child { border-radius: 0 0 6px 6px; }
+    .parked-unit-name { flex: 1; font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .parked-date { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+    .btn-activate {
+      font-size: 0.75rem; font-weight: 700; padding: 3px 12px; border-radius: 4px;
+      border: 1px solid #1a7a45; background: #d5f5e3; color: #1a7a45; cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-activate:hover { background: #1a7a45; color: white; }
+
     /* ── Work rows ── */
     .work-row {
       display: flex;
@@ -228,6 +265,10 @@
       return `<span class="bdg ${cls}">${lbl}</span>`;
     }
 
+    function escAttr(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
     function renderRow(item) {
       const isVideo    = item.item_code.startsWith('V-');
       const nameClass  = isVideo ? 'item-name video' : 'item-name';
@@ -259,18 +300,26 @@
       </div>`;
     }
 
-    function renderUnits(units) {
-      if (!units.length) {
+    function renderWorkArea(data) {
+      const units        = data.units        || [];
+      const parkedUnits  = data.parked_units || [];
+
+      if (!units.length && !parkedUnits.length) {
         workArea.innerHTML = '<div class="state-msg">No work assigned to this student.</div>';
         return;
       }
-      const html = units.map(unit => `
+
+      let html = '';
+
+      // ── Active units ─────────────────────────────────────────────────────
+      html += units.map(unit => `
         <div class="unit-section" data-au-id="${unit.au_id || ''}">
           <div class="unit-header" onclick="toggleUnit(this)">
             <span>${unit.au_name}</span>
             <span class="count-badge">${unit.items.length}</span>
             ${unit.au_id
-              ? `<button class="btn-sync" onclick="syncUnit(event, this)" data-au-id="${unit.au_id}">&#x21bb; Sync</button><span class="sync-msg"></span>`
+              ? `<button class="btn-sync" onclick="syncUnit(event, this)" data-au-id="${unit.au_id}">&#x21bb; Sync</button><span class="sync-msg"></span>
+                 <button class="btn-park" onclick="parkUnit(event, this)" data-au-id="${unit.au_id}" data-au-name="${escAttr(unit.au_name)}">&#x1F17F; Park</button>`
               : `<span style="font-size:0.75rem;color:#c0392b;margin-left:6px;" title="Unit no longer exists in database">&#x26a0; Unit not found</span>`
             }
             <span class="unit-chevron">&#9660;</span>
@@ -279,8 +328,97 @@
             ${unit.items.map(renderRow).join('')}
           </div>
         </div>`).join('');
+
+      // ── Parked units section ──────────────────────────────────────────────
+      if (parkedUnits.length) {
+        html += `<div class="parked-section-label">&#x1F17F; Parked Units</div>`;
+        html += parkedUnits.map(pu => {
+          const doneHtml   = pu.done_count   > 0 ? `<span class="bdg bdg-done">${pu.done_count} done</span>`     : '';
+          const futureHtml = pu.future_count > 0 ? `<span class="bdg bdg-future">${pu.future_count} future</span>` : '';
+          const dateHtml   = pu.parked_at ? `<span class="parked-date">Parked ${pu.parked_at}</span>` : '';
+          return `
+          <div class="parked-row">
+            <span class="parked-unit-name">${pu.au_name}</span>
+            ${doneHtml}${futureHtml}${dateHtml}
+            <button class="btn-activate" onclick="activateParked(${pu.unit_id})">Activate</button>
+          </div>`;
+        }).join('');
+      }
+
       workArea.innerHTML = html;
       applyFilter();
+    }
+
+    // ── Legacy alias kept for syncUnit's reload call ─────────────────────
+    async function loadWorkList(studentId) {
+      if (!studentId) return;
+      workArea.innerHTML = '<div class="state-msg">Loading…</div>';
+      try {
+        const res  = await fetch(`/unit/api/finetune-work?student_id=${studentId}`);
+        const data = await res.json();
+        if (!data.ok) {
+          workArea.innerHTML = `<div class="state-msg" style="color:#c0392b;">Error: ${data.error}</div>`;
+          return;
+        }
+        renderWorkArea(data);
+      } catch (e) {
+        workArea.innerHTML = '<div class="state-msg" style="color:#c0392b;">Network error loading work list.</div>';
+      }
+    }
+
+    // ── Park unit ────────────────────────────────────────────────────────────
+    async function parkUnit(event, btn) {
+      event.stopPropagation();
+      const auId     = parseInt(btn.dataset.auId);
+      const auName   = btn.dataset.auName;
+      const studentId = parseInt(studentSel.value);
+      if (!studentId || !auId) return;
+
+      // Warn if there are currently-assigned items in this unit
+      const unitSection    = btn.closest('.unit-section');
+      const assignedItems  = unitSection.querySelectorAll('.work-row[data-status="assigned"]');
+      if (assignedItems.length > 0) {
+        const ok = confirm(
+          `This unit has ${assignedItems.length} item(s) currently assigned to the student.\n\n` +
+          `Parking will hide the unit from this view, but those assigned items will still appear on the student's homepage.\n\nContinue?`
+        );
+        if (!ok) return;
+      }
+
+      btn.disabled    = true;
+      btn.textContent = 'Parking…';
+      try {
+        const res  = await fetch('/unit/api/park', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({student_id: studentId, unit_id: auId}),
+        });
+        const data = await res.json();
+        if (!data.ok) { alert('Error: ' + (data.error || 'Unknown')); btn.disabled = false; btn.textContent = '🅿 Park'; return; }
+        await loadWorkList(studentId);
+      } catch (e) {
+        alert('Network error parking unit.');
+        btn.disabled    = false;
+        btn.textContent = '🅿 Park';
+      }
+    }
+
+    // ── Activate parked unit ─────────────────────────────────────────────────
+    async function activateParked(unitId) {
+      const studentId = parseInt(studentSel.value);
+      if (!studentId || !unitId) return;
+      try {
+        const res  = await fetch('/unit/api/activate-parked', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({student_id: studentId, unit_id: unitId}),
+        });
+        const data = await res.json();
+        if (!data.ok) { alert('Error: ' + (data.error || 'Unknown')); return; }
+        await loadWorkList(studentId);
+      } catch (e) {
+        alert('Network error activating unit.');
+      }
     }
 
     function applyFilter() {
@@ -348,10 +486,7 @@
         if (data.ok) {
           msgEl.textContent = data.message;
           if (data.created > 0) {
-            // Reload work list to show new rows
-            const loadRes  = await fetch(`/unit/api/finetune-work?student_id=${studentId}`);
-            const loadData = await loadRes.json();
-            if (loadData.ok) renderUnits(loadData.units);
+            await loadWorkList(studentId);
           }
         } else {
           msgEl.textContent = data.error || 'Sync failed';
@@ -379,18 +514,7 @@
       btnPreview.setAttribute('href', `/student-new/preview/${studentId}`);
       btnPreview.classList.remove('disabled');
 
-      workArea.innerHTML = '<div class="state-msg">Loading…</div>';
-      try {
-        const res  = await fetch(`/unit/api/finetune-work?student_id=${studentId}`);
-        const data = await res.json();
-        if (!data.ok) {
-          workArea.innerHTML = `<div class="state-msg" style="color:#c0392b;">Error: ${data.error}</div>`;
-          return;
-        }
-        renderUnits(data.units);
-      } catch (e) {
-        workArea.innerHTML = '<div class="state-msg" style="color:#c0392b;">Network error loading work list.</div>';
-      }
+      await loadWorkList(parseInt(studentId));
     });
 
     // ── Filter checkboxes ───────────────────────────────────────────────────

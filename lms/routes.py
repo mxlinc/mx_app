@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import logging
 import os
 from db import db
-from models import UserTable, UserWorks, MXWorks, MXWorkPacks, EmailMessage, DonePacks, ContactSubmission, Video, Interaction, AUnit, Quiz, MyWorkList, UserStreak
+from models import UserTable, UserWorks, MXWorks, MXWorkPacks, EmailMessage, DonePacks, ContactSubmission, Video, Interaction, AUnit, Quiz, MyWorkList, UserStreak, ParkedUnit
 from lms.utils import parse_email_content, update_work_with_result
 
 logger = logging.getLogger(__name__)
@@ -1382,6 +1382,17 @@ def units_create():
     )
     db.session.add(unit)
     db.session.commit()
+
+    # Auto-park the new unit for every active, assignable student
+    active_students = UserTable.query.filter(
+        UserTable.user_role == 'student_new',
+        UserTable.can_assign_work == True,
+    ).all()
+    for s in active_students:
+        db.session.add(ParkedUnit(student_id=s.id, unit_id=unit.au_id))
+    if active_students:
+        db.session.commit()
+
     return jsonify({'ok': True, 'au_id': unit.au_id})
 
 
@@ -1571,6 +1582,60 @@ def unit_assign_list():
     ]})
 
 
+# ── Shared helper ────────────────────────────────────────────────────────────
+
+def _assign_unit_to_student(student, unit):
+    """Insert my_work_list rows for every item in `unit` that the student doesn't already have.
+
+    Skips any item code already present (any status).
+    Does NOT commit — caller is responsible for db.session.commit().
+    Returns count of new rows added.
+    """
+    codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
+    if not codes:
+        return 0
+
+    video_codes       = {c for c in codes if c.startswith('V-')}
+    interaction_codes = {c for c in codes if c.startswith('I-')}
+
+    video_detail = {}
+    if video_codes:
+        for v in Video.query.filter(Video.lesson_code.in_(video_codes)).all():
+            video_detail[v.lesson_code] = f'https://mx-app-mm.onrender.com/packages/advanced/{v.file_name}'
+
+    interaction_detail = {}
+    if interaction_codes:
+        for i in Interaction.query.filter(Interaction.lesson_code.in_(interaction_codes)).all():
+            interaction_detail[i.lesson_code] = f'/static/interactions/{i.file_name}'
+
+    created = 0
+    for code in codes:
+        exists = MyWorkList.query.filter_by(
+            user=student.username, au_name=unit.au_name, item_code=code
+        ).first()
+        if exists:
+            continue
+
+        if code.startswith('V-'):
+            detail = video_detail.get(code)
+        elif code.startswith('I-'):
+            detail = interaction_detail.get(code)
+        else:
+            detail = None
+
+        db.session.add(MyWorkList(
+            user=student.username,
+            au_name=unit.au_name,
+            item_code=code,
+            item_detail=detail,
+            views=0,
+            status='future',
+            user_id=student.id,
+        ))
+        created += 1
+    return created
+
+
 @lms_bp.route('/unit/api/assign', methods=['POST'])
 @login_required
 def unit_assign_submit():
@@ -1699,12 +1764,30 @@ def unit_finetune_work():
     if not student:
         return jsonify({'ok': False, 'error': 'Student not found'}), 404
 
-    all_rows = MyWorkList.query.filter_by(user=student.username).all()
-    if not all_rows:
-        return jsonify({'ok': True, 'units': []})
+    # ── Parked units for this student ──────────────────────────────────────
+    parked_rows = ParkedUnit.query.filter_by(student_id=student_id).all()
+    parked_unit_ids = {pr.unit_id for pr in parked_rows}
+    parked_id_to_row = {pr.unit_id: pr for pr in parked_rows}
 
-    q_codes = {r.item_code for r in all_rows if r.item_code.startswith('Q-')}
-    v_codes = {r.item_code for r in all_rows if r.item_code.startswith('V-')}
+    parked_au_names = set()
+    parked_unit_meta = {}  # unit_id -> AUnit object
+    if parked_unit_ids:
+        for u in AUnit.query.filter(AUnit.au_id.in_(parked_unit_ids)).all():
+            parked_au_names.add(u.au_name)
+            parked_unit_meta[u.au_id] = u
+
+    # ── my_work_list rows ─────────────────────────────────────────────────
+    all_rows = MyWorkList.query.filter_by(user=student.username).all()
+
+    from collections import defaultdict
+    rows_by_unit = defaultdict(list)
+    for row in all_rows:
+        rows_by_unit[row.au_name].append(row)
+
+    # ── Name lookups (only for active units) ─────────────────────────────
+    active_rows = [r for r in all_rows if r.au_name not in parked_au_names]
+    q_codes = {r.item_code for r in active_rows if r.item_code.startswith('Q-')}
+    v_codes = {r.item_code for r in active_rows if r.item_code.startswith('V-')}
 
     quiz_info = {}
     if q_codes:
@@ -1716,29 +1799,25 @@ def unit_finetune_work():
         for v in Video.query.filter(Video.lesson_code.in_(v_codes)).all():
             video_info[v.lesson_code] = v.display_name
 
-    from collections import defaultdict
-    rows_by_unit = defaultdict(list)
-    for row in all_rows:
-        rows_by_unit[row.au_name].append(row)
+    # ── Active units (not parked) ─────────────────────────────────────────
+    active_au_names = [name for name in rows_by_unit if name not in parked_au_names]
+    unit_rows_for_active = (AUnit.query
+                            .filter(AUnit.au_name.in_(active_au_names))
+                            .order_by(AUnit.au_id)
+                            .all()) if active_au_names else []
+    ordered_active_names = [u.au_name for u in unit_rows_for_active]
+    for name in active_au_names:
+        if name not in ordered_active_names:
+            ordered_active_names.append(name)
 
-    au_names = list(rows_by_unit.keys())
-    unit_rows = (AUnit.query
-                 .filter(AUnit.au_name.in_(au_names))
-                 .order_by(AUnit.au_id)
-                 .all())
-    ordered_names = [u.au_name for u in unit_rows]
-    for name in au_names:
-        if name not in ordered_names:
-            ordered_names.append(name)
-
-    au_name_to_id = {u.au_name: u.au_id for u in unit_rows}
+    au_name_to_id = {u.au_name: u.au_id for u in unit_rows_for_active}
     au_content_order = {}
-    for unit in unit_rows:
+    for unit in unit_rows_for_active:
         codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
         au_content_order[unit.au_name] = {code: i for i, code in enumerate(codes)}
 
     units = []
-    for au_name in ordered_names:
+    for au_name in ordered_active_names:
         rows = rows_by_unit.get(au_name, [])
         if not rows:
             continue
@@ -1793,7 +1872,24 @@ def unit_finetune_work():
             'items': items
         })
 
-    return jsonify({'ok': True, 'units': units})
+    # ── Build parked_units response ───────────────────────────────────────
+    parked_units_result = []
+    for pr in sorted(parked_rows, key=lambda x: x.parked_at or datetime.min):
+        meta = parked_unit_meta.get(pr.unit_id)
+        au_name = meta.au_name if meta else f'Unit {pr.unit_id}'
+        unit_wl_rows = rows_by_unit.get(au_name, [])
+        quiz_wl = [r for r in unit_wl_rows if r.item_code.startswith('Q-')]
+        done_count   = sum(1 for r in quiz_wl if r.status == 'done')
+        future_count = sum(1 for r in quiz_wl if r.status == 'future')
+        parked_units_result.append({
+            'unit_id':      pr.unit_id,
+            'au_name':      au_name,
+            'parked_at':    pr.parked_at.strftime('%Y-%m-%d') if pr.parked_at else None,
+            'done_count':   done_count,
+            'future_count': future_count,
+        })
+
+    return jsonify({'ok': True, 'units': units, 'parked_units': parked_units_result})
 
 
 @lms_bp.route('/unit/api/sync-unit', methods=['POST'])
@@ -1818,42 +1914,8 @@ def unit_sync():
     if not unit:
         return jsonify({'ok': False, 'error': 'Unit not found in database'}), 404
 
-    codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
-    video_codes       = {c for c in codes if c.startswith('V-')}
-    interaction_codes = {c for c in codes if c.startswith('I-')}
-
-    video_detail = {}
-    for v in Video.query.filter(Video.lesson_code.in_(video_codes)).all():
-        video_detail[v.lesson_code] = f'https://mx-app-mm.onrender.com/packages/advanced/{v.file_name}'
-
-    interaction_detail = {}
-    for i in Interaction.query.filter(Interaction.lesson_code.in_(interaction_codes)).all():
-        interaction_detail[i.lesson_code] = f'/static/interactions/{i.file_name}'
-
-    created = 0
     try:
-        for code in codes:
-            exists = MyWorkList.query.filter_by(
-                user=student.username, au_name=unit.au_name, item_code=code
-            ).first()
-            if exists:
-                continue
-            if code.startswith('V-'):
-                detail = video_detail.get(code)
-            elif code.startswith('I-'):
-                detail = interaction_detail.get(code)
-            else:
-                detail = None
-            db.session.add(MyWorkList(
-                user=student.username,
-                au_name=unit.au_name,
-                item_code=code,
-                item_detail=detail,
-                views=0,
-                status='future',
-                user_id=student_id,
-            ))
-            created += 1
+        created = _assign_unit_to_student(student, unit)
         db.session.commit()
         logger.info('Sync unit: au_id=%s student=%s created=%s by admin=%s',
                     au_id, student.username, created, current_user.username)
@@ -1889,6 +1951,128 @@ def unit_finetune_status():
     db.session.commit()
     logger.info('Finetune status: row_id=%s status=%s by admin=%s', row_id, new_status, current_user.username)
     return jsonify({'ok': True})
+
+
+@lms_bp.route('/unit/api/park', methods=['POST'])
+@login_required
+def unit_park():
+    """Park an active unit for a student — collapses it on the fine-tune page.
+
+    No my_work_list rows are touched. This is purely a display-state change.
+    """
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    data       = request.get_json(silent=True) or {}
+    student_id = data.get('student_id')
+    unit_id    = data.get('unit_id')
+
+    if not student_id or not unit_id:
+        return jsonify({'ok': False, 'error': 'student_id and unit_id required'}), 400
+
+    student = UserTable.query.get(student_id)
+    if not student:
+        return jsonify({'ok': False, 'error': 'Student not found'}), 404
+
+    unit = AUnit.query.get(unit_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Unit not found'}), 404
+
+    # Idempotent — ignore if already parked (unique constraint would fire)
+    existing = ParkedUnit.query.filter_by(student_id=student_id, unit_id=unit_id).first()
+    if existing:
+        return jsonify({'ok': True, 'already_parked': True})
+
+    db.session.add(ParkedUnit(student_id=student_id, unit_id=unit_id))
+    db.session.commit()
+    logger.info('Park unit: unit_id=%s student=%s by admin=%s', unit_id, student.username, current_user.username)
+    return jsonify({'ok': True})
+
+
+@lms_bp.route('/unit/api/activate-parked', methods=['POST'])
+@login_required
+def unit_activate_parked():
+    """Activate a parked unit for a student.
+
+    Removes the parked_units row and (if not previously assigned) inserts
+    my_work_list rows for all items in the unit with status=future.
+    Uses the shared _assign_unit_to_student helper — same logic as unit assign.
+    """
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    data       = request.get_json(silent=True) or {}
+    student_id = data.get('student_id')
+    unit_id    = data.get('unit_id')
+
+    if not student_id or not unit_id:
+        return jsonify({'ok': False, 'error': 'student_id and unit_id required'}), 400
+
+    student = UserTable.query.get(student_id)
+    if not student:
+        return jsonify({'ok': False, 'error': 'Student not found'}), 404
+
+    unit = AUnit.query.get(unit_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Unit not found'}), 404
+
+    park_row = ParkedUnit.query.filter_by(student_id=student_id, unit_id=unit_id).first()
+    if not park_row:
+        return jsonify({'ok': False, 'error': 'Unit is not parked for this student'}), 400
+
+    try:
+        db.session.delete(park_row)
+        created = _assign_unit_to_student(student, unit)
+        db.session.commit()
+        logger.info('Activate parked unit: unit_id=%s student=%s new_rows=%s by admin=%s',
+                    unit_id, student.username, created, current_user.username)
+        return jsonify({'ok': True, 'created': created})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
+@lms_bp.route('/unit/api/admin/backfill-parking', methods=['POST'])
+@login_required
+def backfill_parking():
+    """One-time backfill: park all existing units for every student who has no work rows for them.
+
+    Units that a student already has my_work_list rows for remain active (not parked).
+    Safe to re-run — skips pairs already in parked_units.
+    """
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    students  = UserTable.query.filter(
+        UserTable.user_role == 'student_new',
+        UserTable.can_assign_work == True,
+    ).all()
+    all_units = AUnit.query.all()
+
+    existing_pairs = {(p.student_id, p.unit_id) for p in ParkedUnit.query.all()}
+
+    # Pairs that already have work rows (units already active for those students)
+    from sqlalchemy import distinct
+    assigned_pairs = {
+        (r.user, r.au_name)
+        for r in db.session.query(MyWorkList.user, MyWorkList.au_name).distinct().all()
+    }
+    username_map = {s.username: s.id for s in students}
+
+    created = 0
+    for student in students:
+        for unit in all_units:
+            if (student.id, unit.au_id) in existing_pairs:
+                continue  # already parked
+            if (student.username, unit.au_name) in assigned_pairs:
+                continue  # already has work rows → stays active
+            db.session.add(ParkedUnit(student_id=student.id, unit_id=unit.au_id))
+            created += 1
+
+    db.session.commit()
+    logger.info('Backfill parking: created=%s by admin=%s', created, current_user.username)
+    return jsonify({'ok': True, 'created': created})
 
 
 @lms_bp.route('/student-new/preview/<int:user_id>', methods=['GET'])

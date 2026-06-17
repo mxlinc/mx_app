@@ -30,3 +30,9 @@ DONE -- git tag -a qb-v1 -m "Quiz builder MCQ"
 
 git tag -a before-big-change -m "safe point"
 git push origin before-big-change
+
+
+Read the finetune page /unit/assign-finetune thoroughly and add a detailed section to the architecture notes covering its current implementation.
+
+Update the memory file to reflect what was changed.
+

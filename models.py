@@ -229,3 +229,22 @@ class UserStreak(db.Model):
     user_id    = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.user_table.id', ondelete='CASCADE'), primary_key=True)
     streak     = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+
+
+class ParkedUnit(db.Model):
+    """Parking lot for assignment units — controls collapsed/expanded display on fine-tune page.
+
+    Presence of a row means the unit is parked (collapsed) for that student.
+    Absence means the unit is active (expanded).
+    No my_work_list rows are ever deleted as part of parking/activating.
+    """
+    __tablename__ = 'parked_units'
+    __table_args__ = (
+        db.UniqueConstraint('student_id', 'unit_id', name='uq_parked_units_student_unit'),
+        {'schema': CURRENT_SCHEMA},
+    )
+
+    id         = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.user_table.id', ondelete='CASCADE'), nullable=False)
+    unit_id    = db.Column(db.Integer, db.ForeignKey(f'{CURRENT_SCHEMA}.a_unit.au_id',  ondelete='CASCADE'), nullable=False)
+    parked_at  = db.Column(db.DateTime, server_default=db.func.now())
