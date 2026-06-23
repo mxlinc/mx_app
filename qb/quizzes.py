@@ -289,7 +289,7 @@ def get_quizzes_page():
             )
 
         total = query.count()
-        paginated = query.paginate(page=page, per_page=per_page, error_out=False)
+        paginated = query.order_by(Quiz.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
         items = [{
             'id': q.id, 'quiz_code': q.quiz_code or '', 'title': q.title, 'description': q.description,
             'topic': q.topic, 'subtopic': q.subtopic,

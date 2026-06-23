@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fractions Are Division</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(140deg, #e8f4fd 0%, #fef9e7 100%);
+      min-height: 100vh;
+      color: #1a1a2a;
+      padding: 28px 16px 60px;
+    }
+
+    /* ── Header ── */
+    .hdr { text-align: center; margin-bottom: 24px; }
+    .hdr h1 {
+      font-size: clamp(1.75rem, 5vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .h-frac { color: #6a0f0f; }
+    .h-bull { color: #aaa; font-weight: 300; }
+    .h-div  { color: #0d2472; }
+    .hdr p { color: #666; font-size: 1rem; }
+
+    /* ── Input card ── */
+    .input-card {
+      max-width: 580px;
+      margin: 0 auto 26px;
+      background: #fff;
+      border-radius: 14px;
+      padding: 20px 32px;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.11);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 26px;
+    }
+
+    .frac-wrap { display: flex; flex-direction: column; align-items: center; }
+
+    .frac-wrap input {
+      width: 84px; height: 66px;
+      text-align: center;
+      font-size: 2.1rem; font-weight: 700;
+      color: #1a1a2a;
+      background: #f8fafc;
+      border: 2px solid #cbd5e1;
+      border-radius: 13px;
+      outline: none;
+      transition: border-color .25s, background .25s, box-shadow .25s;
+      -moz-appearance: textfield;
+    }
+    .frac-wrap input::-webkit-inner-spin-button,
+    .frac-wrap input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+    #numIn:focus {
+      border-color: #c0392b;
+      background: #fdf2f2;
+      box-shadow: 0 0 0 4px rgba(192,57,43,.10);
+    }
+    #denIn:focus {
+      border-color: #1565c0;
+      background: #eff6ff;
+      box-shadow: 0 0 0 4px rgba(21,101,192,.10);
+    }
+
+    .frac-bar {
+      width: 84px; height: 4px;
+      background: #000;
+      border-radius: 2px; margin: 7px 0;
+    }
+
+    .hint {
+      display: flex; flex-direction: column;
+      justify-content: space-between;
+      height: 150px;   /* matches frac-wrap: 66+18+66 */
+      padding: 22px 0;
+      font-size: .85rem; color: #555;
+      white-space: nowrap;
+    }
+    .hn { color: #6a0f0f; font-weight: 700; }
+    .hd { color: #1565c0; font-weight: 700; }
+
+    /* ── Stage ── */
+    .stage { max-width: 980px; margin: 0 auto; }
+
+    .panels {
+      display: flex; gap: 16px; align-items: stretch;
+    }
+
+    /* Items panel */
+    .p-items {
+      flex: 1; min-width: 0;
+      background: #fff;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px; padding: 18px;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.08);
+      transition: border-color .3s;
+    }
+    .p-items.lit { border-color: #e74c3c; }
+
+    .p-people {
+      flex: 1.3; min-width: 0;
+      background: #fff;
+      border: 2px solid #e2e8f0;
+      border-radius: 14px; padding: 18px;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.08);
+      transition: border-color .3s;
+    }
+    .p-people.lit { border-color: #1565c0; }
+
+    .plabel {
+      text-align: center;
+      font-size: .74rem; text-transform: uppercase;
+      letter-spacing: 1.8px; color: #888;
+      font-weight: 700; margin-bottom: 14px;
+    }
+
+    .circles-grid {
+      display: flex; flex-wrap: wrap;
+      gap: 8px; justify-content: center; min-height: 56px;
+    }
+
+    .dot {
+      width: 54px; height: 54px; border-radius: 50%;
+      background: #6a0f0f;
+      box-shadow: 0 2px 6px rgba(106,15,15,.30);
+      flex-shrink: 0;
+    }
+    .dot.pop  { animation: popIn  .35s cubic-bezier(.34,1.56,.64,1) both; }
+
+    @keyframes popIn {
+      from { transform: scale(0) rotate(-20deg); opacity: 0; }
+      to   { transform: scale(1) rotate(0);      opacity: 1; }
+    }
+
+    /* Center column */
+    .p-mid {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px; flex-shrink: 0; width: 96px;
+    }
+
+    .op { font-size: 2.4rem; font-weight: 800; color: #e67e22; line-height: 1; }
+    .eq { font-size: 2.4rem; font-weight: 800; color: #1b5e20; line-height: 1; opacity: 0; transition: opacity .4s; }
+    .eq.show { opacity: 1; }
+
+    #divBtn {
+      width: 78px; height: 78px;
+      border-radius: 50%; border: none;
+      background: linear-gradient(135deg, #1565c0, #0d47a1);
+      color: #fff;
+      font-size: .78rem; font-weight: 800;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      cursor: pointer;
+      box-shadow: 0 6px 22px rgba(21,101,192,.40);
+      transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s;
+    }
+    #divBtn:hover:not(:disabled) { transform: scale(1.1); box-shadow: 0 10px 30px rgba(21,101,192,.55); }
+    #divBtn:active:not(:disabled) { transform: scale(.94); }
+    #divBtn:disabled {
+      background: #e2e8f0; color: #94a3b8;
+      box-shadow: none; cursor: not-allowed;
+    }
+
+    /* People */
+    .people-row {
+      display: flex; flex-wrap: wrap;
+      gap: 10px; justify-content: center; min-height: 56px;
+    }
+
+    .person {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 6px;
+      padding: 12px 10px 10px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 12px;
+      animation: popIn .35s cubic-bezier(.34,1.56,.64,1) both;
+      min-width: 70px;
+    }
+    .p-emo { font-size: 2.4rem; line-height: 1; }
+    .p-lbl { font-size: .6rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
+
+    .tray {
+      display: flex; flex-wrap: wrap;
+      gap: 4px; justify-content: center;
+      max-width: 110px;
+    }
+
+    .t-dot {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: #6a0f0f;
+      box-shadow: 0 2px 5px rgba(106,15,15,.25);
+      animation: popIn .3s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .p-amt { font-size: .69rem; font-weight: 700; color: #1565c0; text-align: center; }
+
+    /* Result */
+    .result-box {
+      margin-top: 18px;
+      background: #f0fdf4;
+      border: 2px solid #86efac;
+      border-radius: 14px; padding: 12px 20px; text-align: center;
+      box-shadow: 0 3px 14px rgba(0,0,0,0.08);
+      animation: slideUp .5s ease-out both;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(18px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    .r-title { font-size: .68rem; text-transform: uppercase; letter-spacing: 2px; color: #888; font-weight: 700; margin-bottom: 6px; }
+    .r-eq {
+      display: flex; align-items: center; justify-content: center;
+      flex-wrap: wrap; gap: 6px 12px;
+      font-size: clamp(1.2rem, 2.8vw, 1.8rem); font-weight: 800; color: #166534;
+    }
+    .rf {
+      display: inline-flex; flex-direction: column;
+      align-items: center; line-height: 1.15;
+      gap: 2px; vertical-align: middle; font-size: .88em;
+    }
+    .rf-bar { width: 100%; min-width: 18px; height: 3px; background: currentColor; border-radius: 2px; }
+
+    /* Reset btn */
+    #resetBtn {
+      display: block; margin: 18px auto 0;
+      background: transparent;
+      border: 2px solid #cbd5e1;
+      color: #64748b; padding: 9px 24px;
+      border-radius: 50px; cursor: pointer;
+      font-size: .88rem; transition: border-color .2s, color .2s;
+    }
+    #resetBtn:hover { border-color: #1565c0; color: #1565c0; }
+
+    .ghost { color: #94a3b8; font-size: .85rem; font-style: italic; padding: 16px; text-align: center; width: 100%; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 560px) {
+      .panels { flex-direction: column; }
+      .p-mid  { flex-direction: row; width: 100%; justify-content: center; padding: 4px 0; }
+      .input-card { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1><span class="h-frac">Fractions</span> <span class="h-bull">are</span> <span class="h-div">Division</span></h1>
+  <p>Enter a fraction — watch sharing reveal its meaning</p>
+</div>
+
+<!-- ── INPUT ── -->
+<div class="input-card">
+  <div class="frac-wrap">
+    <input id="numIn" type="number" min="1" max="12" placeholder="" autocomplete="off">
+    <div class="frac-bar"></div>
+    <input id="denIn" type="number" min="1" max="12" placeholder="" autocomplete="off">
+  </div>
+  <div class="hint">
+    <div><span class="hn">Enter Numerator</span> — items to share (up to 12)</div>
+    <div><span class="hd">Enter Denominator</span> — people sharing (up to 12)</div>
+  </div>
+</div>
+
+<!-- ── STAGE ── -->
+<div class="stage">
+  <div class="panels">
+
+    <!-- Items -->
+    <div class="p-items" id="pItems">
+      <div class="plabel">Items &nbsp;<span id="nBadge" style="color:#6a0f0f">—</span></div>
+      <div class="circles-grid" id="cGrid">
+        <span class="ghost">Enter numerator</span>
+      </div>
+    </div>
+
+    <!-- Centre -->
+    <div class="p-mid">
+      <div class="op">÷</div>
+      <button id="divBtn" onclick="doDiv()" disabled>DIVIDE</button>
+      <div class="eq" id="eqSign">=</div>
+    </div>
+
+    <!-- People -->
+    <div class="p-people" id="pPeople">
+      <div class="plabel">People &nbsp;<span id="dBadge" style="color:#1565c0">—</span></div>
+      <div class="people-row" id="pRow">
+        <span class="ghost">Enter denominator</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Result -->
+  <div class="result-box hidden" id="resBox">
+    <div class="r-title">Each person receives</div>
+    <div class="r-eq" id="resEq"></div>
+  </div>
+
+  <button id="resetBtn" class="hidden" onclick="doReset()">↺ Try Another Fraction</button>
+</div>
+
+<script>
+  // ── state
+  let N = 0, D = 0;
+
+  // ── dom
+  const numIn  = document.getElementById('numIn');
+  const denIn  = document.getElementById('denIn');
+  const cGrid  = document.getElementById('cGrid');
+  const pRow   = document.getElementById('pRow');
+  const nBadge = document.getElementById('nBadge');
+  const dBadge = document.getElementById('dBadge');
+  const divBtn = document.getElementById('divBtn');
+  const resBox = document.getElementById('resBox');
+  const resEq  = document.getElementById('resEq');
+  const rstBtn = document.getElementById('resetBtn');
+  const eqSign = document.getElementById('eqSign');
+  const pItems  = document.getElementById('pItems');
+  const pPeople = document.getElementById('pPeople');
+
+  const EMOJIS = ['👦','👧','👨','👩','🧑','👴','👵','🧒','🧔','👱','🧕','🧓'];
+
+  // ── inputs
+  numIn.addEventListener('input', () => {
+    const v = parseInt(numIn.value);
+    if (v >= 1 && v <= 12) {
+      N = v; nBadge.textContent = v; pItems.classList.add('lit');
+    } else {
+      N = 0; nBadge.textContent = '—'; pItems.classList.remove('lit');
+    }
+    refresh();
+  });
+
+  denIn.addEventListener('input', () => {
+    const v = parseInt(denIn.value);
+    if (v >= 1 && v <= 12) {
+      D = v; dBadge.textContent = v; pPeople.classList.add('lit');
+    } else {
+      D = 0; dBadge.textContent = '—'; pPeople.classList.remove('lit');
+    }
+    refresh();
+  });
+
+  function refresh() {
+    // clear divided state
+    eqSign.classList.remove('show');
+    resBox.classList.add('hidden');
+    rstBtn.classList.add('hidden');
+    divBtn.disabled = !(N >= 1 && D >= 1);
+
+    // circles
+    if (N >= 1) drawCircles();
+    else cGrid.innerHTML = '<span class="ghost">Enter 1 – 12</span>';
+
+    // people (no shares)
+    if (D >= 1) drawPeople(false);
+    else pRow.innerHTML = '<span class="ghost">Enter 1 – 12</span>';
+  }
+
+  // ── draw circles in the pool
+  function drawCircles() {
+    cGrid.innerHTML = '';
+    for (let i = 0; i < N; i++) {
+      const d = document.createElement('div');
+      d.className = 'dot pop';
+      d.style.animationDelay = `${i * 28}ms`;
+      cGrid.appendChild(d);
+    }
+  }
+
+  // ── draw people (optionally with their share)
+  function drawPeople(shares, whole = 0, rem = 0) {
+    pRow.innerHTML = '';
+    for (let i = 0; i < D; i++) {
+      const card = document.createElement('div');
+      card.className = 'person';
+      card.style.animationDelay = `${i * 55}ms`;
+
+      // emoji
+      const emo = document.createElement('div');
+      emo.className = 'p-emo';
+      emo.textContent = EMOJIS[i % EMOJIS.length];
+      card.appendChild(emo);
+
+      // label
+      const lbl = document.createElement('div');
+      lbl.className = 'p-lbl';
+      lbl.textContent = `#${i + 1}`;
+      card.appendChild(lbl);
+
+      if (shares) {
+        const tray = document.createElement('div');
+        tray.className = 'tray';
+
+        // whole circles
+        for (let w = 0; w < whole; w++) {
+          const tc = document.createElement('div');
+          tc.className = 't-dot';
+          tc.style.animationDelay = `${(i * (whole + 1) + w) * 50 + 150}ms`;
+          tray.appendChild(tc);
+        }
+
+        // fractional slice
+        if (rem > 0) {
+          const svg = makePie(rem, D, 34);
+          const delay = (i * (whole + 1) + whole) * 50 + 150;
+          svg.style.cssText = `animation: popIn .3s cubic-bezier(.34,1.56,.64,1) ${delay}ms both; flex-shrink:0;`;
+          tray.appendChild(svg);
+        }
+
+        card.appendChild(tray);
+
+        // amount text
+        const amt = document.createElement('div');
+        amt.className = 'p-amt';
+        amt.textContent = fmtShare(whole, rem, D);
+        card.appendChild(amt);
+      }
+
+      pRow.appendChild(card);
+    }
+  }
+
+  // ── SVG pie for the fractional part
+  function makePie(filled, total, size) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width',   size);
+    svg.setAttribute('height',  size);
+    svg.setAttribute('viewBox', `0 0 ${size} ${size}`);
+
+    const r = size / 2 - 1.5, cx = size / 2, cy = size / 2;
+
+    // bg circle
+    const bg = document.createElementNS(ns, 'circle');
+    bg.setAttribute('cx', cx); bg.setAttribute('cy', cy); bg.setAttribute('r', r);
+    bg.setAttribute('fill', '#e8e8e8');
+    bg.setAttribute('stroke', '#bbb'); bg.setAttribute('stroke-width', '1');
+    svg.appendChild(bg);
+
+    if (total === 1) {
+      const fc = document.createElementNS(ns, 'circle');
+      fc.setAttribute('cx', cx); fc.setAttribute('cy', cy); fc.setAttribute('r', r);
+      fc.setAttribute('fill', '#6a0f0f');
+      svg.appendChild(fc);
+      return svg;
+    }
+
+    const step = (2 * Math.PI) / total;
+    for (let i = 0; i < total; i++) {
+      const a0 = i * step - Math.PI / 2;
+      const a1 = a0 + step;
+      const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
+      const x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1);
+      const large = step > Math.PI ? 1 : 0;
+
+      const path = document.createElementNS(ns, 'path');
+      path.setAttribute('d', `M${cx},${cy} L${x0},${y0} A${r},${r} 0 ${large},1 ${x1},${y1} Z`);
+      path.setAttribute('fill',         i < filled ? '#6a0f0f' : '#e8e8e8');
+      path.setAttribute('stroke',       '#bbb');
+      path.setAttribute('stroke-width', '1.5');
+      svg.appendChild(path);
+    }
+    return svg;
+  }
+
+  // ── DIVIDE
+  function doDiv() {
+    if (!N || !D) return;
+    const whole = Math.floor(N / D);
+    const rem   = N % D;
+
+    divBtn.disabled = true;
+
+    // show distributed circles (pool stays visible)
+    setTimeout(() => {
+      drawPeople(true, whole, rem);
+      eqSign.classList.add('show');
+    }, 300);
+
+    // show result
+    setTimeout(() => showResult(whole, rem), 700);
+  }
+
+  function showResult(whole, rem) {
+    resBox.classList.remove('hidden');
+    rstBtn.classList.remove('hidden');
+
+    const g  = rem > 0 ? gcd(rem, D) : 1;
+    const rn = rem / g, rd = D / g;
+
+    // [N/D] = N ÷ D = answer
+    let html = `<span>${frac(N, D)}</span>`;
+    html += `<span style="color:var(--muted)">=</span>`;
+    html += `<span>${N}&thinsp;÷&thinsp;${D}</span>`;
+    html += `<span style="color:var(--muted)">=</span>`;
+
+    if (rem === 0) {
+      html += `<span>${whole}</span>`;
+    } else if (whole === 0) {
+      html += `<span>${frac(rn, rd)}</span>`;
+    } else {
+      html += `<span>${whole}&thinsp;${frac(rn, rd)}</span>`;
+    }
+
+    resEq.innerHTML = html;
+  }
+
+  function frac(top, bot) {
+    return `<span class="rf"><span>${top}</span><span class="rf-bar"></span><span>${bot}</span></span>`;
+  }
+
+  function fmtShare(whole, rem, denom) {
+    if (rem === 0) return `${whole}`;
+    const g = gcd(rem, denom);
+    const rn = rem / g, rd = denom / g;
+    return whole === 0 ? `${rn}/${rd}` : `${whole} ${rn}/${rd}`;
+  }
+
+  function gcd(a, b) { while (b) { [a, b] = [b, a % b]; } return a; }
+
+  // ── RESET
+  function doReset() {
+    N = 0; D = 0;
+    numIn.value = ''; denIn.value = '';
+    nBadge.textContent = '—'; dBadge.textContent = '—';
+    pItems.classList.remove('lit'); pPeople.classList.remove('lit');
+    cGrid.innerHTML  = '<span class="ghost">Enter numerator</span>';
+    pRow.innerHTML   = '<span class="ghost">Enter denominator</span>';
+    eqSign.classList.remove('show');
+    resBox.classList.add('hidden');
+    rstBtn.classList.add('hidden');
+    divBtn.disabled = true;
+  }
+</script>
+</body>
+</html>

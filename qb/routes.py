@@ -24,9 +24,19 @@ qb_bp = Blueprint("qb", __name__, url_prefix="/quiz")
 question_bp = Blueprint("question", __name__, url_prefix="/question")
 
 
-# Global error handler
+# Global error handlers
 @qb_bp.errorhandler(Exception)
 def qb_error_handler(error):
+    logger.exception(error)
+    response = jsonify({"ok": False, "errors": [str(error)]})
+    response.status_code = 500
+    return response
+
+
+@question_bp.errorhandler(Exception)
+def question_error_handler(error):
+    from db import db
+    db.session.rollback()
     logger.exception(error)
     response = jsonify({"ok": False, "errors": [str(error)]})
     response.status_code = 500

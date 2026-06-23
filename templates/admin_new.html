@@ -129,10 +129,6 @@
             <span class="link-icon">&#128203;</span>
             <span class="link-text">Units</span>
           </a>
-          <a class="quick-link-card" href="/question/api/export">
-            <span class="link-icon">&#8681;</span>
-            <span class="link-text">Export Questions</span>
-          </a>
           <a class="quick-link-card" href="{{ url_for('question.upload_page') }}">
             <span class="link-icon">&#128228;</span>
             <span class="link-text">Upload Questions</span>
@@ -163,6 +159,10 @@
           <a class="quick-link-card" href="#" id="btn-open-review">
             <span class="link-icon">&#128270;</span>
             <span class="link-text">Quiz Review</span>
+          </a>
+          <a class="quick-link-card" href="#" id="btn-open-sheet">
+            <span class="link-icon">&#128196;</span>
+            <span class="link-text">Generate Sheet</span>
           </a>
         </div>
       </div>
@@ -256,6 +256,36 @@
       <button id="btn-save-unit" onclick="saveUnit()"
               style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:var(--color-primary);color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;">
         Create Unit
+      </button>
+    </div>
+  </div>
+
+  <!-- Generate Sheet Modal -->
+  <div id="sheet-modal-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1040;"></div>
+  <div id="sheet-modal" role="dialog" aria-modal="true" aria-labelledby="sheet-modal-title"
+       style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+              background:#fff;border-radius:10px;padding:2rem;width:min(440px,95vw);
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1050;">
+    <h2 id="sheet-modal-title" style="font-size:1.15rem;font-weight:600;color:var(--color-primary);margin:0 0 1.25rem;">Generate Question Sheet</h2>
+    <div id="sheet-modal-error" style="display:none;color:#c0392b;font-size:0.88rem;margin-bottom:0.75rem;"></div>
+    <div style="margin-bottom:1rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Unit ID *</label>
+      <input id="sheet-unit-id" type="number" min="1" placeholder="e.g. 42"
+             style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+    </div>
+    <div style="margin-bottom:1.5rem;">
+      <label style="font-size:0.88rem;font-weight:600;display:block;margin-bottom:0.3rem;">Exclude Question IDs <span style="font-weight:400;color:var(--color-muted);">(optional, comma-separated)</span></label>
+      <input id="sheet-exclude-ids" type="text" placeholder="e.g. 101, 205, 340"
+             style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;font-size:0.95rem;">
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:0.75rem;">
+      <button onclick="closeSheetModal()"
+              style="padding:0.5rem 1.25rem;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;font-size:0.95rem;">
+        Cancel
+      </button>
+      <button id="btn-generate-sheet" onclick="submitGenerateSheet()"
+              style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:#2e7d32;color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;">
+        Generate
       </button>
     </div>
   </div>
@@ -394,6 +424,49 @@
       openReviewModal();
     });
     document.getElementById('review-modal-backdrop').addEventListener('click', closeReviewModal);
+
+    // ── Generate Sheet modal ───────────────────────────────────────────────
+    function openSheetModal() {
+      document.getElementById('sheet-unit-id').value = '';
+      document.getElementById('sheet-exclude-ids').value = '';
+      document.getElementById('sheet-modal-error').style.display = 'none';
+      document.getElementById('sheet-modal-backdrop').style.display = 'block';
+      document.getElementById('sheet-modal').style.display = 'block';
+      document.getElementById('sheet-unit-id').focus();
+    }
+
+    function closeSheetModal() {
+      document.getElementById('sheet-modal-backdrop').style.display = 'none';
+      document.getElementById('sheet-modal').style.display = 'none';
+    }
+
+    function submitGenerateSheet() {
+      const unitId = document.getElementById('sheet-unit-id').value.trim();
+      const exclude = document.getElementById('sheet-exclude-ids').value.trim();
+      const errEl = document.getElementById('sheet-modal-error');
+      if (!unitId || isNaN(parseInt(unitId))) {
+        errEl.textContent = 'Please enter a valid Unit ID.';
+        errEl.style.display = 'block';
+        return;
+      }
+      const btn = document.getElementById('btn-generate-sheet');
+      btn.disabled = true;
+      btn.textContent = 'Generating…';
+      let url = `/question/generate-sheet-by-unit?unit_id=${encodeURIComponent(unitId)}`;
+      if (exclude) url += `&exclude=${encodeURIComponent(exclude)}`;
+      window.location.href = url;
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Generate';
+        closeSheetModal();
+      }, 1500);
+    }
+
+    document.getElementById('btn-open-sheet').addEventListener('click', e => {
+      e.preventDefault();
+      openSheetModal();
+    });
+    document.getElementById('sheet-modal-backdrop').addEventListener('click', closeSheetModal);
   </script>
 </body>
 </html>

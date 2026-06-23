@@ -85,39 +85,45 @@ def save_question_to_db(question_type, topic, subtopic, level, final_json, data)
     Called after the handler has built final_json via prepare_html + order_json.
     Returns (question_object, error_message).
     """
-    question_id = data.get('id')
-    image_data_url = data.get('image_data_url')
+    try:
+        question_id = data.get('id')
+        image_data_url = data.get('image_data_url')
 
-    # Preserve existing image when editing without a new upload
-    existing_image_path = None
-    if question_id and not image_data_url:
-        q = QBank.query.get(question_id)
-        if q and q.json and 'image' in q.json:
-            existing_image_path = q.json['image'].get('src')
-            if existing_image_path:
-                final_json['image'] = q.json['image']
+        # Preserve existing image when editing without a new upload
+        existing_image_path = None
+        if question_id and not image_data_url:
+            q = QBank.query.get(question_id)
+            if q and q.json and 'image' in q.json:
+                existing_image_path = q.json['image'].get('src')
+                if existing_image_path:
+                    final_json['image'] = q.json['image']
 
-    # For new questions get the ID upfront so the image can be named correctly
-    new_question_id = get_next_id() if not question_id else None
+        # For new questions get the ID upfront so the image can be named correctly
+        new_question_id = get_next_id() if not question_id else None
 
-    # Resolve image path
-    image_path = None
-    if image_data_url:
-        img_id = question_id if question_id else new_question_id
-        image_path = save_image_from_data_url(image_data_url, f"{img_id}.png", subdir="qimage")
-        if image_path:
-            if 'image' not in final_json:
-                final_json['image'] = {"src": image_path, "alt": ""}
-            else:
-                final_json['image']['src'] = image_path
-    elif existing_image_path:
-        image_path = existing_image_path
+        # Resolve image path
+        image_path = None
+        if image_data_url:
+            img_id = question_id if question_id else new_question_id
+            image_path = save_image_from_data_url(image_data_url, f"{img_id}.png", subdir="qimage")
+            if image_path:
+                if 'image' not in final_json:
+                    final_json['image'] = {"src": image_path, "alt": ""}
+                else:
+                    final_json['image']['src'] = image_path
+        elif existing_image_path:
+            image_path = existing_image_path
 
-    # Create or update
-    if question_id:
-        return update_question_safely(question_id, question_type, topic, subtopic, level, final_json, image_path)
-    else:
-        return create_question_safely(question_type, topic, subtopic, level, final_json, image_path, question_id=new_question_id)
+        # Create or update
+        if question_id:
+            return update_question_safely(question_id, question_type, topic, subtopic, level, final_json, image_path)
+        else:
+            return create_question_safely(question_type, topic, subtopic, level, final_json, image_path, question_id=new_question_id)
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"save_question_to_db failed: {e}")
+        return None, str(e)
 
 
 def create_question_safely(question_type, topic, subtopic, level, question_json, image_path=None, question_id=None, retry_count=0):

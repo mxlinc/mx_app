@@ -7,7 +7,7 @@ from flask import render_template, request, jsonify, send_file, redirect, url_fo
 from flask_login import login_required
 
 from db import db
-from models import QBank, Quiz
+from models import QBank, Quiz, AUnit
 from qb.routes import question_bp, qb_bp, get_handler
 from qb.handlers.common import latex_to_html
 from qb.db_utils import create_question_safely
@@ -232,6 +232,74 @@ def generate_sheet():
     )
 
 
+@question_bp.route("/generate-sheet-by-unit", methods=["GET"])
+@login_required
+def generate_sheet_by_unit():
+    """Generate a printable HTML sheet for all questions in a unit's quizzes.
+
+    Query params:
+        unit_id  – integer AUnit.au_id
+        exclude  – optional comma-separated question IDs to skip
+    """
+    unit_id = request.args.get('unit_id', '', type=int)
+    if not unit_id:
+        return "Missing or invalid unit_id", 400
+
+    unit = AUnit.query.get(unit_id)
+    if not unit:
+        return f"Unit {unit_id} not found", 404
+
+    # Parse excluded IDs
+    exclude_raw = request.args.get('exclude', '')
+    excluded = set()
+    for tok in exclude_raw.split(','):
+        tok = tok.strip()
+        if tok.isdigit():
+            excluded.add(int(tok))
+
+    # Collect quiz codes from au_content (pipe-separated)
+    quiz_codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
+    if not quiz_codes:
+        return f"Unit {unit_id} has no quizzes assigned", 400
+
+    # Gather question IDs in order, deduplicated
+    seen = set()
+    ordered_ids = []
+    for quiz in Quiz.query.filter(Quiz.quiz_code.in_(quiz_codes)).all():
+        for qid_str in (quiz.question_ids or '').split(','):
+            qid_str = qid_str.strip()
+            if not qid_str.isdigit():
+                continue
+            qid = int(qid_str)
+            if qid in excluded or qid in seen:
+                continue
+            seen.add(qid)
+            ordered_ids.append(qid)
+
+    if not ordered_ids:
+        return "No questions found for this unit after applying exclusions", 400
+
+    # Reuse the same per-question prepare logic as generate_sheet
+    questions_data = []
+    for qid in ordered_ids:
+        q = QBank.query.get(qid)
+        if not q:
+            continue
+        handler = get_handler(q.type.lower() if q.type else 'mcq')
+        if not handler:
+            continue
+        question = handler.prepare_html(q.json)
+        questions_data.append({'id': qid, 'type': q.type.lower(), 'question': question})
+
+    html = _render_sheet(questions_data)
+    from flask import Response
+    return Response(
+        html,
+        mimetype='text/html',
+        headers={'Content-Disposition': f'attachment; filename=unit_{unit_id}_sheet.html'}
+    )
+
+
 def _render_sheet(questions_data):
     """Build a self-contained HTML sheet string."""
     import re
@@ -290,7 +358,10 @@ def _render_sheet(questions_data):
 
     def options_html(q, qtype):
         parts = []
-        if qtype in ('mcq', 'mr'):
+        if qtype == 'mcq':
+            # Worksheet: show a blank instead of lettered options
+            parts.append('<div class="fill-row"><span class="blank-box" style="width:160px;"></span></div>')
+        elif qtype == 'mr':
             for label, _, text in get_options(q):
                 parts.append(f'<div class="option"><span class="opt-label">{label}.</span> {text}</div>')
         elif qtype == 'fill':
@@ -319,7 +390,11 @@ def _render_sheet(questions_data):
             parts = []
             for label, oid, text in get_options(q):
                 if str(oid) in correct_ids:
-                    parts.append(f'<strong>{label}.</strong> {text}')
+                    if qtype == 'mcq':
+                        # Options hidden on worksheet — show answer text only
+                        parts.append(f'<strong>{text}</strong>')
+                    else:
+                        parts.append(f'<strong>{label}.</strong> {text}')
             return ' / '.join(parts) if parts else '\u2014'
 
         elif qtype == 'fill':

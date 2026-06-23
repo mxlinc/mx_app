@@ -31,13 +31,21 @@ app.secret_key = SECRET_KEY
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_pre_ping": True,   # test connection before use; discard if dead
-    "pool_recycle": 1800,    # recycle connections after 30 min
+    "pool_pre_ping": True,        # test connection before use; discard if dead
+    "pool_recycle": 1800,         # recycle connections after 30 min
+    "pool_reset_on_return": "rollback",  # rollback any open transaction when connection returns to pool
 }
 app.config["LATEX_RENDERER"] = LATEX_RENDERER
 
 # Initialize database
 db.init_app(app)
+
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    if exception:
+        db.session.rollback()
+    db.session.remove()
 
 # ================== FLASK-LOGIN SETUP ================== #
 
