@@ -46,7 +46,8 @@ def rebuild_quizzes_for_question(question_id: int) -> None:
     this is an admin-only operation.
     """
     affected = Quiz.query.filter(
-        Quiz.question_ids.like(f'%{question_id}%')
+        Quiz.question_ids.like(f'%{question_id}%'),
+        ~Quiz.title.like('ZZ%')
     ).all()
     for quiz in affected:
         ids = [i.strip() for i in (quiz.question_ids or '').split(',') if i.strip()]
