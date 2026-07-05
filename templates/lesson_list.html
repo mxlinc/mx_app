@@ -67,7 +67,11 @@
     <!-- Select-all / deselect-all -->
     <div class="d-flex justify-content-between align-items-center mb-3">
       <button class="btn btn-sm btn-primary" id="btn-add-video">+ Add New Video</button>
-      <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
+        <div class="form-check form-check-inline mb-0 me-1">
+          <input class="form-check-input" type="checkbox" id="chk-unused" checked />
+          <label class="form-check-label" for="chk-unused" style="font-size:0.88rem;cursor:pointer;">Show unused only</label>
+        </div>
         <button class="btn btn-sm btn-outline-primary" id="btn-select-all">Select All</button>
         <button class="btn btn-sm btn-outline-secondary" id="btn-deselect-all">Deselect All</button>
       </div>
@@ -90,7 +94,7 @@
           aria-labelledby="heading-{{ area_id }}" data-bs-parent="#lessonsAccordion">
           <div class="accordion-body p-2">
             {% for lesson in grouped[area] %}
-            <div class="lesson-row">
+            <div class="lesson-row" data-used="{{ '1' if lesson.lesson_code in used_codes else '0' }}">
               <input class="form-check-input lesson-cb flex-shrink-0" type="checkbox"
                 value="{{ lesson.id }}"
                 data-code="{{ lesson.lesson_code }}"
@@ -243,6 +247,32 @@
   <script>
     const bar      = document.getElementById('add-to-unit-bar');
     const selCount = document.getElementById('sel-count');
+    const chkUnused = document.getElementById('chk-unused');
+
+    function applyUnusedFilter() {
+      const unusedOnly = chkUnused.checked;
+      document.querySelectorAll('#lessonsAccordion .accordion-item').forEach(item => {
+        const rows = item.querySelectorAll('.lesson-row');
+        let visibleCount = 0;
+        rows.forEach(row => {
+          const hide = unusedOnly && row.dataset.used === '1';
+          row.style.display = hide ? 'none' : '';
+          if (!hide) visibleCount++;
+        });
+        // Hide whole accordion section if no rows are visible
+        item.style.display = visibleCount === 0 ? 'none' : '';
+        // Update the badge count
+        const badge = item.querySelector('.area-count');
+        if (badge) {
+          badge.textContent = `(${visibleCount} lesson${visibleCount !== 1 ? 's' : ''})`;
+        }
+      });
+      updateBar();
+    }
+
+    chkUnused.addEventListener('change', applyUnusedFilter);
+    // Apply on load
+    applyUnusedFilter();
 
     function updateBar() {
       const checked = document.querySelectorAll('.lesson-cb:checked');
@@ -254,7 +284,12 @@
     document.querySelectorAll('.lesson-cb').forEach(cb => cb.addEventListener('change', updateBar));
 
     document.getElementById('btn-select-all').addEventListener('click', () => {
-      document.querySelectorAll('.lesson-cb').forEach(cb => cb.checked = true);
+      // Only check visible rows
+      document.querySelectorAll('.lesson-row').forEach(row => {
+        if (row.style.display !== 'none') {
+          row.querySelector('.lesson-cb').checked = true;
+        }
+      });
       updateBar();
     });
 

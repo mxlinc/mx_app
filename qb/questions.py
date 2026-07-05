@@ -1510,3 +1510,220 @@ def upload_mixed():
     saved  = sum(1 for r in results if r.get('ok'))
     failed = len(results) - saved
     return jsonify({'ok': True, 'results': results, 'saved': saved, 'failed': failed})
+
+
+# ==================== MULTI-QUIZ REVIEW SET ==================== #
+
+def generate_review_set_html(*, student_name, quizzes, n):
+    """Return a self-contained HTML page showing incorrect answers for N most recent quizzes.
+
+    Parameters
+    ----------
+    student_name : str
+    quizzes      : list of dicts, each with keys:
+                   quiz_code, quiz_title, score, completed_at, total, questions
+                   questions follows the same schema as generate_review_html
+    n            : int  — requested number of quizzes (for display only)
+    """
+    import re
+    import base64
+    import os
+    from config import QIMAGE_PATH
+
+    OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F']
+
+    def clean_html(s):
+        s = (s or '').strip()
+        s = re.sub(r'^(\s*<br\s*/?>)+', '', s).strip()
+        s = re.sub(r'(<br\s*/?>\s*)+$', '', s).strip()
+        return s
+
+    def embed_image(src):
+        try:
+            if src.startswith('/qimage/'):
+                path = os.path.join(QIMAGE_PATH, src[len('/qimage/'):])
+            elif src.startswith('/static/qimage/'):
+                path = os.path.join(QIMAGE_PATH, src[len('/static/qimage/'):])
+            else:
+                return src
+            if os.path.exists(path):
+                with open(path, 'rb') as f:
+                    data = base64.b64encode(f.read()).decode()
+                return f'data:image/png;base64,{data}'
+        except Exception:
+            pass
+        return src
+
+    def get_stem(q):
+        stem = q.get('stem', '')
+        raw = (stem.get('html') or stem.get('latex', '')) if isinstance(stem, dict) else str(stem)
+        return clean_html(raw)
+
+    def options_html(q, qtype):
+        parts = []
+        if qtype in ('mcq', 'mr'):
+            opts = q.get('input', {}).get('options', [])
+            for i, opt in enumerate(opts):
+                label = OPTION_LABELS[i] if i < len(OPTION_LABELS) else str(i + 1)
+                text = ''
+                if isinstance(opt, dict):
+                    text = clean_html(opt.get('html') or opt.get('text') or opt.get('latex', ''))
+                else:
+                    text = clean_html(str(opt))
+                parts.append(f'<div class="option"><span class="opt-label">{label}.</span> {text}</div>')
+        elif qtype == 'fill':
+            blanks = q.get('input', {}).get('blanks', [])
+            for blank in blanks:
+                if isinstance(blank, dict):
+                    il = blank.get('input_label', {})
+                    la = blank.get('label_after', {})
+                    lbl = clean_html((il.get('html') or il.get('latex', '')) if isinstance(il, dict) else str(il))
+                    aft = clean_html((la.get('html') or la.get('latex', '')) if isinstance(la, dict) else str(la))
+                    parts.append(f'<div class="fill-row">{lbl}<span class="blank-box"></span>{aft}</div>')
+        return '\n'.join(parts)
+
+    def build_question_blocks(questions):
+        blocks = []
+        for item in questions:
+            seq   = item['sequence']
+            q     = item['question'] or {}
+            qtype = item['qtype']
+            corr  = item['correct_answer']
+            user  = item['user_answer']
+            img_html = ''
+            if q.get('image', {}).get('src'):
+                src = embed_image(q['image']['src'])
+                img_html = f'<div class="q-image"><img src="{src}" alt=""></div>'
+            blocks.append(f"""
+        <div class="review-block">
+          <div class="q-row">
+            <div class="q-label"><span class="q-num">Q-{seq}</span></div>
+            <div class="q-content">
+              <div class="q-stem">{get_stem(q)}</div>
+              {img_html}
+              <div class="q-options">{options_html(q, qtype)}</div>
+              <div class="answer-row correct-row">
+                <span class="ans-icon">&#10003;</span>
+                <span class="ans-label">Correct:</span>
+                <span class="ans-val">{corr}</span>
+              </div>
+              <div class="answer-row student-row">
+                <span class="ans-icon">&#10007;</span>
+                <span class="ans-label">Student:</span>
+                <span class="ans-val">{user}</span>
+              </div>
+            </div>
+          </div>
+        </div>""")
+        return '\n'.join(blocks)
+
+    # Build one section per quiz
+    quiz_sections = []
+    for idx, qz in enumerate(quizzes, 1):
+        date_str  = qz['completed_at'].strftime('%B %d, %Y') if qz['completed_at'] else '—'
+        inc_count = len(qz['questions'])
+        total     = qz['total']
+        header_score = f"{inc_count} incorrect out of {total}" if total else f"{inc_count} incorrect"
+
+        if qz['questions']:
+            body_html = build_question_blocks(qz['questions'])
+        else:
+            body_html = '<div class="all-correct-banner">All correct!</div>'
+
+        quiz_sections.append(f"""
+    <div class="quiz-section">
+      <div class="quiz-section-header">
+        <div class="qs-left">
+          <span class="qs-index">#{idx}</span>
+          <span class="qs-code">{qz['quiz_code']}</span>
+          <span class="qs-title">{qz['quiz_title']}</span>
+        </div>
+        <div class="qs-meta">
+          <span>Score: <b>{qz['score']}</b></span>
+          <span>{header_score}</span>
+          <span>Submitted: <b>{date_str}</b></span>
+        </div>
+      </div>
+      {body_html}
+    </div>""")
+
+    actual_count = len(quizzes)
+    safe_name    = re.sub(r'[^A-Za-z0-9_\-]', '_', student_name)
+    all_sections = '\n'.join(quiz_sections) if quiz_sections else '<p style="color:#666;padding:2rem 0;text-align:center;">No completed quizzes found.</p>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Review Set: {student_name}</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {{delimiters:[{{left:'$',right:'$',display:false}},{{left:'\\\\(',right:'\\\\)',display:false}},{{left:'\\\\[',right:'\\\\]',display:true}}]}})"></script>
+<style>
+  body {{ font-family: 'Segoe UI', system-ui, sans-serif; max-width: 860px; margin: 40px auto; padding: 0 24px; color: #111; line-height: 1.65; }}
+  #toolbar {{ position: fixed; top: 0; left: 0; right: 0; background: #1F6FAE; color: #fff; padding: 8px 24px;
+             display: flex; align-items: center; gap: 12px; font-size: 0.9rem; z-index: 999; box-shadow: 0 2px 6px rgba(0,0,0,.25); }}
+  #toolbar button {{ background: #fff; color: #1F6FAE; border: none; border-radius: 4px; padding: 5px 14px; font-weight: 700; cursor: pointer; font-size: 0.88rem; }}
+  #toolbar button:hover {{ background: #dceeff; }}
+  #toolbar .tb-info {{ opacity: .8; flex: 1; }}
+  body {{ padding-top: 54px; }}
+  .quiz-section {{ margin-bottom: 2.5rem; border: 1px solid #d4e5f5; border-radius: 10px; overflow: hidden; }}
+  .quiz-section-header {{ background: #e6f0f9; border-bottom: 1px solid #cfe0ed; padding: 0.75rem 1.1rem;
+                          display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; }}
+  .qs-left {{ display: flex; align-items: baseline; gap: 0.5rem; }}
+  .qs-index {{ font-size: 0.82rem; color: #8a9aaa; font-weight: 600; }}
+  .qs-code {{ font-size: 0.78rem; color: #8a9aaa; }}
+  .qs-title {{ font-size: 1rem; font-weight: 700; color: #1a2d3d; }}
+  .qs-meta {{ font-size: 0.83rem; color: #5a7a9a; display: flex; gap: 1rem; flex-wrap: wrap; }}
+  .qs-meta b {{ color: #1a2d3d; }}
+  .review-block {{ margin: 1rem 1.1rem 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid #e8edf2; }}
+  .review-block:last-child {{ border-bottom: none; }}
+  .q-row {{ display: grid; grid-template-columns: 54px 1fr; gap: 0 6px; }}
+  .q-label {{ text-align: right; padding-right: 10px; padding-top: 2px; }}
+  .q-num {{ font-size: 0.95rem; font-weight: 700; display: block; color: #2c6e9e; }}
+  .q-stem {{ font-size: 0.97rem; margin-bottom: 8px; }}
+  .q-image img {{ max-width: 50%; margin-bottom: 8px; }}
+  .q-options {{ margin-bottom: 10px; }}
+  .option {{ margin: 3px 0; font-size: 0.92rem; }}
+  .opt-label {{ font-weight: 600; min-width: 22px; display: inline-block; }}
+  .fill-row {{ display: flex; align-items: baseline; gap: 6px; margin: 5px 0; font-size: 0.92rem; }}
+  .blank-box {{ display: inline-block; width: 90px; border-bottom: 1.5px solid #555; margin: 0 3px; }}
+  .answer-row {{ display: flex; align-items: baseline; gap: 6px; font-size: 0.9rem; margin-top: 5px; }}
+  .ans-icon {{ font-weight: 700; font-size: 0.95rem; width: 18px; flex-shrink: 0; }}
+  .ans-label {{ color: #666; min-width: 58px; flex-shrink: 0; }}
+  .correct-row .ans-icon {{ color: #1a7a4a; }}
+  .correct-row .ans-val {{ color: #1a7a4a; font-weight: 600; }}
+  .student-row .ans-icon {{ color: #b44; }}
+  .student-row .ans-val {{ color: #b44; }}
+  .all-correct-banner {{ display: inline-block; margin: 0.9rem 1.1rem; padding: 0.35rem 1rem;
+                         background: #d4f5e2; color: #155f3a; font-weight: 700; font-size: 0.95rem;
+                         border-radius: 20px; border: 1px solid #a3dfc0; letter-spacing: 0.01em; }}
+  @media print {{
+    #toolbar {{ display: none !important; }}
+    body {{ margin: 16px; padding-top: 0; }}
+    .review-block {{ page-break-inside: avoid; }}
+    .quiz-section {{ page-break-inside: avoid; border: 1px solid #ccc; }}
+  }}
+</style>
+</head>
+<body>
+<div id="toolbar">
+  <button onclick="window.print()">&#128438; Print / Save PDF</button>
+  <button onclick="downloadHTML()">&#8681; Download HTML</button>
+  <span class="tb-info">{student_name} &nbsp;&bull;&nbsp; {actual_count} quiz{'zes' if actual_count != 1 else ''} reviewed</span>
+</div>
+<script>
+function downloadHTML() {{
+  var blob = new Blob([document.documentElement.outerHTML], {{type: 'text/html'}});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'review-{safe_name}.html';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}}
+</script>
+{all_sections}
+</body>
+</html>"""

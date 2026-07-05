@@ -101,6 +101,41 @@
     text-decoration: none;
   }
   .back-link:hover { text-decoration: underline; }
+  .review-set-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+    padding: 0.65rem 0.9rem;
+    background: #f0f6fb;
+    border: 1px solid #cfe0ed;
+    border-radius: 7px;
+  }
+  .review-set-row label {
+    font-size: 0.88rem;
+    color: #4a6a85;
+    white-space: nowrap;
+  }
+  .review-set-row input[type=number] {
+    width: 64px;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #cfe0ed;
+    border-radius: 5px;
+    font-size: 0.92rem;
+    color: #1a2d3d;
+    text-align: center;
+  }
+  .review-set-row button {
+    padding: 0.38rem 1rem;
+    background: #1a7a4a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .review-set-row button:hover { background: #155f3a; }
 </style>
 {% endblock %}
 
@@ -122,6 +157,15 @@
   </form>
 
   {% if selected_username %}
+    <form class="review-set-row" method="get"
+          action="{{ url_for('qb.admin_student_review_set') }}"
+          target="_blank">
+      <input type="hidden" name="username" value="{{ selected_username }}">
+      <label for="rs-n">Review most recent</label>
+      <input type="number" id="rs-n" name="n" value="20" min="1" max="100">
+      <label>quizzes</label>
+      <button type="submit">Review Set</button>
+    </form>
     {% if history %}
     <table class="history-table">
       <thead>

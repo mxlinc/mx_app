@@ -1238,6 +1238,15 @@ def lesson_list():
     if current_user.user_role not in ('admin', 'admin_new'):
         return "Forbidden", 403
     videos = Video.query.order_by(Video.broad_area, Video.display_name).all()
+    # Compute used_codes: all V-xxxx codes appearing in any unit's au_content
+    all_contents = AUnit.query.with_entities(AUnit.au_content).all()
+    used_codes = set()
+    for (content,) in all_contents:
+        if content:
+            for code in content.split('|'):
+                code = code.strip()
+                if code.startswith('V-'):
+                    used_codes.add(code)
     # Group by broad_area
     from collections import defaultdict
     grouped = defaultdict(list)
@@ -1246,7 +1255,7 @@ def lesson_list():
     # Sort keys, put Uncategorised last
     areas = sorted(grouped.keys(), key=lambda k: (k == 'Uncategorised', k))
     broad_areas = sorted(set(v.broad_area for v in videos if v.broad_area))
-    return render_template("lesson_list.html", grouped=grouped, areas=areas, broad_areas=broad_areas)
+    return render_template("lesson_list.html", grouped=grouped, areas=areas, broad_areas=broad_areas, used_codes=used_codes)
 
 
 @lms_bp.route('/videos/create', methods=['POST'])

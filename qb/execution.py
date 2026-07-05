@@ -430,3 +430,79 @@ def admin_quiz_review():
     )
     from flask import Response
     return Response(html, mimetype='text/html')
+
+
+@qb_bp.route("/admin/student-review-set", methods=["GET"])
+@login_required
+def admin_student_review_set():
+    """Admin page: combined review of N most recent quizzes for a student."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return "Forbidden", 403
+
+    username = request.args.get('username', '').strip()
+    n = min(max(request.args.get('n', 20, type=int), 1), 100)
+
+    if not username:
+        return "Missing username", 400
+
+    user_obj = UserTable.query.filter_by(username=username).first()
+    if not user_obj:
+        return "Student not found", 404
+
+    rows = (MyWorkList.query
+            .filter_by(user=username, status='done')
+            .filter(MyWorkList.item_code.like('Q-%'))
+            .order_by(MyWorkList.last_updated.desc())
+            .limit(n)
+            .all())
+
+    quiz_codes = [r.item_code for r in rows]
+    quiz_map = {}
+    if quiz_codes:
+        for q in Quiz.query.filter(Quiz.quiz_code.in_(quiz_codes)).all():
+            quiz_map[q.quiz_code] = {'id': q.id, 'title': q.title}
+
+    quizzes = []
+    for row in rows:
+        qinfo   = quiz_map.get(row.item_code, {})
+        quiz_id = qinfo.get('id')
+
+        incorrect_questions = []
+        total_qs = 0
+        if quiz_id:
+            total_qs = QuizExecution.query.filter_by(
+                user_id=user_obj.id, quiz_id=quiz_id).count()
+            inc_rows = (db.session.query(QuizExecution, QBank)
+                        .join(QBank, QBank.id == QuizExecution.question_id)
+                        .filter(QuizExecution.user_id == user_obj.id,
+                                QuizExecution.quiz_id == quiz_id,
+                                QuizExecution.is_correct == False)
+                        .order_by(QuizExecution.question_sequence)
+                        .all())
+            for ex, qbank in inc_rows:
+                incorrect_questions.append({
+                    'sequence':       ex.question_sequence + 1,
+                    'question':       qbank.json,
+                    'qtype':          (qbank.type or 'mcq').lower(),
+                    'correct_answer': ex.correct_answer or '—',
+                    'user_answer':    ex.user_answer or '—',
+                })
+
+        quizzes.append({
+            'quiz_code':    row.item_code,
+            'quiz_title':   qinfo.get('title', row.item_code),
+            'score':        row.score or '—',
+            'completed_at': row.last_updated,
+            'total':        total_qs,
+            'questions':    incorrect_questions,
+        })
+
+    from qb.questions import generate_review_set_html
+    from flask import Response
+    student_name = user_obj.full_name or user_obj.username
+    html = generate_review_set_html(
+        student_name=student_name,
+        quizzes=quizzes,
+        n=n,
+    )
+    return Response(html, mimetype='text/html')
