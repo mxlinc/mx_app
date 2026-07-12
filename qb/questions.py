@@ -1514,16 +1514,17 @@ def upload_mixed():
 
 # ==================== MULTI-QUIZ REVIEW SET ==================== #
 
-def generate_review_set_html(*, student_name, quizzes, n):
+def generate_review_set_html(*, student_name, quizzes, n, n_fetched=None):
     """Return a self-contained HTML page showing incorrect answers for N most recent quizzes.
 
     Parameters
     ----------
     student_name : str
-    quizzes      : list of dicts, each with keys:
+    quizzes      : list of dicts (already filtered to those with mistakes), each with keys:
                    quiz_code, quiz_title, score, completed_at, total, questions
                    questions follows the same schema as generate_review_html
-    n            : int  — requested number of quizzes (for display only)
+    n            : int  — requested number of quizzes to scan (for display only)
+    n_fetched    : int  — actual number of quizzes scanned (may be < n if student has fewer)
     """
     import re
     import base64
@@ -1712,7 +1713,7 @@ def generate_review_set_html(*, student_name, quizzes, n):
 <div id="toolbar">
   <button onclick="window.print()">&#128438; Print / Save PDF</button>
   <button onclick="downloadHTML()">&#8681; Download HTML</button>
-  <span class="tb-info">{student_name} &nbsp;&bull;&nbsp; {actual_count} quiz{'zes' if actual_count != 1 else ''} reviewed</span>
+  <span class="tb-info">{student_name} &nbsp;&bull;&nbsp; {actual_count} quiz{'zes' if actual_count != 1 else ''} with mistakes (from last {n_fetched if n_fetched is not None else n} reviewed)</span>
 </div>
 <script>
 function downloadHTML() {{

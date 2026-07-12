@@ -497,6 +497,9 @@ def admin_student_review_set():
             'questions':    incorrect_questions,
         })
 
+    n_fetched = len(quizzes)
+    quizzes = [q for q in quizzes if q['questions']]
+
     from qb.questions import generate_review_set_html
     from flask import Response
     student_name = user_obj.full_name or user_obj.username
@@ -504,5 +507,6 @@ def admin_student_review_set():
         student_name=student_name,
         quizzes=quizzes,
         n=n,
+        n_fetched=n_fetched,
     )
     return Response(html, mimetype='text/html')
