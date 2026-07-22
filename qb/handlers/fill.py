@@ -110,11 +110,12 @@ class FILLHandler:
             if error:
                 return None, error
 
-            # Validate after save (ID is now in q.json)
-            valid, error_msg = FILLHandler.validate(q.json)
+            # Validate using final_json (ID was added in-place by save_question_to_db)
+            # Avoids a lazy DB re-fetch of q.json after commit
+            valid, error_msg = FILLHandler.validate(final_json)
             if not valid:
                 return None, error_msg
-            
+
             return q, None
             
         except Exception as e:
