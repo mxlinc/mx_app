@@ -1586,8 +1586,9 @@ def generate_review_set_html(*, student_name, quizzes, n, n_fetched=None):
     def build_question_blocks(questions):
         blocks = []
         for item in questions:
-            seq   = item['sequence']
-            q     = item['question'] or {}
+            seq      = item['sequence']
+            qbank_id = item.get('qbank_id', seq)
+            q        = item['question'] or {}
             qtype = item['qtype']
             corr  = item['correct_answer']
             user  = item['user_answer']
@@ -1598,7 +1599,7 @@ def generate_review_set_html(*, student_name, quizzes, n, n_fetched=None):
             blocks.append(f"""
         <div class="review-block">
           <div class="q-row">
-            <div class="q-label"><span class="q-num">Q-{seq}</span></div>
+            <div class="q-label"><span class="q-num">Q-{qbank_id}</span></div>
             <div class="q-content">
               <div class="q-stem">{get_stem(q)}</div>
               {img_html}

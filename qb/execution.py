@@ -482,6 +482,7 @@ def admin_student_review_set():
             for ex, qbank in inc_rows:
                 incorrect_questions.append({
                     'sequence':       ex.question_sequence + 1,
+                    'qbank_id':       ex.question_id,
                     'question':       qbank.json,
                     'qtype':          (qbank.type or 'mcq').lower(),
                     'correct_answer': ex.correct_answer or '—',
