@@ -654,6 +654,13 @@ async function loadQuestionForEdit(questionId) {
             preview.src = editingQuestionImage;
             preview.style.display = 'block';
             document.getElementById('discardImageBtn').style.display = 'block';
+        } else {
+            editingQuestionImage = null;
+            document.getElementById('image').value = '';
+            const preview = document.getElementById('imagePreview');
+            preview.src = '';
+            preview.style.display = 'none';
+            document.getElementById('discardImageBtn').style.display = 'none';
         }
 
         // Load type-specific fields
