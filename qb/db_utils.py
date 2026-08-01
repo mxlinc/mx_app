@@ -91,7 +91,7 @@ def save_question_to_db(question_type, topic, subtopic, level, final_json, data)
 
         # Preserve existing image when editing without a new upload
         existing_image_path = None
-        if question_id and not image_data_url:
+        if question_id and not image_data_url and not data.get('remove_image'):
             q = QBank.query.get(question_id)
             if q and q.json and 'image' in q.json:
                 existing_image_path = q.json['image'].get('src')

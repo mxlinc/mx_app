@@ -26,6 +26,7 @@ let lastQuestion = {
 
 let editingQuestionId = null;
 let editingQuestionImage = null;
+let removeImage = false;
 
 // ===== URL Parameter Handling =====
 function getQueryParam(param) {
@@ -255,6 +256,7 @@ async function collectData() {
         level: document.getElementById('level').value,
         question: question,
         image_data_url: imageDataUrl,
+        remove_image: removeImage,
         id: editingQuestionId
     };
 }
@@ -318,6 +320,7 @@ async function save() {
         }
 
         if (result.ok) {
+            removeImage = false;
             // Save state for next question
             lastQuestion = {
                 topic: data.topic,
@@ -603,6 +606,7 @@ function discardImage() {
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('discardImageBtn').style.display = 'none';
     editingQuestionImage = null;
+    removeImage = true;
     showMessage('✓ Image removed.', 'success');
 }
 
@@ -648,6 +652,7 @@ async function loadQuestionForEdit(questionId) {
         document.getElementById('questionType').dispatchEvent(changeEvent);
 
         // Handle image
+        removeImage = false;
         if (question.image?.src) {
             editingQuestionImage = question.image.src;
             const preview = document.getElementById('imagePreview');
