@@ -1545,6 +1545,39 @@ def units_save_content(au_id):
     return jsonify({'ok': True, 'au_content': unit.au_content})
 
 
+@lms_bp.route('/units/<int:au_id>/update', methods=['POST'])
+@login_required
+def units_update(au_id):
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    unit = AUnit.query.get(au_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Not found'}), 404
+    data     = request.get_json(force=True)
+    new_name = (data.get('au_name') or '').strip()
+    new_area = (data.get('au_area') or '').strip()
+    new_topic = (data.get('au_topic') or '').strip()
+    new_level = (data.get('au_level') or '').strip()[:2]
+    if not new_name:
+        return jsonify({'ok': False, 'error': 'Unit name is required'}), 400
+    try:
+        if new_name != unit.au_name:
+            # Keep MyWorkList in sync — au_name is a plain string, not a FK
+            MyWorkList.query.filter_by(au_name=unit.au_name).update({'au_name': new_name})
+        unit.au_name  = new_name
+        unit.au_area  = new_area or None
+        unit.au_topic = new_topic or None
+        unit.au_level = new_level or None
+        db.session.commit()
+        logger.info('Unit updated: au_id=%s name=%r area=%r by admin=%s',
+                    au_id, new_name, new_area, current_user.username)
+        return jsonify({'ok': True, 'au_id': unit.au_id})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 # ==================== UNIT ASSIGNMENT ==================== #
 
 @lms_bp.route('/unit/assign')

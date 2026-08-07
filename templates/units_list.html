@@ -61,6 +61,28 @@
     .cu-btn-save   { padding:0.5rem 1.25rem; border:none; border-radius:6px; background:var(--c-primary); color:#fff; font-weight:600; cursor:pointer; font-size:0.95rem; }
     .cu-btn-save:disabled { opacity:0.6; cursor:default; }
 
+    /* Edit button on each unit row */
+    .unit-edit-btn {
+      background: none; border: 1px solid var(--c-border); border-radius: 4px;
+      color: var(--c-text-sm); cursor: pointer; font-size: 0.85rem;
+      padding: 0.1rem 0.4rem; line-height: 1.4; flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .unit-edit-btn:hover { background: var(--c-primary-lt); color: var(--c-primary); border-color: var(--c-primary); }
+
+    /* Edit Unit modal */
+    #edit-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:1040; }
+    #edit-modal {
+      display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:#fff; border-radius:10px; padding:1.75rem;
+      width:min(480px,95vw); box-shadow:0 8px 32px rgba(0,0,0,0.18); z-index:1050;
+    }
+    #edit-modal h2 { font-size:1.1rem; font-weight:600; color:var(--c-primary); margin:0 0 1rem; }
+    .edit-field { margin-bottom:0.9rem; }
+    .edit-field label { display:block; font-size:0.83rem; font-weight:600; color:var(--c-text); margin-bottom:0.3rem; }
+    .edit-field input { width:100%; padding:0.45rem 0.65rem; border:1px solid var(--c-border); border-radius:6px; font-size:0.93rem; }
+    .edit-field input:focus { outline:none; border-color:var(--c-primary); box-shadow:0 0 0 2px rgba(31,111,174,0.15); }
+
   </style>
 {% endblock %}
 
@@ -97,6 +119,9 @@
               <span class="unit-name">{{ unit.au_name }}</span>
               {% if unit.au_topic %}<span class="unit-meta">{{ unit.au_topic }}</span>{% endif %}
               {% if unit.au_level %}<span class="badge-level">{{ unit.au_level }}</span>{% endif %}
+              <button class="unit-edit-btn"
+                onclick="openEditModal(event, {{ unit.au_id }}, '{{ unit.au_name|e }}', '{{ (unit.au_area or '')|e }}', '{{ (unit.au_topic or '')|e }}', '{{ (unit.au_level or '')|e }}')"
+                title="Edit unit">&#9998;</button>
               <span class="unit-count">
                 {% set cnt = (unit.au_content or '').split('|')|select|list|length %}
                 {{ cnt }} item{{ 's' if cnt != 1 }}
@@ -110,6 +135,34 @@
     </div>
 
   </div><!-- /.main-content -->
+
+  <!-- Edit Unit modal -->
+  <div id="edit-backdrop"></div>
+  <div id="edit-modal" role="dialog" aria-modal="true" aria-labelledby="edit-title">
+    <h2 id="edit-title">Edit Unit</h2>
+    <div id="edit-error" style="display:none;color:var(--c-error);font-size:0.85rem;margin-bottom:0.75rem;"></div>
+    <div class="edit-field">
+      <label for="edit-name">Name <span style="color:var(--c-error)">*</span></label>
+      <input type="text" id="edit-name" placeholder="Unit name" autocomplete="off">
+    </div>
+    <div class="edit-field">
+      <label for="edit-area">Area</label>
+      <input type="text" id="edit-area" placeholder="e.g. Fractions" list="area-options" autocomplete="off">
+      <datalist id="area-options"></datalist>
+    </div>
+    <div class="edit-field">
+      <label for="edit-topic">Topic</label>
+      <input type="text" id="edit-topic" placeholder="e.g. Adding Fractions" autocomplete="off">
+    </div>
+    <div class="edit-field">
+      <label for="edit-level">Level <span style="font-size:0.78rem;color:var(--c-text-sm)">(max 2 chars)</span></label>
+      <input type="text" id="edit-level" placeholder="e.g. L1" maxlength="2" style="width:6rem" autocomplete="off">
+    </div>
+    <div class="cu-footer">
+      <button class="cu-btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="cu-btn-save" id="edit-save-btn" onclick="saveEditModal()">Save</button>
+    </div>
+  </div>
 
   <!-- Content modal -->
   <div id="cu-backdrop"></div>
@@ -252,5 +305,85 @@
     }
 
     document.getElementById('cu-backdrop').addEventListener('click', closeUnit);
+
+    // ── Edit Unit modal ───────────────────────────────────────────────────────
+    let editAuId = null;
+
+    function openEditModal(event, auId, auName, auArea, auTopic, auLevel) {
+      event.stopPropagation();
+      editAuId = auId;
+      document.getElementById('edit-name').value  = auName;
+      document.getElementById('edit-area').value  = auArea;
+      document.getElementById('edit-topic').value = auTopic;
+      document.getElementById('edit-level').value = auLevel;
+      document.getElementById('edit-error').style.display = 'none';
+      const btn = document.getElementById('edit-save-btn');
+      btn.disabled = false;
+      btn.textContent = 'Save';
+
+      fetch('/units/options')
+        .then(r => r.json())
+        .then(data => {
+          const dl = document.getElementById('area-options');
+          dl.innerHTML = '';
+          (data.areas || []).forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            dl.appendChild(opt);
+          });
+        });
+
+      document.getElementById('edit-backdrop').style.display = 'block';
+      document.getElementById('edit-modal').style.display = 'block';
+      document.getElementById('edit-name').focus();
+    }
+
+    function closeEditModal() {
+      document.getElementById('edit-backdrop').style.display = 'none';
+      document.getElementById('edit-modal').style.display = 'none';
+      editAuId = null;
+    }
+
+    function saveEditModal() {
+      const name  = document.getElementById('edit-name').value.trim();
+      const area  = document.getElementById('edit-area').value.trim();
+      const topic = document.getElementById('edit-topic').value.trim();
+      const level = document.getElementById('edit-level').value.trim();
+
+      if (!name) { showEditError('Unit name is required.'); return; }
+
+      const btn = document.getElementById('edit-save-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving\u2026';
+
+      fetch(`/units/${editAuId}/update`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ au_name: name, au_area: area, au_topic: topic, au_level: level })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          location.reload();
+        } else {
+          showEditError(data.error || 'Save failed.');
+          btn.disabled = false;
+          btn.textContent = 'Save';
+        }
+      })
+      .catch(() => {
+        showEditError('Network error. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Save';
+      });
+    }
+
+    function showEditError(msg) {
+      const el = document.getElementById('edit-error');
+      el.textContent = msg;
+      el.style.display = 'block';
+    }
+
+    document.getElementById('edit-backdrop').addEventListener('click', closeEditModal);
   </script>
 {% endblock %}
