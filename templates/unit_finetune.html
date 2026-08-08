@@ -522,5 +522,20 @@
       chk.addEventListener('change', applyFilter);
     });
   </script>
+
+  <!-- Scroll-to-top button -->
+  <button id="scrollTopBtn" title="Back to top" onclick="window.scrollTo({top:0,behavior:'smooth'})"
+    style="display:none;position:fixed;bottom:2rem;right:2rem;z-index:999;
+           width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;
+           background:#2c6e9e;color:#fff;font-size:1.3rem;
+           box-shadow:0 3px 8px rgba(0,0,0,0.25);opacity:0.88;">&#8679;</button>
+  <script>
+    (function(){
+      var btn = document.getElementById('scrollTopBtn');
+      window.addEventListener('scroll', function(){
+        btn.style.display = window.scrollY > 300 ? 'block' : 'none';
+      });
+    })();
+  </script>
 </body>
 </html>
