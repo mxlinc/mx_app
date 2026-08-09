@@ -50,7 +50,7 @@ class QuizMR {
             const numCorrect = correctOptionIds.length;
             
             // Build options HTML with instruction prompt
-            const promptHtml = `<p style="font-size: 0.85em; color: #666; margin-bottom: 12px; font-style: italic;">Select ${numCorrect} correct option${numCorrect > 1 ? 's' : ''}</p>`;
+            const promptHtml = `<p style="font-size: 0.85em; color: #666; margin-bottom: 12px; font-style: italic;">There are ${numCorrect} correct options</p>`;
             
             const optionsHtml = options.map((opt, idx) => {
                 const labelText = opt.html || opt.latex || opt.text || JSON.stringify(opt);

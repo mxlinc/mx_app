@@ -31,7 +31,7 @@
         const img = question.image_url ? `<div class="template-image"><img src="${question.image_url}" alt="Question image"></div>` : '';
         const numCorrect = (question.answer?.correct_option_ids || []).length;
         const hint = numCorrect > 0
-            ? `<p class="template-mr-hint">Select ${numCorrect} correct option${numCorrect > 1 ? 's' : ''}</p>`
+            ? `<p class="template-mr-hint">There are ${numCorrect} correct options</p>`
             : '';
         return `<div class="template-question template-mr"><div class="template-stem">${question.stem || ''}</div>${img}${hint}<div class="template-options-container template-mr-options">${html}</div></div>`;
     }
