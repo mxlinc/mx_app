@@ -12,6 +12,10 @@ from flask import current_app
 _NODE_BIN = shutil.which('node')
 _KATEX_SCRIPT = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'katex_render.js')
 
+# Process-lifetime cache: identical (latex, mode) pairs recur across save/display
+# cycles during authoring, so this avoids re-spawning node for unchanged segments.
+_render_math_cache = {}
+
 
 def _render_math(inner, display_mode):
     """Render a LaTeX math expression to HTML.
@@ -21,6 +25,10 @@ def _render_math(inner, display_mode):
 
     Controlled by LATEX_RENDERER config: 'katex' (default) or 'mathml'.
     """
+    cache_key = (inner, display_mode)
+    if cache_key in _render_math_cache:
+        return _render_math_cache[cache_key]
+
     renderer = current_app.config.get("LATEX_RENDERER", "katex")
     if renderer == "katex" and _NODE_BIN and os.path.exists(_KATEX_SCRIPT):
         try:
@@ -34,6 +42,7 @@ def _render_math(inner, display_mode):
                 timeout=10
             )
             if result.returncode == 0 and result.stdout:
+                _render_math_cache[cache_key] = result.stdout
                 return result.stdout
             # Non-zero exit: KaTeX parse error — fall through to mathml
         except subprocess.TimeoutExpired:
@@ -43,9 +52,11 @@ def _render_math(inner, display_mode):
     # Fallback: latex2mathml (works without node; no textcolor/textbf support)
     mode = 'block' if display_mode else 'inline'
     try:
-        return latex2mathml.converter.convert(inner, display=mode)
+        html = latex2mathml.converter.convert(inner, display=mode)
     except Exception:
-        return inner  # last resort: raw LaTeX
+        html = inner  # last resort: raw LaTeX
+    _render_math_cache[cache_key] = html
+    return html
 
 
 def save_image_from_data_url(data_url, filename, subdir="qimage"):

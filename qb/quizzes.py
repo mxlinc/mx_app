@@ -446,6 +446,44 @@ def edit_quiz(quiz_id):
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
+@qb_bp.route("/api/add-questions", methods=["POST"])
+@login_required
+def add_questions_to_quiz():
+    """Prepend the given question IDs to an existing quiz's question list."""
+    try:
+        data = request.get_json()
+        quiz_id = data.get('quiz_id')
+        question_ids = data.get('question_ids') or []
+        if not quiz_id:
+            return jsonify({'ok': False, 'error': 'Quiz ID is required'}), 400
+        if not question_ids:
+            return jsonify({'ok': False, 'error': 'At least one question must be selected'}), 400
+
+        quiz = Quiz.query.get(quiz_id)
+        if not quiz:
+            return jsonify({'ok': False, 'error': f'Quiz {quiz_id} not found'}), 404
+
+        str_ids = [str(qid) for qid in question_ids]
+        existing = QBank.query.filter(QBank.id.in_(str_ids)).count()
+        if existing != len(str_ids):
+            return jsonify({'ok': False, 'error': 'One or more selected questions do not exist'}), 400
+
+        existing_ids = [i.strip() for i in (quiz.question_ids or '').split(',') if i.strip()]
+        # Prepend new IDs; drop any already present so they move to the front instead of duplicating
+        rest = [i for i in existing_ids if i not in str_ids]
+        merged_ids = str_ids + rest
+
+        quiz.question_ids = ','.join(merged_ids)
+        quiz.questions_json = build_questions_json(merged_ids)
+        db.session.commit()
+        logger.info(f"Added questions {str_ids} to quiz {quiz_id} (now {len(merged_ids)} total)")
+        return jsonify({'ok': True, 'message': f'Added {len(str_ids)} question(s) to quiz {quiz.quiz_code or quiz_id}'})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
+
+
 @qb_bp.route("/api/delete-quizzes", methods=["POST"])
 @login_required
 def delete_quizzes():

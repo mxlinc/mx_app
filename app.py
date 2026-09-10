@@ -79,7 +79,8 @@ def serve_pkg_files(pkg_name, filename):
 
 @app.route('/qimage/<filename>')
 def serve_qimage(filename):
-    return send_from_directory(QIMAGE_PATH, filename)
+    # Question images are re-fetched on every preview during authoring; cache them client-side.
+    return send_from_directory(QIMAGE_PATH, filename, max_age=86400)
 
 
 # LMS Blueprint (Learning Management System)

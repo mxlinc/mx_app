@@ -604,6 +604,7 @@
             </div>
             <div style="display: flex; gap: 10px;">
                 <button class="btn-create-quiz" onclick="openCreateQuizModal()">📝 Create Quiz</button>
+                <button class="btn-create-quiz" style="background:#1565c0" onclick="openAddToQuizModal()">➕ Add to Quiz</button>
                 <button class="btn-create-quiz" style="background:#2e7d32" onclick="generateSheet()">📄 Generate Sheet</button>
                 <button class="btn-delete" onclick="deleteSelectedQuestions()">🗑️ Delete</button>
             </div>
@@ -712,6 +713,27 @@
                 <div class="modal-footer">
                     <button type="button" class="btn-cancel" onclick="closeCreateQuizModal()">Cancel</button>
                     <button type="submit" class="btn-create">Create Quiz</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add to Quiz Modal -->
+    <div class="modal" id="addToQuizModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button class="close-btn" onclick="closeAddToQuizModal()">&times;</button>
+                <h2>Add to Quiz</h2>
+                <p id="addToQuizInfo"></p>
+            </div>
+            <form onsubmit="submitAddToQuiz(event)">
+                <div class="form-group">
+                    <label for="targetQuizId">Quiz ID *</label>
+                    <input type="number" id="targetQuizId" placeholder="e.g., 42" required min="1">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeAddToQuizModal()">Cancel</button>
+                    <button type="submit" class="btn-create">Add to Quiz</button>
                 </div>
             </form>
         </div>
@@ -981,6 +1003,70 @@
             document.getElementById('quizSubtopic').value = '';
             document.getElementById('quizLevel').value = '';
             document.getElementById('propagateToQuestions').checked = false;
+        }
+
+        function openAddToQuizModal() {
+            if (selectedQuestions.size === 0) {
+                showError('Please select at least one question');
+                return;
+            }
+            document.getElementById('addToQuizInfo').textContent =
+                `Adding ${selectedQuestions.size} question(s) to the beginning of the quiz`;
+            document.getElementById('addToQuizModal').classList.add('show');
+        }
+
+        function closeAddToQuizModal() {
+            document.getElementById('addToQuizModal').classList.remove('show');
+            document.getElementById('targetQuizId').value = '';
+        }
+
+        function submitAddToQuiz(event) {
+            event.preventDefault();
+
+            const quizId = document.getElementById('targetQuizId').value.trim();
+            if (!quizId) {
+                showError('Quiz ID is required');
+                return;
+            }
+
+            const data = {
+                quiz_id: parseInt(quizId, 10),
+                question_ids: Array.from(selectedQuestions)
+            };
+
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Adding...';
+            submitBtn.disabled = true;
+
+            fetch('/quiz/api/add-questions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+
+                if (result.ok) {
+                    closeAddToQuizModal();
+                    showSuccess(result.message || 'Questions added to quiz!');
+                    selectedQuestions.clear();
+                    updateSelectionUI();
+                    setTimeout(() => {
+                        loadQuestions(currentPage);
+                    }, 1000);
+                } else {
+                    showError(result.error || 'Failed to add questions to quiz');
+                }
+            })
+            .catch(error => {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+                console.error('Error:', error);
+                showError('Failed to add questions to quiz. Please try again.');
+            });
         }
 
         function submitCreateQuiz(event) {
