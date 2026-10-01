@@ -448,16 +448,17 @@
       const studentId = parseInt(studentSel.value);
       if (!studentId || !unitId) return;
       try {
-        const res  = await fetch('/unit/api/activate-parked', {
+        const res  = await fetch('/unit/api/sync-unit-preview', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({student_id: studentId, unit_id: unitId}),
+          body: JSON.stringify({student_id: studentId, au_id: unitId}),
         });
         const data = await res.json();
-        if (!data.ok) { alert('Error: ' + (data.error || 'Unknown')); return; }
-        await loadWorkList(studentId);
+        if (!data.ok) { alert('Activation preview failed: ' + (data.error || 'Unknown')); return; }
+        data.activate_parked = true;
+        openSyncModal(data);
       } catch (e) {
-        alert('Network error activating unit.');
+        alert('Network error preparing activation.');
       }
     }
 
@@ -543,7 +544,9 @@
 
     function openSyncModal(data) {
       syncPreview = data;
-      document.getElementById('sync-modal-title').textContent = `Review Sync: ${data.au_name}`;
+      const isActivation = data.activate_parked === true;
+      document.getElementById('sync-modal-title').textContent =
+        `${isActivation ? 'Review Activation' : 'Review Sync'}: ${data.au_name}`;
       document.getElementById('sync-modal-subtitle').textContent =
         `${data.summary.move} move(s), ${data.summary.create} new item(s), ${data.summary.choose_source} duplicate choice(s).`;
       document.getElementById('sync-modal-error').style.display = 'none';
@@ -567,6 +570,7 @@
       }).join('');
 
       document.getElementById('sync-modal-items').innerHTML = itemsHtml || '<div class="sync-item-detail">This unit has no content to sync.</div>';
+      document.getElementById('sync-confirm-btn').textContent = isActivation ? 'Confirm Activation' : 'Confirm Sync';
       document.getElementById('sync-backdrop').style.display = 'block';
       document.getElementById('sync-modal').style.display = 'block';
     }
@@ -579,6 +583,7 @@
 
     async function commitSyncPreview() {
       if (!syncPreview) return;
+      const isActivation = syncPreview.activate_parked === true;
       const moveRowIds = Array.from(document.querySelectorAll('.sync-move:checked, .sync-choice:checked'))
         .map(input => parseInt(input.value));
       const createCodes = Array.from(document.querySelectorAll('.sync-create:checked'))
@@ -587,7 +592,7 @@
       const confirmBtn = document.getElementById('sync-confirm-btn');
 
       confirmBtn.disabled = true;
-      confirmBtn.textContent = 'Syncing...';
+  confirmBtn.textContent = isActivation ? 'Activating...' : 'Syncing...';
       errorEl.style.display = 'none';
       try {
         const res = await fetch('/unit/api/sync-unit-commit', {
@@ -598,6 +603,7 @@
             au_id: syncPreview.au_id,
             move_row_ids: moveRowIds,
             create_codes: createCodes,
+            activate_parked: syncPreview.activate_parked === true,
           }),
         });
         const data = await res.json();
@@ -614,7 +620,7 @@
         errorEl.style.display = 'block';
       } finally {
         confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Confirm Sync';
+        confirmBtn.textContent = isActivation ? 'Confirm Activation' : 'Confirm Sync';
       }
     }
 

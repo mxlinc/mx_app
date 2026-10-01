@@ -2085,11 +2085,14 @@ def unit_sync_commit():
     au_id = data.get('au_id')
     requested_move_ids = data.get('move_row_ids') or []
     requested_create_codes = data.get('create_codes') or []
+    activate_parked = data.get('activate_parked', False)
 
     if not student_id or not au_id:
         return jsonify({'ok': False, 'error': 'student_id and au_id required'}), 400
     if not isinstance(requested_move_ids, list) or not isinstance(requested_create_codes, list):
         return jsonify({'ok': False, 'error': 'Invalid sync selection'}), 400
+    if not isinstance(activate_parked, bool):
+        return jsonify({'ok': False, 'error': 'Invalid activation selection'}), 400
 
     student = UserTable.query.get(student_id)
     if not student:
@@ -2098,6 +2101,12 @@ def unit_sync_commit():
     unit = AUnit.query.get(au_id)
     if not unit:
         return jsonify({'ok': False, 'error': 'Unit not found in database'}), 404
+
+    park_row = None
+    if activate_parked:
+        park_row = ParkedUnit.query.filter_by(student_id=student.id, unit_id=unit.au_id).first()
+        if not park_row:
+            return jsonify({'ok': False, 'error': 'Unit is no longer parked for this student.'}), 409
 
     preview_items = _sync_preview_for_student(student, unit)
     items_by_code = {item['item_code']: item for item in preview_items}
@@ -2144,17 +2153,23 @@ def unit_sync_commit():
                 status='future',
                 user_id=student.id,
             ))
+        if park_row:
+            db.session.delete(park_row)
         db.session.commit()
         logger.info(
-            'Safe sync unit: au_id=%s student=%s moved_rows=%s created_codes=%s admin=%s',
+            'Safe sync unit: au_id=%s student=%s activated=%s moved_rows=%s created_codes=%s admin=%s',
             au_id, student.username, [row.id for row in move_rows],
-            sorted(requested_create_codes), current_user.username,
+            activate_parked, sorted(requested_create_codes), current_user.username,
         )
         return jsonify({
             'ok': True,
             'moved': len(move_rows),
             'created': len(requested_create_codes),
-            'message': f'Moved {len(move_rows)} item(s); added {len(requested_create_codes)} new item(s) as Future.',
+            'activated': activate_parked,
+            'message': (
+                f"{'Activated the unit; ' if activate_parked else ''}moved {len(move_rows)} item(s); "
+                f'added {len(requested_create_codes)} new item(s) as Future.'
+            ),
         })
     except Exception as e:
         db.session.rollback()
@@ -2227,45 +2242,13 @@ def unit_park():
 @lms_bp.route('/unit/api/activate-parked', methods=['POST'])
 @login_required
 def unit_activate_parked():
-    """Activate a parked unit for a student.
-
-    Removes the parked_units row and (if not previously assigned) inserts
-    my_work_list rows for all items in the unit with status=future.
-    Uses the shared _assign_unit_to_student helper — same logic as unit assign.
-    """
+    """Legacy activation endpoint retained to prevent an unsafe immediate write."""
     if current_user.user_role not in ('admin', 'admin_new'):
         return jsonify({'ok': False, 'error': 'Forbidden'}), 403
-
-    data       = request.get_json(silent=True) or {}
-    student_id = data.get('student_id')
-    unit_id    = data.get('unit_id')
-
-    if not student_id or not unit_id:
-        return jsonify({'ok': False, 'error': 'student_id and unit_id required'}), 400
-
-    student = UserTable.query.get(student_id)
-    if not student:
-        return jsonify({'ok': False, 'error': 'Student not found'}), 404
-
-    unit = AUnit.query.get(unit_id)
-    if not unit:
-        return jsonify({'ok': False, 'error': 'Unit not found'}), 404
-
-    park_row = ParkedUnit.query.filter_by(student_id=student_id, unit_id=unit_id).first()
-    if not park_row:
-        return jsonify({'ok': False, 'error': 'Unit is not parked for this student'}), 400
-
-    try:
-        db.session.delete(park_row)
-        created = _assign_unit_to_student(student, unit)
-        db.session.commit()
-        logger.info('Activate parked unit: unit_id=%s student=%s new_rows=%s by admin=%s',
-                    unit_id, student.username, created, current_user.username)
-        return jsonify({'ok': True, 'created': created})
-    except Exception as e:
-        db.session.rollback()
-        logger.exception(e)
-        return jsonify({'ok': False, 'error': str(e)}), 500
+    return jsonify({
+        'ok': False,
+        'error': 'Activation now requires preview and confirmation.',
+    }), 409
 
 
 @lms_bp.route('/unit/api/admin/backfill-parking', methods=['POST'])

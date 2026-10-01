@@ -205,7 +205,10 @@ class QuizExecution(db.Model):
 class MyWorkList(db.Model):
     """Student work queue — one row per assigned item (quiz or video) per student."""
     __tablename__ = 'my_work_list'
-    __table_args__ = {'schema': CURRENT_SCHEMA}
+    __table_args__ = (
+        db.UniqueConstraint('user', 'item_code', name='uq_my_work_list_user_item'),
+        {'schema': CURRENT_SCHEMA},
+    )
 
     id           = db.Column(db.Integer, primary_key=True)
     user         = db.Column(db.String(100), nullable=False)
