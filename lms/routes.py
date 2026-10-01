@@ -1937,7 +1937,107 @@ def unit_finetune_work():
 @lms_bp.route('/unit/api/sync-unit', methods=['POST'])
 @login_required
 def unit_sync():
-    """Additively assign any new items in a unit to a student (status=future)."""
+    """Legacy Sync endpoint retained to prevent an unsafe immediate write."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    return jsonify({
+        'ok': False,
+        'error': 'Sync now requires preview and confirmation.',
+    }), 409
+
+
+def _sync_item_details(codes):
+    """Return assignment URLs and display metadata for the supplied item codes."""
+    code_set = set(codes)
+    video_codes = {code for code in code_set if code.startswith('V-')}
+    interaction_codes = {code for code in code_set if code.startswith('I-')}
+    quiz_codes = {code for code in code_set if code.startswith('Q-')}
+
+    details = {code: None for code in code_set}
+    metadata = {
+        code: {
+            'type': 'quiz' if code.startswith('Q-') else
+                    'video' if code.startswith('V-') else
+                    'interaction' if code.startswith('I-') else 'other',
+            'display_name': code,
+        }
+        for code in code_set
+    }
+
+    if video_codes:
+        for video in Video.query.filter(Video.lesson_code.in_(video_codes)).all():
+            details[video.lesson_code] = f'https://mx-app-mm.onrender.com/packages/advanced/{video.file_name}'
+            metadata[video.lesson_code]['display_name'] = video.display_name
+
+    if interaction_codes:
+        for interaction in Interaction.query.filter(Interaction.lesson_code.in_(interaction_codes)).all():
+            details[interaction.lesson_code] = f'/static/interactions/{interaction.file_name}'
+            metadata[interaction.lesson_code]['display_name'] = interaction.display_name
+
+    if quiz_codes:
+        for quiz in Quiz.query.filter(Quiz.quiz_code.in_(quiz_codes)).all():
+            metadata[quiz.quiz_code]['display_name'] = quiz.title
+
+    return details, metadata
+
+
+def _sync_row_summary(row):
+    """Serialize the assignment details needed for a Fine Tune sync review."""
+    return {
+        'id': row.id,
+        'au_name': row.au_name,
+        'status': row.status,
+        'score': row.score,
+        'views': row.views or 0,
+        'questions_answered': row.questions_answered or 0,
+    }
+
+
+def _sync_preview_for_student(student, unit):
+    """Classify one student's current work against one target assignment unit."""
+    target_codes = []
+    seen_codes = set()
+    for code in (unit.au_content or '').split('|'):
+        code = code.strip()
+        if code and code not in seen_codes:
+            target_codes.append(code)
+            seen_codes.add(code)
+
+    work_rows = MyWorkList.query.filter_by(user=student.username).all()
+    rows_by_code = {}
+    for row in work_rows:
+        rows_by_code.setdefault(row.item_code, []).append(row)
+
+    _, metadata = _sync_item_details(target_codes)
+    items = []
+    for code in target_codes:
+        matching_rows = rows_by_code.get(code, [])
+        target_rows = [row for row in matching_rows if row.au_name == unit.au_name]
+        source_rows = [row for row in matching_rows if row.au_name != unit.au_name]
+        item = {
+            'item_code': code,
+            **metadata[code],
+            'source_rows': [_sync_row_summary(row) for row in source_rows],
+        }
+        if target_rows:
+            item['action'] = 'already_in_target'
+        elif not source_rows:
+            item['action'] = 'create'
+        elif len(source_rows) == 1:
+            item['action'] = 'move'
+            item['selected_row_id'] = source_rows[0].id
+        else:
+            item['action'] = 'choose_source'
+        items.append(item)
+
+    return items
+
+
+@lms_bp.route('/unit/api/sync-unit-preview', methods=['POST'])
+@login_required
+def unit_sync_preview():
+    """Preview a safe, single-student reconciliation of one assignment unit."""
     if current_user.user_role not in ('admin', 'admin_new'):
         return jsonify({'ok': False, 'error': 'Forbidden'}), 403
 
@@ -1956,13 +2056,106 @@ def unit_sync():
     if not unit:
         return jsonify({'ok': False, 'error': 'Unit not found in database'}), 404
 
+    items = _sync_preview_for_student(student, unit)
+    summary = {
+        'already_in_target': sum(item['action'] == 'already_in_target' for item in items),
+        'move': sum(item['action'] == 'move' for item in items),
+        'create': sum(item['action'] == 'create' for item in items),
+        'choose_source': sum(item['action'] == 'choose_source' for item in items),
+    }
+    return jsonify({
+        'ok': True,
+        'student_id': student.id,
+        'au_id': unit.au_id,
+        'au_name': unit.au_name,
+        'items': items,
+        'summary': summary,
+    })
+
+
+@lms_bp.route('/unit/api/sync-unit-commit', methods=['POST'])
+@login_required
+def unit_sync_commit():
+    """Apply confirmed moves and new work rows for one student and one unit."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    data = request.get_json(silent=True) or {}
+    student_id = data.get('student_id')
+    au_id = data.get('au_id')
+    requested_move_ids = data.get('move_row_ids') or []
+    requested_create_codes = data.get('create_codes') or []
+
+    if not student_id or not au_id:
+        return jsonify({'ok': False, 'error': 'student_id and au_id required'}), 400
+    if not isinstance(requested_move_ids, list) or not isinstance(requested_create_codes, list):
+        return jsonify({'ok': False, 'error': 'Invalid sync selection'}), 400
+
+    student = UserTable.query.get(student_id)
+    if not student:
+        return jsonify({'ok': False, 'error': 'Student not found'}), 404
+
+    unit = AUnit.query.get(au_id)
+    if not unit:
+        return jsonify({'ok': False, 'error': 'Unit not found in database'}), 404
+
+    preview_items = _sync_preview_for_student(student, unit)
+    items_by_code = {item['item_code']: item for item in preview_items}
+    requested_move_ids = {row_id for row_id in requested_move_ids if isinstance(row_id, int)}
+    requested_create_codes = {code for code in requested_create_codes if isinstance(code, str)}
+
+    row_by_id = {
+        row.id: row
+        for row in MyWorkList.query.filter_by(user=student.username).all()
+    }
+    move_rows = []
+    moved_codes = set()
+    for row_id in requested_move_ids:
+        row = row_by_id.get(row_id)
+        if not row:
+            return jsonify({'ok': False, 'error': 'A selected assignment no longer belongs to this student.'}), 409
+        item = items_by_code.get(row.item_code)
+        if not item or item['action'] == 'already_in_target' or row.au_name == unit.au_name:
+            return jsonify({'ok': False, 'error': 'A selected assignment is no longer eligible to move.'}), 409
+        if row.item_code in moved_codes:
+            return jsonify({'ok': False, 'error': 'Select only one source assignment per item.'}), 400
+        moved_codes.add(row.item_code)
+        move_rows.append(row)
+
+    valid_create_codes = {
+        code for code, item in items_by_code.items()
+        if item['action'] == 'create'
+    }
+    if not requested_create_codes.issubset(valid_create_codes):
+        return jsonify({'ok': False, 'error': 'A selected new item is no longer eligible to add.'}), 409
+
+    details, _ = _sync_item_details(requested_create_codes)
     try:
-        created = _assign_unit_to_student(student, unit)
+        for row in move_rows:
+            row.au_name = unit.au_name
+
+        for code in requested_create_codes:
+            db.session.add(MyWorkList(
+                user=student.username,
+                au_name=unit.au_name,
+                item_code=code,
+                item_detail=details.get(code),
+                views=0,
+                status='future',
+                user_id=student.id,
+            ))
         db.session.commit()
-        logger.info('Sync unit: au_id=%s student=%s created=%s by admin=%s',
-                    au_id, student.username, created, current_user.username)
-        msg = f'{created} new item(s) added.' if created else 'No new items — already up to date.'
-        return jsonify({'ok': True, 'created': created, 'message': msg})
+        logger.info(
+            'Safe sync unit: au_id=%s student=%s moved_rows=%s created_codes=%s admin=%s',
+            au_id, student.username, [row.id for row in move_rows],
+            sorted(requested_create_codes), current_user.username,
+        )
+        return jsonify({
+            'ok': True,
+            'moved': len(move_rows),
+            'created': len(requested_create_codes),
+            'message': f'Moved {len(move_rows)} item(s); added {len(requested_create_codes)} new item(s) as Future.',
+        })
     except Exception as e:
         db.session.rollback()
         logger.exception(e)

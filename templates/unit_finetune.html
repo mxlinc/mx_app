@@ -174,6 +174,25 @@
 
     /* ── Empty / loading states ── */
     .state-msg { text-align: center; color: var(--muted); padding: 3rem 0; font-size: 0.95rem; }
+
+    /* ── Safe sync review ── */
+    .sync-backdrop { display:none; position:fixed; inset:0; z-index:1050; background:rgba(19,42,58,0.48); }
+    .sync-modal {
+      display:none; position:fixed; z-index:1060; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:min(700px, calc(100vw - 2rem)); max-height:86vh; overflow:auto;
+      background:#fff; border-radius:8px; box-shadow:0 14px 40px rgba(0,0,0,0.28);
+    }
+    .sync-modal-head { padding:1rem 1.25rem; border-bottom:1px solid var(--border); }
+    .sync-modal-head h2 { margin:0; color:var(--blue); font-size:1.1rem; font-weight:700; }
+    .sync-modal-body { padding:1rem 1.25rem; }
+    .sync-modal-foot { display:flex; justify-content:flex-end; gap:0.6rem; padding:0.9rem 1.25rem; border-top:1px solid var(--border); }
+    .sync-item { border:1px solid var(--border); border-radius:5px; padding:0.65rem 0.75rem; margin-bottom:0.55rem; }
+    .sync-item-title { font-weight:700; font-size:0.88rem; color:var(--text); }
+    .sync-item-detail { color:var(--muted); font-size:0.8rem; margin-top:0.25rem; }
+    .sync-source { display:flex; align-items:center; gap:0.45rem; padding:0.35rem 0; font-size:0.84rem; }
+    .sync-action { color:#1a5e35; font-size:0.8rem; font-weight:600; }
+    .sync-warning { color:#8a6500; font-size:0.8rem; margin-top:0.45rem; }
+    .sync-error { display:none; color:#a93226; font-size:0.85rem; margin-top:0.7rem; }
   </style>
 </head>
 <body>
@@ -241,6 +260,22 @@
 
   </div><!-- /container -->
 
+  <div id="sync-backdrop" class="sync-backdrop"></div>
+  <div id="sync-modal" class="sync-modal" role="dialog" aria-modal="true" aria-labelledby="sync-modal-title">
+    <div class="sync-modal-head">
+      <h2 id="sync-modal-title">Review Sync</h2>
+      <div id="sync-modal-subtitle" class="sync-item-detail"></div>
+    </div>
+    <div class="sync-modal-body">
+      <div id="sync-modal-items"></div>
+      <div id="sync-modal-error" class="sync-error"></div>
+    </div>
+    <div class="sync-modal-foot">
+      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closeSyncModal()">Cancel</button>
+      <button type="button" id="sync-confirm-btn" class="btn btn-sm btn-primary" onclick="commitSyncPreview()">Confirm Sync</button>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // ── Constants ───────────────────────────────────────────────────────────
@@ -251,6 +286,7 @@
     const workArea   = document.getElementById('work-area');
     const studentSel = document.getElementById('student-sel');
     const btnPreview = document.getElementById('btn-preview');
+    let syncPreview = null;
 
     // ── Helpers ─────────────────────────────────────────────────────────────
     function activeStatuses() {
@@ -267,6 +303,10 @@
 
     function escAttr(str) {
       return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function escHtml(str) {
+      return escAttr(str);
     }
 
     function renderRow(item) {
@@ -465,41 +505,120 @@
       }
     }
 
-    // ── Sync unit ────────────────────────────────────────────────────────────
+    // ── Safe Sync unit ───────────────────────────────────────────────────────
     async function syncUnit(event, btn) {
       event.stopPropagation();
       const auId = btn.dataset.auId;
       const studentId = studentSel.value;
       if (!studentId || !auId) return;
-      const msgEl = btn.nextElementSibling;
       btn.disabled = true;
-      btn.textContent = '\u21bb Syncing\u2026';
-      msgEl.textContent = '';
-      msgEl.className = 'sync-msg';
+      btn.textContent = '\u21bb Checking\u2026';
       try {
-        const res  = await fetch('/unit/api/sync-unit', {
+        const res  = await fetch('/unit/api/sync-unit-preview', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({student_id: parseInt(studentId), au_id: parseInt(auId)})
         });
         const data = await res.json();
         if (data.ok) {
-          msgEl.textContent = data.message;
-          if (data.created > 0) {
-            await loadWorkList(studentId);
-          }
+          openSyncModal(data);
         } else {
-          msgEl.textContent = data.error || 'Sync failed';
-          msgEl.className = 'sync-msg err';
+          alert('Sync preview failed: ' + (data.error || 'Unknown error'));
         }
       } catch (e) {
-        msgEl.textContent = 'Network error';
-        msgEl.className = 'sync-msg err';
+        alert('Network error preparing Sync.');
       } finally {
         btn.disabled = false;
         btn.textContent = '\u21bb Sync';
       }
     }
+
+    function sourceLabel(source) {
+      const extras = [];
+      if (source.score) extras.push(source.score);
+      if (source.questions_answered) extras.push(`${source.questions_answered} answered`);
+      if (source.views) extras.push(`${source.views} views`);
+      return `${source.au_name} - ${STATUS_LABEL[source.status] || source.status}${extras.length ? ` (${extras.join(', ')})` : ''}`;
+    }
+
+    function openSyncModal(data) {
+      syncPreview = data;
+      document.getElementById('sync-modal-title').textContent = `Review Sync: ${data.au_name}`;
+      document.getElementById('sync-modal-subtitle').textContent =
+        `${data.summary.move} move(s), ${data.summary.create} new item(s), ${data.summary.choose_source} duplicate choice(s).`;
+      document.getElementById('sync-modal-error').style.display = 'none';
+
+      const itemsHtml = data.items.map((item, index) => {
+        const title = `<div class="sync-item-title">${escHtml(item.item_code)}: ${escHtml(item.display_name)}</div>`;
+        if (item.action === 'already_in_target') {
+          return `<div class="sync-item">${title}<div class="sync-action">Already assigned to this unit. No change.</div></div>`;
+        }
+        if (item.action === 'create') {
+          return `<div class="sync-item">${title}<label class="sync-source"><input class="sync-create" type="checkbox" value="${escAttr(item.item_code)}" checked> Add as Future</label></div>`;
+        }
+        if (item.action === 'move') {
+          const source = item.source_rows[0];
+          return `<div class="sync-item">${title}<label class="sync-source"><input class="sync-move" type="checkbox" value="${source.id}" checked> Move from ${escHtml(sourceLabel(source))}; preserve status and progress</label></div>`;
+        }
+        const choices = item.source_rows.map(source =>
+          `<label class="sync-source"><input class="sync-choice" type="radio" name="sync-source-${index}" value="${source.id}"> Move ${escHtml(sourceLabel(source))}</label>`
+        ).join('');
+        return `<div class="sync-item">${title}<div class="sync-warning">This item has multiple existing assignments. Select one row to move, or leave it unchanged.</div>${choices}</div>`;
+      }).join('');
+
+      document.getElementById('sync-modal-items').innerHTML = itemsHtml || '<div class="sync-item-detail">This unit has no content to sync.</div>';
+      document.getElementById('sync-backdrop').style.display = 'block';
+      document.getElementById('sync-modal').style.display = 'block';
+    }
+
+    function closeSyncModal() {
+      syncPreview = null;
+      document.getElementById('sync-backdrop').style.display = 'none';
+      document.getElementById('sync-modal').style.display = 'none';
+    }
+
+    async function commitSyncPreview() {
+      if (!syncPreview) return;
+      const moveRowIds = Array.from(document.querySelectorAll('.sync-move:checked, .sync-choice:checked'))
+        .map(input => parseInt(input.value));
+      const createCodes = Array.from(document.querySelectorAll('.sync-create:checked'))
+        .map(input => input.value);
+      const errorEl = document.getElementById('sync-modal-error');
+      const confirmBtn = document.getElementById('sync-confirm-btn');
+
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Syncing...';
+      errorEl.style.display = 'none';
+      try {
+        const res = await fetch('/unit/api/sync-unit-commit', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            student_id: syncPreview.student_id,
+            au_id: syncPreview.au_id,
+            move_row_ids: moveRowIds,
+            create_codes: createCodes,
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          errorEl.textContent = data.error || 'Sync failed.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        const studentId = syncPreview.student_id;
+        closeSyncModal();
+        await loadWorkList(studentId);
+      } catch (e) {
+        errorEl.textContent = 'Network error applying Sync.';
+        errorEl.style.display = 'block';
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Confirm Sync';
+      }
+    }
+
+    document.getElementById('sync-backdrop').addEventListener('click', closeSyncModal);
 
     // ── Load work list ──────────────────────────────────────────────────────
     studentSel.addEventListener('change', async function () {
