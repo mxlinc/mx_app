@@ -3,6 +3,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from flask_login import login_required, current_user, login_user, logout_user
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 import logging
 import os
@@ -1299,6 +1300,96 @@ def videos_update_details():
     return jsonify({'ok': True})
 
 
+@lms_bp.route('/videos/update', methods=['POST'])
+@login_required
+def videos_update():
+    """Save metadata and notes together; filename edits also update assigned playback URLs."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'ok': False, 'error': 'A JSON object is required'}), 400
+    video_id = data.get('id')
+    if type(video_id) is not int or video_id <= 0:
+        return jsonify({'ok': False, 'error': 'A positive integer id is required'}), 400
+    fields = {}
+    for field, limit in (('file_name', 255), ('display_name', 255),
+                         ('broad_area', 100), ('details', None)):
+        value = data.get(field)
+        if not isinstance(value, str):
+            return jsonify({'ok': False, 'error': f'{field} must be a string'}), 400
+        value = value.strip()
+        if field in ('file_name', 'display_name') and not value:
+            return jsonify({'ok': False, 'error': f'{field} is required'}), 400
+        if limit is not None and len(value) > limit:
+            return jsonify({'ok': False, 'error': f'{field} must be at most {limit} characters'}), 400
+        fields[field] = value
+
+    try:
+        video = db.session.get(Video, video_id)
+        if not video:
+            return jsonify({'ok': False, 'error': 'Video not found'}), 404
+        if video.file_name != fields['file_name'] and video.lesson_code:
+            playback_url = f"https://mx-app-mm.onrender.com/packages/advanced/{fields['file_name']}"
+            MyWorkList.query.filter_by(item_code=video.lesson_code).update(
+                {'item_detail': playback_url}, synchronize_session='fetch'
+            )
+        video.file_name = fields['file_name']
+        video.display_name = fields['display_name']
+        video.broad_area = fields['broad_area'] or None
+        video.details = fields['details'] or None
+        video.last_updated = db.func.now()
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Failed to update video %s', video_id)
+        return jsonify({'ok': False, 'error': 'Unable to save the video. Please try again.'}), 500
+    return jsonify({'ok': True})
+
+
+@lms_bp.route('/videos/delete', methods=['POST'])
+@login_required
+def videos_delete():
+    """Delete an unreferenced catalogue record, never the hosted video file."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({'ok': False, 'error': 'A JSON object is required'}), 400
+    video_id = data.get('id')
+    if type(video_id) is not int or video_id <= 0:
+        return jsonify({'ok': False, 'error': 'A positive integer id is required'}), 400
+
+    try:
+        video = db.session.get(Video, video_id)
+        if not video:
+            return jsonify({'ok': False, 'error': 'Video not found'}), 404
+        unit_count = 0
+        assignment_count = 0
+        if video.lesson_code:
+            unit_count = sum(
+                video.lesson_code in {code.strip() for code in (content or '').split('|')}
+                for (content,) in AUnit.query.with_entities(AUnit.au_content).all()
+            )
+            assignment_count = MyWorkList.query.filter_by(item_code=video.lesson_code).count()
+        if unit_count or assignment_count:
+            return jsonify({
+                'ok': False,
+                'error': (
+                    f'Cannot delete this video: it is referenced by {unit_count} unit(s) '
+                    f'and {assignment_count} student work-list entry/entries. '
+                    'Remove those references before deleting.'
+                ),
+            }), 409
+        db.session.delete(video)
+        db.session.commit()
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Failed to delete video %s', video_id)
+        return jsonify({'ok': False, 'error': 'Unable to delete the video. Please try again.'}), 500
+    return jsonify({'ok': True})
+
+
 # ==================== INTERACTIONS ==================== #
 
 @lms_bp.route('/interactions/list')
@@ -2395,5 +2486,3 @@ def student_preview(user_id):
                            student_name=student.full_name or username,
                            user_id=user_id, stats=stats,
                            preview_banner=preview_banner)
-
-

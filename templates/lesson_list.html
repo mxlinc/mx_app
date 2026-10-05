@@ -105,8 +105,8 @@
                    target="_blank" rel="noopener">{{ lesson.lesson_code }}: {{ lesson.display_name }}</a>
               </label>
               <a href="#" class="flex-shrink-0"
-                 onclick='vdOpen({{ lesson.id }}, {{ (lesson.details or "") | tojson }}, {{ lesson.display_name | tojson }});return false;'
-                 style="font-size:0.8rem;color:var(--color-muted);white-space:nowrap;">Details</a>
+                 onclick='vdOpen({{ lesson.id }}, {{ (lesson.details or "") | tojson }}, {{ lesson.display_name | tojson }}, {{ lesson.file_name | tojson }}, {{ (lesson.broad_area or "") | tojson }});return false;'
+                 style="font-size:0.8rem;color:var(--color-muted);white-space:nowrap;">Edit</a>
             </div>
             {% endfor %}
           </div>
@@ -117,20 +117,44 @@
 
   </div>
 
-  <!-- Video Details Modal -->
-  <div id="vd-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1040;"></div>
+  <!-- Video Edit Modal -->
+  <div id="vd-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1060;"></div>
   <div id="vd-modal" role="dialog" aria-modal="true" aria-labelledby="vd-title"
        style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-              background:#fff;border-radius:10px;padding:2rem;width:min(520px,95vw);
-              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1050;">
+              background:#fff;border-radius:10px;padding:2rem;width:min(520px,95vw);max-height:90vh;overflow-y:auto;
+              box-shadow:0 8px 32px rgba(0,0,0,0.18);z-index:1070;">
     <h2 id="vd-title" style="font-size:1.15rem;font-weight:600;color:var(--color-primary);margin:0 0 0.35rem;"></h2>
-    <p style="font-size:0.8rem;color:var(--color-muted);margin:0 0 1rem;">Video details / notes</p>
-    <div id="vd-error" style="display:none;color:#c0392b;font-size:0.88rem;margin-bottom:0.75rem;"></div>
-    <textarea id="vd-textarea" rows="6"
+    <div id="vd-error" role="alert" style="display:none;color:#c0392b;font-size:0.88rem;margin-bottom:0.75rem;"></div>
+    <div style="margin-bottom:1rem;">
+      <label for="vd-file-name" class="form-label">File Name</label>
+      <input id="vd-file-name" type="text" class="form-control" maxlength="255" required />
+      <small class="text-muted">Changing this updates existing assignment links; it does not rename the hosted file.</small>
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label for="vd-display-name" class="form-label">Display Name</label>
+      <input id="vd-display-name" type="text" class="form-control" maxlength="255" required />
+    </div>
+    <div style="margin-bottom:1rem;">
+      <label for="vd-area-select" class="form-label">Broad Area</label>
+      <select id="vd-area-select" class="form-select" onchange="vdAreaChanged()">
+        <option value="">Uncategorised</option>
+        {% for ba in broad_areas %}
+        <option value="{{ ba }}">{{ ba }}</option>
+        {% endfor %}
+        <option value="__new__" data-new="1">Enter new area...</option>
+      </select>
+      <div id="vd-area-new-wrap" style="display:none;margin-top:0.5rem;">
+        <label for="vd-area-new" class="form-label">New Broad Area</label>
+        <input id="vd-area-new" type="text" class="form-control" maxlength="100" />
+      </div>
+    </div>
+    <label for="vd-textarea" class="form-label">Video details / notes</label>
+    <textarea id="vd-textarea" rows="4"
               style="width:100%;padding:0.55rem 0.75rem;border:1.5px solid var(--color-border);border-radius:6px;
                      font-size:0.93rem;resize:vertical;font-family:inherit;"></textarea>
-    <div style="display:flex;justify-content:flex-end;gap:0.75rem;margin-top:1.25rem;">
-      <button onclick="vdClose()"
+    <div style="display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:0.75rem;margin-top:1.25rem;">
+      <button id="vd-delete-btn" type="button" onclick="vdDelete()" class="btn btn-link text-danger p-0" style="margin-right:auto;">Delete this video</button>
+      <button id="vd-cancel-btn" onclick="vdClose()"
               style="padding:0.5rem 1.25rem;border:1px solid var(--color-border);border-radius:6px;background:#fff;cursor:pointer;font-size:0.95rem;">Cancel</button>
       <button id="vd-save-btn" onclick="vdSave()"
               style="padding:0.5rem 1.25rem;border:none;border-radius:6px;background:var(--color-primary);color:#fff;font-weight:600;cursor:pointer;font-size:0.95rem;">Save</button>
@@ -491,67 +515,126 @@
 
     document.getElementById('anv-backdrop').addEventListener('click', anvClose);
 
-    // ── Video Details modal ───────────────────────────────────────
+    // ── Video Edit modal ──────────────────────────────────────────
     let vdCurrentId = null;
+    let vdBusy = false;
+    let vdOpener = null;
 
-    function vdOpen(id, details, name) {
+    function vdOpen(id, details, name, fileName, broadArea) {
+      if (vdBusy) return;
       vdCurrentId = id;
-      document.getElementById('vd-title').textContent = name;
+      vdOpener = document.activeElement;
+      document.getElementById('vd-title').textContent = `Edit video: ${name}`;
+      document.getElementById('vd-file-name').value = fileName;
+      document.getElementById('vd-display-name').value = name;
+      document.getElementById('vd-area-select').value = broadArea;
+      document.getElementById('vd-area-new').value = '';
+      vdAreaChanged();
       document.getElementById('vd-textarea').value = details;
       document.getElementById('vd-error').style.display = 'none';
-      const btn = document.getElementById('vd-save-btn');
-      btn.disabled = false;
-      btn.textContent = 'Save';
+      vdSetBusy(false);
       document.getElementById('vd-backdrop').style.display = 'block';
       document.getElementById('vd-modal').style.display = 'block';
-      document.getElementById('vd-textarea').focus();
+      document.getElementById('vd-file-name').focus();
+    }
+
+    function vdAreaChanged() {
+      const areaSelect = document.getElementById('vd-area-select');
+      document.getElementById('vd-area-new-wrap').style.display =
+        areaSelect.selectedOptions[0]?.dataset.new === '1' ? 'block' : 'none';
+    }
+
+    function vdSetBusy(busy, deleting = false) {
+      vdBusy = busy;
+      document.getElementById('vd-modal').querySelectorAll('input, select, textarea, button').forEach(el => {
+        el.disabled = busy;
+      });
+      document.getElementById('vd-save-btn').textContent = busy && !deleting ? 'Saving...' : 'Save';
+      document.getElementById('vd-delete-btn').textContent = busy && deleting ? 'Deleting...' : 'Delete this video';
     }
 
     function vdClose() {
+      if (vdBusy) return;
       document.getElementById('vd-backdrop').style.display = 'none';
       document.getElementById('vd-modal').style.display = 'none';
       vdCurrentId = null;
+      if (vdOpener) vdOpener.focus();
     }
 
     function vdSave() {
-      if (!vdCurrentId) return;
+      if (!vdCurrentId || vdBusy) return;
+      const file_name = document.getElementById('vd-file-name').value.trim();
+      const display_name = document.getElementById('vd-display-name').value.trim();
+      const areaSelect = document.getElementById('vd-area-select');
+      const broad_area = areaSelect.selectedOptions[0]?.dataset.new === '1'
+        ? document.getElementById('vd-area-new').value.trim()
+        : areaSelect.value;
       const details = document.getElementById('vd-textarea').value;
-      const errEl   = document.getElementById('vd-error');
+      const errEl = document.getElementById('vd-error');
       errEl.style.display = 'none';
-      const btn = document.getElementById('vd-save-btn');
-      btn.disabled = true;
-      btn.textContent = 'Saving\u2026';
-      fetch('/videos/update-details', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ id: vdCurrentId, details })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.ok) {
-          // Update the onclick so re-opening shows the saved value
-          const link = document.querySelector(`a[onclick*="vdOpen(${vdCurrentId},"]`);
-          if (link) {
-            const name = document.getElementById('vd-title').textContent;
-            link.setAttribute('onclick', `vdOpen(${vdCurrentId}, ${JSON.stringify(details)}, ${JSON.stringify(name)});return false;`);
-          }
-          vdClose();
-        } else {
-          errEl.textContent = data.error || 'An error occurred.';
-          errEl.style.display = 'block';
-          btn.disabled = false;
-          btn.textContent = 'Save';
-        }
-      })
-      .catch(() => {
-        errEl.textContent = 'Network error. Please try again.';
+      if (!file_name || !display_name) {
+        errEl.textContent = 'File Name and Display Name are required.';
         errEl.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = 'Save';
-      });
+        return;
+      }
+      vdSubmit('/videos/update', {id: vdCurrentId, file_name, display_name, broad_area, details});
+    }
+
+    function vdDelete() {
+      if (!vdCurrentId || vdBusy) return;
+      if (!confirm('Delete this video? This cannot be undone. The hosted file will not be deleted. Deletion is blocked while any unit or student work list references it.')) return;
+      vdSubmit('/videos/delete', {id: vdCurrentId}, true);
+    }
+
+    async function vdSubmit(url, payload, deleting = false) {
+      const errEl = document.getElementById('vd-error');
+      errEl.style.display = 'none';
+      vdSetBusy(true, deleting);
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        if (!response.headers.get('content-type')?.includes('application/json')) {
+          throw new Error('Unexpected server response. Your session may have expired. Please reload and try again.');
+        }
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || 'Unable to complete the request. Please try again.');
+        }
+        location.reload();
+      } catch (error) {
+        errEl.textContent = error instanceof TypeError
+          ? 'Network error. Please try again.'
+          : error.message;
+        errEl.style.display = 'block';
+        vdSetBusy(false);
+      }
     }
 
     document.getElementById('vd-backdrop').addEventListener('click', vdClose);
+    document.addEventListener('keydown', event => {
+      if (!vdCurrentId) return;
+      if (event.key === 'Escape') vdClose();
+      if (event.key === 'Tab') {
+        const controls = [...document.getElementById('vd-modal').querySelectorAll('input, select, textarea, button')]
+          .filter(el => !el.disabled && el.getClientRects().length);
+        if (!controls.length) {
+          event.preventDefault();
+          return;
+        }
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    });
   </script>
 </body>
 </html>
