@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Latest Report</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+  <style>
+    body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: #f4f8fb; color: #1a2d3d; }
+    main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    .online-section, .report-section { background: #fff; border: 1px solid #cfe0ed; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .online-section { font-size: 0.9rem; }
+    form { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+    input { width: 7rem; padding: 0.45rem; border: 1px solid #6c8a9e; border-radius: 4px; font: inherit; }
+    button { padding: 0.5rem 1rem; border: 0; border-radius: 4px; background: #2c6e9e; color: #fff; font: inherit; cursor: pointer; }
+    .hint { font-size: 0.85rem; color: #526b7d; }
+    .error { color: #a32121; }
+    .table-scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.7rem; text-align: left; border-bottom: 1px solid #e3edf4; }
+    th { background: #eaf2f8; }
+    td:last-child { white-space: nowrap; }
+    @media (max-width: 600px) {
+      .admin-nav { flex-wrap: wrap; gap: 0.8rem; }
+      .admin-nav .nav-links { flex-wrap: wrap; gap: 0.6rem; }
+      main { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  {% set page_title = 'Latest Report' %}
+  {% include '_admin_header.html' %}
+  <main>
+    <section class="online-section" aria-label="Student presence">
+      <strong>Currently logged in users:</strong>
+      <span id="online-users" aria-live="polite">{% if not presence_error %}{{ online_users | join(', ') if online_users else 'None' }}{% endif %}</span>
+      <span id="presence-error" class="error" role="status">{% if presence_error %}{{ presence_error }}{% endif %}</span>
+    </section>
+    <section class="report-section" aria-label="Latest completed quizzes">
+      <form method="get" action="{{ url_for('lms.latest_report') }}">
+        <label for="report-days">Last</label>
+        <input id="report-days" name="days" type="number" min="1" max="{{ max_days }}" step="1" value="{{ days }}" required>
+        <span>days</span>
+        <button type="submit">Apply</button>
+      </form>
+      <p class="hint">Rolling 24-hour days. Times shown in Eastern time (America/New_York), newest first.</p>
+      {% if error %}
+        <p class="error" role="alert">{{ error }}</p>
+      {% else %}
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th scope="col">User</th><th scope="col">Quiz item code</th><th scope="col">Score</th><th scope="col">Last updated</th></tr></thead>
+            <tbody>
+              {% for record in records %}
+                <tr><td>{{ record.user }}</td><td>{{ record.item_code }}</td><td>{{ record.score if record.score is not none else 'Not recorded' }}</td><td>{{ record.updated }}</td></tr>
+              {% else %}
+                <tr><td colspan="4">No completed quizzes in the selected period.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% endif %}
+    </section>
+  </main>
+  <script src="{{ url_for('static', filename='js/latest_report.js') }}" data-online-users-url="{{ url_for('lms.latest_report_online_users') }}" defer></script>
+</body>
+</html>

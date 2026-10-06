@@ -92,6 +92,10 @@ app.register_blueprint(question_bp)
 # QB Blueprint (Question Bank / Quiz Management)
 app.register_blueprint(qb_bp)
 
+from lms.reports import init_report_features
+
+init_report_features(app)
+
 # ================== RUN ================== #
 
 if __name__ == "__main__":

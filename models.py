@@ -22,6 +22,21 @@ class UserTable(db.Model, UserMixin):
         return str(self.id)
     
 
+class StudentPresence(db.Model):
+    """Short-lived, UTC presence for each authenticated student browser session."""
+    __tablename__ = 'student_presence'
+    __table_args__ = {'schema': CURRENT_SCHEMA}
+
+    session_id = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey(f'{CURRENT_SCHEMA}.user_table.id', ondelete='CASCADE'),
+        nullable=False,
+        index=True,
+    )
+    last_seen = db.Column(db.DateTime, nullable=False, index=True)
+
+
 class MXWorks(db.Model):
     __tablename__ = 'mx_works'
     __table_args__ = {'schema': CURRENT_SCHEMA}

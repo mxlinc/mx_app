@@ -38,3 +38,53 @@ Run the dependency-free JavaScript tests:
 ```powershell
 node --test .\tests\test_unit_quiz_sort.js
 ```
+
+## Latest Report
+
+The admin dashboard replaces Generate Sheet with **Latest Report** at
+`/latest-report`. It is also available in the shared header's Actions menu.
+Sheet generation endpoints remain available elsewhere.
+
+The report lists completed `Q-` quiz records from `my_work_list`, newest first,
+with the student's full name and username, item code, stored score, and last
+updated timestamp. The default window is 7 rolling 24-hour days; Apply or Enter
+updates it. Positive whole numbers are accepted up to the supported date limit.
+Existing work-list timestamps are UTC without a timezone; display timestamps
+are converted to America/New_York, including daylight saving time. This is the
+latest state of each assignment, not an attempt history.
+
+The compact online row includes only student roles (`student`, `student_new`,
+and `new`), not teachers or admins. Authenticated HTML student pages send a
+heartbeat every minute. A browser session expires from the online list after
+5 minutes without a heartbeat; signing out removes that session immediately.
+Multiple browser sessions are deduplicated by user. Both open idle pages and
+background tabs send heartbeats, subject to browser timer throttling or device
+sleep. Presence collection starts after deployment when students load a page.
+The online row refreshes every minute and when the report tab becomes visible.
+Network/database failures are displayed rather than reported as an empty list.
+
+### Deployment
+
+Before serving the new code, manually run
+[latest_report_presence.sql](migrations/latest_report_presence.sql) in the
+backend SQL editor. It targets `prod`; replace the schema and index-name prefix
+if the deployment uses another `APP_SCHEMA`. The script is safe to rerun.
+
+Alternatively, create the table using the deployment's `DATABASE_URL` and
+`APP_SCHEMA`:
+
+```powershell
+.\venv\Scripts\python.exe -m flask --app app init-report-presence
+```
+
+Both options create only `student_presence` and its indexes; they
+does not alter existing users or work records. Run it for each deployed schema.
+Database sessions must use UTC to match existing work-list timestamp writes.
+`tzdata` supplies IANA timezone data on Windows and systems without OS data.
+
+Run isolated report regressions (no production records are read or changed):
+
+```powershell
+.\venv\Scripts\python.exe -m unittest discover -s tests -p test_latest_report.py
+node --test .\tests\test_report_presence.js
+```

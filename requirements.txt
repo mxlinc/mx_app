@@ -14,3 +14,4 @@ twilio>=8.0.0
 jsonschema
 latex2mathml
 sympy>=1.13
+tzdata>=2024.1
