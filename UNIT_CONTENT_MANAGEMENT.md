@@ -54,9 +54,10 @@ Existing work-list timestamps are UTC without a timezone; display timestamps
 are converted to America/New_York, including daylight saving time. This is the
 latest state of each assignment, not an attempt history.
 
-On page load and after Apply or Enter, only a flowing summary is shown.
-Each student appears as **Rebecca (5,3)**: completed quizzes followed by wrong
-questions, with the wrong-question number in red. It wraps on smaller screens.
+On page load and after Apply or Enter, only the summary table is shown.
+Its columns are **Student**, **#Quiz**, and **#Wrong Questions**, with one row
+per student (for example, Rebecca | 4 | 3). Wrong-question numbers remain red.
+The table scrolls horizontally on smaller screens if needed.
 It uses the same selected period and counts completed quiz records per account,
 keeping students with identical names separate. Wrong questions are summed as
 total minus correct from stored scores such as `8 of 10` or `8 out of 10`.

@@ -103,7 +103,8 @@ class LatestReportTests(unittest.TestCase):
     def assert_summary(self, html, name, completed, wrong, incomplete=False):
         marker = '*' if incomplete else ''
         self.assertIn(
-            f'{name} ({completed},<span class="wrong-count">{wrong}{marker}</span>)', html,
+            f'<tr><td>{name}</td><td>{completed}</td><td class="wrong-count">{wrong}{marker}</td></tr>',
+            html,
         )
 
     def test_dashboard_replaces_sheet_and_preserves_other_actions(self):
@@ -137,8 +138,14 @@ class LatestReportTests(unittest.TestCase):
         self.assertIn('value="7"', html)
         self.assertNotIn('Alice Example (alice)', html)
         self.assert_summary(html, 'Alice Example', 3, 6)
+        self.assertIn(
+            '<th scope="col">Student</th><th scope="col">#Quiz</th>'
+            '<th scope="col">#Wrong Questions</th>', html,
+        )
         self.assertLess(html.index('Student quiz summary'), html.index('id="report-details-button"'))
         self.assertNotIn('<table>', html)
+        self.assertEqual(html.count('<table aria-label="Student quiz summary">'), 1)
+        self.assertNotIn('<th scope="col">Quiz item code-title</th>', html)
         self.assertNotIn('Q-newest', html)
         self.assertIn('id="report-details"', html)
         self.assertIn('hidden></div>', html)
@@ -186,8 +193,8 @@ class LatestReportTests(unittest.TestCase):
         self.assertNotIn('(alice)', html)
         self.assertNotIn('(other-alice)', html)
         self.assertLess(
-            html.index('Alice Example (1,'),
-            html.index('Alice Example (2,'),
+            html.index('<td>Alice Example</td><td>1</td>'),
+            html.index('<td>Alice Example</td><td>2</td>'),
         )
 
     def test_summary_name_fallback_and_online_label_unchanged(self):

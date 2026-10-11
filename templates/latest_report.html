@@ -15,7 +15,8 @@
     button { padding: 0.5rem 1rem; border: 0; border-radius: 4px; background: #2c6e9e; color: #fff; font: inherit; cursor: pointer; }
     .hint { font-size: 0.85rem; color: #526b7d; }
     .error { color: #a32121; }
-    .report-summary { line-height: 1.8; overflow-wrap: anywhere; }
+    .report-summary { margin-bottom: 1rem; }
+    .report-summary th:first-child, .report-summary td:first-child { overflow-wrap: anywhere; }
     .wrong-count { color: #a32121; }
     button:disabled { opacity: 0.6; cursor: wait; }
     .table-scroll { overflow-x: auto; }
@@ -51,13 +52,16 @@
         <p class="error" role="alert">{{ error }}</p>
       {% else %}
         {% if summary %}
-          <p class="report-summary" aria-label="Student quiz summary">
-            <strong>Summary:</strong>
-            {% for student in summary %}
-              <span>{{ student.name }} ({{ student.completed }},<span class="wrong-count">{{ student.wrong }}{% if student.unavailable %}*{% endif %}</span>)</span>{% if not loop.last %}, {% endif %}
-            {% endfor %}
-          </p>
-          <p class="hint">Counts: (completed quizzes, wrong questions).</p>
+          <div class="table-scroll report-summary">
+            <table aria-label="Student quiz summary">
+              <thead><tr><th scope="col">Student</th><th scope="col">#Quiz</th><th scope="col">#Wrong Questions</th></tr></thead>
+              <tbody>
+                {% for student in summary %}
+                  <tr><td>{{ student.name }}</td><td>{{ student.completed }}</td><td class="wrong-count">{{ student.wrong }}{% if student.unavailable %}*{% endif %}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
           {% for student in summary if student.unavailable %}
             <p class="hint">{{ student.name }}: * wrong-question count is incomplete; results unavailable for {{ student.unavailable }} {{ 'quiz' if student.unavailable == 1 else 'quizzes' }}.</p>
           {% endfor %}
