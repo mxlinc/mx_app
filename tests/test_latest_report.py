@@ -103,7 +103,7 @@ class LatestReportTests(unittest.TestCase):
     def assert_summary(self, html, name, completed, wrong, incomplete=False):
         marker = '*' if incomplete else ''
         self.assertIn(
-            f'<tr><td>{name}</td><td>{completed}</td><td class="wrong-count">{wrong}{marker}</td></tr>',
+            f'<td>{name}</td><td>{completed}</td><td class="wrong-count">{wrong}{marker}</td></tr>',
             html,
         )
 
@@ -139,7 +139,7 @@ class LatestReportTests(unittest.TestCase):
         self.assertNotIn('Alice Example (alice)', html)
         self.assert_summary(html, 'Alice Example', 3, 6)
         self.assertIn(
-            '<th scope="col">Student</th><th scope="col">#Quiz</th>'
+            '<th scope="col">Row#</th><th scope="col">Student</th><th scope="col">#Quiz</th>'
             '<th scope="col">#Wrong Questions</th>', html,
         )
         self.assertLess(html.index('Student quiz summary'), html.index('id="report-details-button"'))
@@ -214,6 +214,37 @@ class LatestReportTests(unittest.TestCase):
         self.assertCountEqual(
             [record['user'] for record in self.details().json['records']], ['Rebecca', 'unnamed'],
         )
+
+    def test_summary_alphabetical_names_and_row_numbers_leave_details_newest_first(self):
+        self.student.full_name = 'Rebecca'
+        db.session.add_all([
+            UserTable(username='z-account', full_name='alice', user_role='student'),
+            UserTable(username='a-account', full_name='Bob', user_role='student'),
+        ])
+        db.session.commit()
+        self.work('Q-rebecca', score='8 of 10')
+        self.work('Q-alice', NOW - timedelta(hours=2), username='z-account', score='10 of 10')
+        self.work('Q-bob', NOW - timedelta(hours=1), username='a-account', score='9 of 10')
+        self.work('Q-fallback', NOW - timedelta(hours=3), username='aaron', score='10 of 10')
+        self.work('Q-excluded', NOW - timedelta(days=9), username='excluded')
+        for days in ('7', '1'):
+            with self.subTest(days=days):
+                html = self.client.get('/latest-report', query_string={'days': days}).get_data(as_text=True)
+                rows = [
+                    '<tr><td>1</td><td>aaron</td><td>1</td><td class="wrong-count">0</td></tr>',
+                    '<tr><td>2</td><td>alice</td><td>1</td><td class="wrong-count">0</td></tr>',
+                    '<tr><td>3</td><td>Bob</td><td>1</td><td class="wrong-count">1</td></tr>',
+                    '<tr><td>4</td><td>Rebecca</td><td>1</td><td class="wrong-count">2</td></tr>',
+                ]
+                positions = [html.index(row) for row in rows]
+                self.assertEqual(positions, sorted(positions))
+                self.assertEqual(html.count('<td class="wrong-count">'), 4)
+                self.assertNotIn('<tr><td>5</td>', html)
+                self.assertNotIn('excluded', html)
+                self.assertEqual(
+                    [record['user'] for record in self.details(days=days).json['records']],
+                    ['Rebecca', 'Bob', 'alice', 'aaron'],
+                )
 
     def test_summary_missing_and_invalid_scores_do_not_claim_complete_totals(self):
         self.work('Q-known', score='8 of 10')

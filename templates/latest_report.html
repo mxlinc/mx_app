@@ -16,7 +16,7 @@
     .hint { font-size: 0.85rem; color: #526b7d; }
     .error { color: #a32121; }
     .report-summary { margin-bottom: 1rem; }
-    .report-summary th:first-child, .report-summary td:first-child { overflow-wrap: anywhere; }
+    .report-summary th:nth-child(2), .report-summary td:nth-child(2) { overflow-wrap: anywhere; }
     .wrong-count { color: #a32121; }
     button:disabled { opacity: 0.6; cursor: wait; }
     .table-scroll { overflow-x: auto; }
@@ -54,10 +54,10 @@
         {% if summary %}
           <div class="table-scroll report-summary">
             <table aria-label="Student quiz summary">
-              <thead><tr><th scope="col">Student</th><th scope="col">#Quiz</th><th scope="col">#Wrong Questions</th></tr></thead>
+              <thead><tr><th scope="col">Row#</th><th scope="col">Student</th><th scope="col">#Quiz</th><th scope="col">#Wrong Questions</th></tr></thead>
               <tbody>
                 {% for student in summary %}
-                  <tr><td>{{ student.name }}</td><td>{{ student.completed }}</td><td class="wrong-count">{{ student.wrong }}{% if student.unavailable %}*{% endif %}</td></tr>
+                  <tr><td>{{ loop.index }}</td><td>{{ student.name }}</td><td>{{ student.completed }}</td><td class="wrong-count">{{ student.wrong }}{% if student.unavailable %}*{% endif %}</td></tr>
                 {% endfor %}
               </tbody>
             </table>

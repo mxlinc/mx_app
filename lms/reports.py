@@ -125,7 +125,9 @@ def latest_report():
         status = 503
 
     response = render_template(
-        'latest_report.html', summary=list(summary.values()), online_users=students,
+        'latest_report.html',
+        summary=sorted(summary.values(), key=lambda student: student['name'].casefold()),
+        online_users=students,
         details_url=url_for('lms.latest_report_details', days=raw_days,
                             end=now.strftime('%Y-%m-%dT%H:%M:%S.%f')),
         days=raw_days, max_days=max_days, error=error, presence_error=presence_error,

@@ -55,8 +55,11 @@ are converted to America/New_York, including daylight saving time. This is the
 latest state of each assignment, not an attempt history.
 
 On page load and after Apply or Enter, only the summary table is shown.
-Its columns are **Student**, **#Quiz**, and **#Wrong Questions**, with one row
-per student (for example, Rebecca | 4 | 3). Wrong-question numbers remain red.
+Its columns are **Row#**, **Student**, **#Quiz**, and **#Wrong Questions**, with
+one row per student (for example, 1 | Rebecca | 4 | 3). Rows are sorted
+alphabetically by displayed student name, ignoring case. Row numbers start at 1,
+so the last row number is the number of students in the selected period.
+Wrong-question numbers remain red. The detailed report stays newest-first.
 The table scrolls horizontally on smaller screens if needed.
 It uses the same selected period and counts completed quiz records per account,
 keeping students with identical names separate. Wrong questions are summed as
