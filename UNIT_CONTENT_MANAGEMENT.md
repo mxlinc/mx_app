@@ -46,12 +46,34 @@ The admin dashboard replaces Generate Sheet with **Latest Report** at
 Sheet generation endpoints remain available elsewhere.
 
 The report lists completed `Q-` quiz records from `my_work_list`, newest first,
-with the student's full name and username, item code, stored score, and last
+with the student's stored full name (without a parenthesized username),
+quiz item code-title, stored score, and last
 updated timestamp. The default window is 7 rolling 24-hour days; Apply or Enter
 updates it. Positive whole numbers are accepted up to the supported date limit.
 Existing work-list timestamps are UTC without a timezone; display timestamps
 are converted to America/New_York, including daylight saving time. This is the
 latest state of each assignment, not an attempt history.
+
+On page load and after Apply or Enter, only a flowing summary is shown.
+Each student appears as **Rebecca (5,3)**: completed quizzes followed by wrong
+questions, with the wrong-question number in red. It wraps on smaller screens.
+It uses the same selected period and counts completed quiz records per account,
+keeping students with identical names separate. Wrong questions are summed as
+total minus correct from stored scores such as `8 of 10` or `8 out of 10`.
+Missing or invalid scores mark the known wrong-question count with an asterisk
+and an explanatory note below, rather than implying a complete total. Names fall back
+to usernames only when no student name is available. The separate online row
+keeps its existing name-and-username display. No additional migration is needed
+for these report changes.
+
+Click **Details** below the summary to fetch the detailed table on demand.
+No detail rows or quiz titles are sent with the initial page. The request uses
+the applied day count and the summary's window end, so delaying the click does
+not shift the period. Applying a period again resets to summary-only.
+Quiz titles come from the quiz record matched by item code; deleted or missing
+quizzes explicitly show `Q-0001-Title unavailable`. Details requests are
+admin-only and uncached. Loading, login expiry, and request failures are shown,
+and failed requests can be retried without reloading the page.
 
 The compact online row includes only student roles (`student`, `student_new`,
 and `new`), not teachers or admins. Authenticated HTML student pages send a

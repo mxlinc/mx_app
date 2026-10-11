@@ -15,7 +15,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from db import db
 from lms.routes import lms_bp
-from models import MyWorkList, StudentPresence, UserTable
+from models import MyWorkList, Quiz, StudentPresence, UserTable
 
 logger = logging.getLogger(__name__)
 STUDENT_ROLES = ('student', 'student_new', 'new')
@@ -32,6 +32,46 @@ def user_label(user, username=None):
     if user and user.full_name:
         return f'{user.full_name} ({username})'
     return username
+
+
+def wrong_question_count(score):
+    match = re.fullmatch(r'([0-9]+)\s+(?:out\s+of|of)\s+([0-9]+)', (score or '').strip())
+    if match:
+        correct, total = map(int, match.groups())
+        if correct <= total:
+            return total - correct
+    return None
+
+
+def report_days(raw_days, now):
+    max_days = (now - datetime.min).days
+    normalized = raw_days.lstrip('0')
+    # Bound the string before int() so huge inputs cannot exceed Python's digit limit.
+    if (not re.fullmatch(r'[0-9]+', raw_days)
+            or not normalized or len(normalized) > len(str(max_days))
+            or int(normalized) > max_days):
+        return None, max_days, f'Enter a whole number of days between 1 and {max_days}.'
+    return int(normalized), max_days, None
+
+
+def completed_quizzes(days, now):
+    return (
+        db.session.query(MyWorkList, UserTable)
+        .outerjoin(UserTable, MyWorkList.user == UserTable.username)
+        .filter(
+            MyWorkList.item_code.like('Q-%'),
+            MyWorkList.status == 'done',
+            MyWorkList.last_updated >= now - timedelta(days=days),
+            MyWorkList.last_updated <= now,
+        )
+        .order_by(MyWorkList.last_updated.desc(), MyWorkList.id.desc())
+        .all()
+    )
+
+
+def report_name(work, user):
+    name = (user.full_name or '').strip() if user else ''
+    return name or work.user
 
 
 def online_students(now):
@@ -57,51 +97,26 @@ def latest_report():
         return 'Forbidden', 403
 
     now = utc_now()
-    max_days = (now - datetime.min).days
     raw_days = request.args.get('days', '7')
-    days = None
-    error = None
-    status = 200
-    # Bound the string before int() so huge inputs cannot exceed Python's digit limit.
-    normalized = raw_days.lstrip('0')
-    if (not re.fullmatch(r'[0-9]+', raw_days)
-            or not normalized or len(normalized) > len(str(max_days))):
-        error = f'Enter a whole number of days between 1 and {max_days}.'
-    else:
-        days = int(normalized)
-        if days > max_days:
-            error = f'Enter a whole number of days between 1 and {max_days}.'
-    if error:
-        status = 400
+    days, max_days, error = report_days(raw_days, now)
+    status = 400 if error else 200
 
-    records = []
+    summary = {}
     students = []
     presence_error = None
     try:
         students = online_students(now)
         if not error:
-            rows = (
-                db.session.query(MyWorkList, UserTable)
-                .outerjoin(UserTable, MyWorkList.user == UserTable.username)
-                .filter(
-                    MyWorkList.item_code.like('Q-%'),
-                    MyWorkList.status == 'done',
-                    MyWorkList.last_updated >= now - timedelta(days=days),
-                    MyWorkList.last_updated <= now,
-                )
-                .order_by(MyWorkList.last_updated.desc(), MyWorkList.id.desc())
-                .all()
-            )
-            records = [
-                {
-                    'user': user_label(user, work.user),
-                    'item_code': work.item_code,
-                    'score': work.score,
-                    'updated': work.last_updated.replace(tzinfo=timezone.utc)
-                    .astimezone(REPORT_TIMEZONE).strftime('%d %b %H:%M'),
-                }
-                for work, user in rows
-            ]
+            for work, user in completed_quizzes(days, now):
+                student = summary.setdefault(work.user, {
+                    'name': report_name(work, user), 'completed': 0, 'wrong': 0, 'unavailable': 0,
+                })
+                student['completed'] += 1
+                wrong = wrong_question_count(work.score)
+                if wrong is None:
+                    student['unavailable'] += 1
+                else:
+                    student['wrong'] += wrong
     except SQLAlchemyError:
         db.session.rollback()
         logger.exception('Unable to load latest report')
@@ -110,10 +125,50 @@ def latest_report():
         status = 503
 
     response = render_template(
-        'latest_report.html', records=records, online_users=students,
+        'latest_report.html', summary=list(summary.values()), online_users=students,
+        details_url=url_for('lms.latest_report_details', days=raw_days,
+                            end=now.strftime('%Y-%m-%dT%H:%M:%S.%f')),
         days=raw_days, max_days=max_days, error=error, presence_error=presence_error,
     )
     return response, status, {'Cache-Control': 'private, no-store'}
+
+
+@lms_bp.route('/api/latest-report/details')
+@login_required
+def latest_report_details():
+    headers = {'Cache-Control': 'private, no-store'}
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify(error='Admin access required.'), 403, headers
+
+    try:
+        end = datetime.strptime(request.args.get('end', ''), '%Y-%m-%dT%H:%M:%S.%f')
+    except ValueError:
+        return jsonify(error='Invalid report period. Please apply the period again.'), 400, headers
+    if end > utc_now():
+        return jsonify(error='Invalid report period. Please apply the period again.'), 400, headers
+    days, _, error = report_days(request.args.get('days', '7'), end)
+    if error:
+        return jsonify(error=error), 400, headers
+
+    try:
+        rows = completed_quizzes(days, end)
+        quiz_codes = [work.item_code for work, _ in rows]
+        titles = {
+            quiz.quiz_code: quiz.title
+            for quiz in Quiz.query.filter(Quiz.quiz_code.in_(quiz_codes)).all()
+        } if quiz_codes else {}
+        records = [{
+            'user': report_name(work, user),
+            'quiz': f"{work.item_code}-{titles.get(work.item_code) or 'Title unavailable'}",
+            'score': work.score if work.score is not None else 'Not recorded',
+            'updated': work.last_updated.replace(tzinfo=timezone.utc)
+            .astimezone(REPORT_TIMEZONE).strftime('%d %b %H:%M'),
+        } for work, user in rows]
+        return jsonify(records=records), 200, headers
+    except SQLAlchemyError:
+        db.session.rollback()
+        logger.exception('Unable to load latest report details')
+        return jsonify(error='Unable to load report details. Please try again.'), 503, headers
 
 
 @lms_bp.route('/api/student-presence', methods=['POST'])

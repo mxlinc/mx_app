@@ -12,7 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from db import db
 from lms.reports import init_report_features
 from lms.routes import lms_bp
-from models import MyWorkList, StudentPresence, UserTable
+from models import MyWorkList, Quiz, StudentPresence, UserTable
 
 
 NOW = datetime(2026, 3, 25, 3, 44)
@@ -52,7 +52,9 @@ class LatestReportTests(unittest.TestCase):
         self.context = self.app.app_context()
         self.context.push()
         db.metadata.create_all(
-            db.engine, tables=[UserTable.__table__, MyWorkList.__table__, StudentPresence.__table__],
+            db.engine, tables=[
+                UserTable.__table__, MyWorkList.__table__, Quiz.__table__, StudentPresence.__table__,
+            ],
         )
         self.admin = UserTable(username='admin-test', user_role='admin_new')
         self.student = UserTable(username='alice', full_name='Alice Example', user_role='student_new')
@@ -93,6 +95,17 @@ class LatestReportTests(unittest.TestCase):
     def heartbeat(self, client=None):
         return (client or self.client).post('/api/student-presence', headers={'X-MX-Presence': '1'})
 
+    def details(self, days='7', end=NOW, client=None):
+        return (client or self.client).get('/api/latest-report/details', query_string={
+            'days': days, 'end': end.strftime('%Y-%m-%dT%H:%M:%S.%f'),
+        })
+
+    def assert_summary(self, html, name, completed, wrong, incomplete=False):
+        marker = '*' if incomplete else ''
+        self.assertIn(
+            f'{name} ({completed},<span class="wrong-count">{wrong}{marker}</span>)', html,
+        )
+
     def test_dashboard_replaces_sheet_and_preserves_other_actions(self):
         html = self.client.get('/admin-new').get_data(as_text=True)
         self.assertIn('Latest Report', html)
@@ -122,26 +135,136 @@ class LatestReportTests(unittest.TestCase):
         html = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn('value="7"', html)
-        self.assertIn('Alice Example (alice)', html)
-        self.assertIn('8 of 10', html)
-        self.assertIn('24 Mar 23:44', html)
-        self.assertLess(html.index('Q-newest'), html.index('Q-older'))
-        self.assertLess(html.index('Q-older'), html.index('Q-boundary'))
+        self.assertNotIn('Alice Example (alice)', html)
+        self.assert_summary(html, 'Alice Example', 3, 6)
+        self.assertLess(html.index('Student quiz summary'), html.index('id="report-details-button"'))
+        self.assertNotIn('<table>', html)
+        self.assertNotIn('Q-newest', html)
+        self.assertIn('id="report-details"', html)
+        self.assertIn('hidden></div>', html)
+        details = self.details()
+        self.assertEqual(details.status_code, 200)
+        records = details.json['records']
+        self.assertEqual([record['quiz'] for record in records], [
+            'Q-newest-Title unavailable', 'Q-older-Title unavailable', 'Q-boundary-Title unavailable',
+        ])
+        self.assertEqual(records[0], {
+            'user': 'Alice Example', 'quiz': 'Q-newest-Title unavailable',
+            'score': '8 of 10', 'updated': '24 Mar 23:44',
+        })
         for code in ('Q-too-old', 'Q-future', 'Q-assigned', 'V-video', 'I-interaction', 'Q-null'):
-            self.assertNotIn(code, html)
+            self.assertNotIn(code, str(records))
         self.assertEqual(response.headers['Cache-Control'], 'private, no-store')
+        self.assertEqual(details.headers['Cache-Control'], 'private, no-store')
         for label in ('Content', 'Actions', 'Dashboard', 'Sign Out'):
             self.assertIn(label, html)
 
     def test_changed_window_and_legacy_user_fallback(self):
         self.work('Q-legacy', NOW - timedelta(days=9), username='missing-account', score=None)
         html = self.client.get('/latest-report?days=10').get_data(as_text=True)
-        self.assertIn('Q-legacy', html)
-        self.assertIn('missing-account', html)
-        self.assertIn('Not recorded', html)
+        self.assert_summary(html, 'missing-account', 1, 0, incomplete=True)
+        self.assertIn('results unavailable for 1 quiz', html)
+        records = self.details(days='10').json['records']
+        self.assertEqual(records[0]['user'], 'missing-account')
+        self.assertEqual(records[0]['score'], 'Not recorded')
         html = self.client.get('/latest-report?days=8').get_data(as_text=True)
         self.assertNotIn('Q-legacy', html)
         self.assertIn('No completed quizzes', html)
+        self.assertNotIn('Student quiz summary', html)
+        self.assertEqual(self.details(days='8').json['records'], [])
+
+    def test_summary_groups_by_account_not_name_and_sums_scores(self):
+        duplicate = UserTable(username='other-alice', full_name='Alice Example', user_role='student')
+        db.session.add(duplicate)
+        db.session.commit()
+        self.work('Q-first', NOW - timedelta(hours=2), score='3 of 5')
+        self.work('Q-second', NOW - timedelta(hours=1), score=' 7 out of 10 ')
+        self.work('Q-perfect', username='other-alice', score='10 of 10')
+        html = self.client.get('/latest-report').get_data(as_text=True)
+        self.assert_summary(html, 'Alice Example', 2, 5)
+        self.assert_summary(html, 'Alice Example', 1, 0)
+        self.assertNotIn('(alice)', html)
+        self.assertNotIn('(other-alice)', html)
+        self.assertLess(
+            html.index('Alice Example (1,'),
+            html.index('Alice Example (2,'),
+        )
+
+    def test_summary_name_fallback_and_online_label_unchanged(self):
+        self.student.full_name = 'Rebecca'
+        unnamed = UserTable(username='unnamed', full_name='   ', user_role='student')
+        db.session.add(unnamed)
+        db.session.commit()
+        self.presence('alice-online')
+        self.work('Q-named', score='9 of 10')
+        self.work('Q-unnamed', username='unnamed', score='1 of 1')
+        html = self.client.get('/latest-report').get_data(as_text=True)
+        self.assertIn('Rebecca (alice)', html)
+        report = html.split('<section class="report-section"', 1)[1]
+        self.assert_summary(report, 'Rebecca', 1, 1)
+        self.assertNotIn('(alice)', report)
+        self.assert_summary(report, 'unnamed', 1, 0)
+        self.assertCountEqual(
+            [record['user'] for record in self.details().json['records']], ['Rebecca', 'unnamed'],
+        )
+
+    def test_summary_missing_and_invalid_scores_do_not_claim_complete_totals(self):
+        self.work('Q-known', score='8 of 10')
+        for index, score in enumerate((None, '', 'Not recorded', '11 of 10', '-1 of 10', '8 of 10 extra')):
+            self.work(f'Q-unknown-{index}', score=score)
+        html = self.client.get('/latest-report').get_data(as_text=True)
+        self.assert_summary(html, 'Alice Example', 7, 2, incomplete=True)
+        self.assertIn('results unavailable for 6 quizzes', html)
+
+    def test_summary_changes_with_selected_period(self):
+        self.work('Q-recent', score='9 of 10')
+        self.work('Q-old', NOW - timedelta(days=9), score='5 of 10')
+        html = self.client.get('/latest-report').get_data(as_text=True)
+        self.assert_summary(html, 'Alice Example', 1, 1)
+        html = self.client.get('/latest-report?days=10').get_data(as_text=True)
+        self.assert_summary(html, 'Alice Example', 2, 6)
+        self.assertNotIn('<table>', html)
+        self.assertNotIn('Q-old', html)
+        self.assertEqual(len(self.details(days='10').json['records']), 2)
+
+    def test_details_titles_are_loaded_only_on_request(self):
+        db.session.add(Quiz(quiz_code='Q-0001', title='Adding fractions'))
+        db.session.commit()
+        self.work('Q-0001')
+        with patch('lms.reports.Quiz') as quiz:
+            html = self.client.get('/latest-report').get_data(as_text=True)
+            quiz.query.filter.assert_not_called()
+        self.assertNotIn('Adding fractions', html)
+        self.assertNotIn('Q-0001', html)
+        self.assertEqual(self.details().json['records'][0]['quiz'], 'Q-0001-Adding fractions')
+
+    def test_details_window_does_not_move_when_button_is_clicked_later(self):
+        self.work('Q-boundary', NOW - timedelta(days=7))
+        self.work('Q-new-after-summary', NOW + timedelta(minutes=1))
+        with patch('lms.reports.utc_now', return_value=NOW + timedelta(minutes=2)):
+            records = self.details().json['records']
+        self.assertEqual([record['quiz'] for record in records], ['Q-boundary-Title unavailable'])
+
+    def test_details_invalid_periods_are_explicit_errors(self):
+        for value in ('', 'not-a-time', '2026-03-25', '2026-03-25T03:44:00.000000+00:00'):
+            with self.subTest(end=value):
+                response = self.client.get('/api/latest-report/details', query_string={'end': value})
+                self.assertEqual(response.status_code, 400)
+                self.assertIn('Invalid report period', response.json['error'])
+        self.assertEqual(self.details(end=NOW + timedelta(seconds=1)).status_code, 400)
+        for value in ('0', '-1', '1.5', '', 'abc', '9' * 5000):
+            with self.subTest(days=value):
+                response = self.details(days=value)
+                self.assertEqual(response.status_code, 400)
+                self.assertIn('Enter a whole number', response.json['error'])
+
+    def test_details_database_failure_is_logged_and_returned(self):
+        with patch('lms.reports.completed_quizzes', side_effect=SQLAlchemyError('test failure')):
+            with self.assertLogs('lms.reports', level='ERROR'):
+                response = self.details()
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('Unable to load report details', response.json['error'])
+        self.assertNotIn('records', response.json)
 
     def test_invalid_days_are_explicit_errors_not_default_reports(self):
         for value in ('0', '-1', '1.5', '', 'abc', '1e2', '999999999', '9' * 5000):
@@ -151,6 +274,7 @@ class LatestReportTests(unittest.TestCase):
                 html = response.get_data(as_text=True)
                 self.assertIn('Enter a whole number', html)
                 self.assertNotIn('No completed quizzes', html)
+                self.assertNotIn('Student quiz summary', html)
         self.assertEqual(self.client.get('/latest-report?days=0007').status_code, 200)
         maximum = (NOW - datetime.min).days
         self.assertEqual(self.client.get(f'/latest-report?days={maximum}').status_code, 200)
@@ -160,31 +284,34 @@ class LatestReportTests(unittest.TestCase):
         winter = datetime(2026, 1, 25, 4, 44)
         self.work('Q-winter', winter)
         with patch('lms.reports.utc_now', return_value=winter):
-            html = self.client.get('/latest-report').get_data(as_text=True)
-        self.assertIn('24 Jan 23:44', html)
+            records = self.details(end=winter).json['records']
+        self.assertEqual(records[0]['updated'], '24 Jan 23:44')
         spring = datetime(2026, 3, 9, 4)
         self.work('Q-dst-boundary', spring - timedelta(hours=24))
         self.work('Q-dst-outside', spring - timedelta(hours=24, seconds=1))
         with patch('lms.reports.utc_now', return_value=spring):
-            html = self.client.get('/latest-report?days=1').get_data(as_text=True)
-        self.assertIn('Q-dst-boundary', html)
-        self.assertNotIn('Q-dst-outside', html)
-        self.assertIn('07 Mar 23:00', html)
+            records = self.details(days='1', end=spring).json['records']
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]['quiz'], 'Q-dst-boundary-Title unavailable')
+        self.assertEqual(records[0]['updated'], '07 Mar 23:00')
 
     def test_access_for_both_admin_roles_and_denied_other_roles(self):
         for role in ('admin', 'admin_new'):
             self.admin.user_role = role
             db.session.commit()
             self.assertEqual(self.client.get('/latest-report').status_code, 200)
+            self.assertEqual(self.details().status_code, 200)
         for role in ('teacher', 'student', 'student_new', 'new'):
             self.admin.user_role = role
             db.session.commit()
             self.assertEqual(self.client.get('/latest-report').status_code, 403)
             self.assertEqual(self.client.get('/api/latest-report/online-users').status_code, 403)
+            self.assertEqual(self.details().status_code, 403)
         g.pop('_login_user', None)
         anonymous = self.app.test_client()
         self.assertEqual(anonymous.get('/latest-report').status_code, 302)
         self.assertEqual(anonymous.get('/api/latest-report/online-users').status_code, 302)
+        self.assertEqual(self.details(client=anonymous).status_code, 302)
         self.assertEqual(self.heartbeat(anonymous).status_code, 401)
 
     def test_online_students_deduplicated_and_five_minute_boundary(self):

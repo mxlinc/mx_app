@@ -15,6 +15,9 @@
     button { padding: 0.5rem 1rem; border: 0; border-radius: 4px; background: #2c6e9e; color: #fff; font: inherit; cursor: pointer; }
     .hint { font-size: 0.85rem; color: #526b7d; }
     .error { color: #a32121; }
+    .report-summary { line-height: 1.8; overflow-wrap: anywhere; }
+    .wrong-count { color: #a32121; }
+    button:disabled { opacity: 0.6; cursor: wait; }
     .table-scroll { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 0.7rem; text-align: left; border-bottom: 1px solid #e3edf4; }
@@ -47,18 +50,24 @@
       {% if error %}
         <p class="error" role="alert">{{ error }}</p>
       {% else %}
-        <div class="table-scroll">
-          <table>
-            <thead><tr><th scope="col">User</th><th scope="col">Quiz item code</th><th scope="col">Score</th><th scope="col">Last updated</th></tr></thead>
-            <tbody>
-              {% for record in records %}
-                <tr><td>{{ record.user }}</td><td>{{ record.item_code }}</td><td>{{ record.score if record.score is not none else 'Not recorded' }}</td><td>{{ record.updated }}</td></tr>
-              {% else %}
-                <tr><td colspan="4">No completed quizzes in the selected period.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
+        {% if summary %}
+          <p class="report-summary" aria-label="Student quiz summary">
+            <strong>Summary:</strong>
+            {% for student in summary %}
+              <span>{{ student.name }} ({{ student.completed }},<span class="wrong-count">{{ student.wrong }}{% if student.unavailable %}*{% endif %}</span>)</span>{% if not loop.last %}, {% endif %}
+            {% endfor %}
+          </p>
+          <p class="hint">Counts: (completed quizzes, wrong questions).</p>
+          {% for student in summary if student.unavailable %}
+            <p class="hint">{{ student.name }}: * wrong-question count is incomplete; results unavailable for {{ student.unavailable }} {{ 'quiz' if student.unavailable == 1 else 'quizzes' }}.</p>
+          {% endfor %}
+        {% else %}
+          <p>No completed quizzes in the selected period.</p>
+        {% endif %}
+        <button id="report-details-button" type="button" data-details-url="{{ details_url }}" aria-controls="report-details" aria-expanded="false">Details</button>
+        <p id="details-error" class="error" role="alert"></p>
+        <div id="report-details" class="table-scroll" aria-label="Detailed quiz report" hidden></div>
+        <noscript><p class="error">Enable JavaScript to load report details.</p></noscript>
       {% endif %}
     </section>
   </main>
