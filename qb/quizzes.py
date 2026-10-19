@@ -15,6 +15,25 @@ logger = logging.getLogger(__name__)
 
 # ==================== SHARED HELPER ==================== #
 
+def normalize_question_ids(question_ids: object) -> list[int] | None:
+    """Convert API question IDs to positive integers, or reject invalid input."""
+    if not isinstance(question_ids, list) or not question_ids:
+        return None
+
+    normalized_ids = []
+    for question_id in question_ids:
+        if isinstance(question_id, bool):
+            return None
+        try:
+            normalized_id = int(question_id)
+        except (TypeError, ValueError):
+            return None
+        if normalized_id <= 0 or str(normalized_id) != str(question_id).strip():
+            return None
+        normalized_ids.append(normalized_id)
+    return normalized_ids
+
+
 def build_questions_json(question_ids: list) -> list:
     """Fetch questions from q_bank in one query and generate HTML for each.
 
@@ -207,9 +226,12 @@ def create_quiz_api():
         data = request.get_json()
         if not data.get('title'):
             return jsonify({"ok": False, "error": "Quiz title is required"}), 400
-        question_ids = data.get('question_ids') or []
-        if not question_ids:
-            return jsonify({"ok": False, "error": "At least one question must be selected"}), 400
+        raw_question_ids = data.get('question_ids')
+        question_ids = normalize_question_ids(raw_question_ids)
+        if question_ids is None:
+            error = ("At least one question must be selected"
+                     if not raw_question_ids else "Question IDs must be positive integers")
+            return jsonify({"ok": False, "error": error}), 400
         existing = QBank.query.filter(QBank.id.in_(question_ids)).count()
         if existing != len(question_ids):
             return jsonify({"ok": False, "error": "One or more selected questions do not exist"}), 400
@@ -453,19 +475,22 @@ def add_questions_to_quiz():
     try:
         data = request.get_json()
         quiz_id = data.get('quiz_id')
-        question_ids = data.get('question_ids') or []
+        raw_question_ids = data.get('question_ids')
+        question_ids = normalize_question_ids(raw_question_ids)
         if not quiz_id:
             return jsonify({'ok': False, 'error': 'Quiz ID is required'}), 400
-        if not question_ids:
-            return jsonify({'ok': False, 'error': 'At least one question must be selected'}), 400
+        if question_ids is None:
+            error = ("At least one question must be selected"
+                     if not raw_question_ids else "Question IDs must be positive integers")
+            return jsonify({'ok': False, 'error': error}), 400
 
         quiz = Quiz.query.get(quiz_id)
         if not quiz:
             return jsonify({'ok': False, 'error': f'Quiz {quiz_id} not found'}), 404
 
         str_ids = [str(qid) for qid in question_ids]
-        existing = QBank.query.filter(QBank.id.in_(str_ids)).count()
-        if existing != len(str_ids):
+        existing = QBank.query.filter(QBank.id.in_(question_ids)).count()
+        if existing != len(question_ids):
             return jsonify({'ok': False, 'error': 'One or more selected questions do not exist'}), 400
 
         existing_ids = [i.strip() for i in (quiz.question_ids or '').split(',') if i.strip()]
