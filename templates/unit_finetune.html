@@ -272,22 +272,6 @@
       <h2 id="sync-modal-title">Review Sync</h2>
       <div id="sync-modal-subtitle" class="sync-item-detail"></div>
     </div>
-
-    <div id="repair-backdrop" class="sync-backdrop"></div>
-    <div id="repair-modal" class="sync-modal" role="dialog" aria-modal="true" aria-labelledby="repair-modal-title">
-      <div class="sync-modal-head">
-        <h2 id="repair-modal-title">Reload Unit Membership</h2>
-        <div id="repair-modal-subtitle" class="sync-item-detail"></div>
-      </div>
-      <div class="sync-modal-body">
-        <div id="repair-modal-items"></div>
-        <div id="repair-modal-error" class="sync-error"></div>
-      </div>
-      <div class="sync-modal-foot">
-        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closeRepairModal()">Cancel</button>
-        <button type="button" id="repair-confirm-btn" class="btn btn-sm btn-primary" onclick="commitRepairs()">Repair Selected Items</button>
-      </div>
-    </div>
     <div class="sync-modal-body">
       <div id="sync-modal-items"></div>
       <div id="sync-modal-error" class="sync-error"></div>
@@ -295,6 +279,22 @@
     <div class="sync-modal-foot">
       <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closeSyncModal()">Cancel</button>
       <button type="button" id="sync-confirm-btn" class="btn btn-sm btn-primary" onclick="commitSyncPreview()">Confirm Sync</button>
+    </div>
+  </div>
+
+  <div id="repair-backdrop" class="sync-backdrop"></div>
+  <div id="repair-modal" class="sync-modal" role="dialog" aria-modal="true" aria-labelledby="repair-modal-title">
+    <div class="sync-modal-head">
+      <h2 id="repair-modal-title">Reload Unit Membership</h2>
+      <div id="repair-modal-subtitle" class="sync-item-detail"></div>
+    </div>
+    <div class="sync-modal-body">
+      <div id="repair-modal-items"></div>
+      <div id="repair-modal-error" class="sync-error"></div>
+    </div>
+    <div class="sync-modal-foot">
+      <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closeRepairModal()">Cancel</button>
+      <button type="button" id="repair-confirm-btn" class="btn btn-sm btn-primary" onclick="commitRepairs()">Repair Selected Items</button>
     </div>
   </div>
 
