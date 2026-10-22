@@ -1949,6 +1949,37 @@ def unit_finetune_work():
         codes = [c.strip() for c in (unit.au_content or '').split('|') if c.strip()]
         au_content_order[unit.au_name] = {code: i for i, code in enumerate(codes)}
 
+    all_units = AUnit.query.order_by(AUnit.au_id).all()
+    units_by_name = {unit.au_name: unit for unit in all_units}
+    content_codes_by_unit_id = {
+        unit.au_id: {code.strip() for code in (unit.au_content or '').split('|') if code.strip()}
+        for unit in all_units
+    }
+    units_by_content_code = {}
+    for unit in all_units:
+        for code in content_codes_by_unit_id[unit.au_id]:
+            units_by_content_code.setdefault(code, []).append(unit)
+
+    repair_items = []
+    for row in all_rows:
+        stored_unit = units_by_name.get(row.au_name)
+        if stored_unit is None:
+            reason = 'unit_not_found'
+        elif row.item_code not in content_codes_by_unit_id[stored_unit.au_id]:
+            reason = 'item_not_in_unit'
+        else:
+            continue
+        repair_items.append({
+            'row_id': row.id,
+            'item_code': row.item_code,
+            'stored_unit_name': row.au_name,
+            'reason': reason,
+            'candidates': [
+                {'au_id': unit.au_id, 'au_name': unit.au_name}
+                for unit in units_by_content_code.get(row.item_code, [])
+            ],
+        })
+
     units = []
     for au_name in ordered_active_names:
         rows = rows_by_unit.get(au_name, [])
@@ -2022,7 +2053,90 @@ def unit_finetune_work():
             'future_count': future_count,
         })
 
-    return jsonify({'ok': True, 'units': units, 'parked_units': parked_units_result})
+    return jsonify({
+        'ok': True,
+        'units': units,
+        'parked_units': parked_units_result,
+        'repair_items': repair_items,
+    })
+
+
+@lms_bp.route('/unit/api/repair-unit-membership', methods=['POST'])
+@login_required
+def unit_repair_membership():
+    """Relink mismatched student work rows to explicitly selected current units."""
+    if current_user.user_role not in ('admin', 'admin_new'):
+        return jsonify({'ok': False, 'error': 'Forbidden'}), 403
+
+    data = request.get_json(silent=True) or {}
+    student_id = data.get('student_id')
+    repairs = data.get('repairs')
+    if not student_id or not isinstance(repairs, list) or not repairs:
+        return jsonify({'ok': False, 'error': 'student_id and one or more repairs are required'}), 400
+
+    student = UserTable.query.get(student_id)
+    if not student:
+        return jsonify({'ok': False, 'error': 'Student not found'}), 404
+
+    row_ids = []
+    target_unit_ids = []
+    for repair in repairs:
+        if not isinstance(repair, dict):
+            return jsonify({'ok': False, 'error': 'Invalid repair selection'}), 400
+        row_id = repair.get('row_id')
+        target_au_id = repair.get('target_au_id')
+        if not isinstance(row_id, int) or not isinstance(target_au_id, int):
+            return jsonify({'ok': False, 'error': 'Invalid repair selection'}), 400
+        row_ids.append(row_id)
+        target_unit_ids.append(target_au_id)
+    if len(row_ids) != len(set(row_ids)):
+        return jsonify({'ok': False, 'error': 'Each assignment can be repaired only once'}), 400
+
+    rows_by_id = {
+        row.id: row
+        for row in MyWorkList.query.filter(
+            MyWorkList.user == student.username,
+            MyWorkList.id.in_(row_ids),
+        ).all()
+    }
+    if len(rows_by_id) != len(row_ids):
+        return jsonify({'ok': False, 'error': 'A selected assignment no longer belongs to this student'}), 409
+
+    all_units = AUnit.query.order_by(AUnit.au_id).all()
+    units_by_id = {unit.au_id: unit for unit in all_units}
+    units_by_name = {unit.au_name: unit for unit in all_units}
+    content_codes_by_unit_id = {
+        unit.au_id: {code.strip() for code in (unit.au_content or '').split('|') if code.strip()}
+        for unit in all_units
+    }
+
+    relinked = []
+    for repair in repairs:
+        row = rows_by_id[repair['row_id']]
+        target = units_by_id.get(repair['target_au_id'])
+        stored_unit = units_by_name.get(row.au_name)
+        mismatched = (
+            stored_unit is None
+            or row.item_code not in content_codes_by_unit_id[stored_unit.au_id]
+        )
+        if not mismatched:
+            return jsonify({'ok': False, 'error': 'An assignment is no longer eligible for repair'}), 409
+        if target is None or row.item_code not in content_codes_by_unit_id[target.au_id]:
+            return jsonify({'ok': False, 'error': 'A selected target unit no longer contains this item'}), 409
+        row.au_name = target.au_name
+        relinked.append({'row_id': row.id, 'au_name': target.au_name})
+
+    try:
+        db.session.commit()
+        logger.info(
+            'Fine Tune unit repair: student=%s rows=%s admin=%s',
+            student.username, [item['row_id'] for item in relinked], current_user.username,
+        )
+        return jsonify({'ok': True, 'relinked': relinked})
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(e)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 @lms_bp.route('/unit/api/sync-unit', methods=['POST'])

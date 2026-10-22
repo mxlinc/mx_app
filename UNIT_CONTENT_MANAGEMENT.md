@@ -31,12 +31,31 @@ produces:
 V-1 | Q-10 | Q-20 | I-1 | Q-30
 ```
 
+## Fine Tune repairs after content reorganization
+
+Renaming a unit keeps existing student work under the new unit name. When an
+item is moved to a different unit or removed from its former unit, existing
+student work stays accessible and retains its saved progress.
+
+On `/unit/assign-finetune`, a warning appears when an assigned item is no
+longer contained in its saved unit. Select **Reload Units** to review these
+items. For each repairable item, choose exactly one current unit that contains
+its item code. Applying the repair relinks the existing assignment without
+changing its status, score, views, or answered-question count. Items that no
+longer occur in any unit remain unresolved and unchanged.
+
 ## Regression tests
 
 Run the dependency-free JavaScript tests:
 
 ```powershell
 node --test .\tests\test_unit_quiz_sort.js
+```
+
+Run Fine Tune unit-repair tests:
+
+```powershell
+python -m unittest discover -s tests -p test_finetune_unit_repair.py
 ```
 
 ## Latest Report

@@ -193,6 +193,12 @@
     .sync-action { color:#1a5e35; font-size:0.8rem; font-weight:600; }
     .sync-warning { color:#8a6500; font-size:0.8rem; margin-top:0.45rem; }
     .sync-error { display:none; color:#a93226; font-size:0.85rem; margin-top:0.7rem; }
+    .repair-alert {
+      display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      margin-bottom:1rem; padding:0.8rem 1rem; border:1px solid #e5b65a;
+      border-radius:6px; background:#fff8e8; color:#6b5100; font-size:0.88rem;
+    }
+    .repair-choice { display:block; margin-top:0.4rem; font-size:0.84rem; }
   </style>
 </head>
 <body>
@@ -266,6 +272,22 @@
       <h2 id="sync-modal-title">Review Sync</h2>
       <div id="sync-modal-subtitle" class="sync-item-detail"></div>
     </div>
+
+    <div id="repair-backdrop" class="sync-backdrop"></div>
+    <div id="repair-modal" class="sync-modal" role="dialog" aria-modal="true" aria-labelledby="repair-modal-title">
+      <div class="sync-modal-head">
+        <h2 id="repair-modal-title">Reload Unit Membership</h2>
+        <div id="repair-modal-subtitle" class="sync-item-detail"></div>
+      </div>
+      <div class="sync-modal-body">
+        <div id="repair-modal-items"></div>
+        <div id="repair-modal-error" class="sync-error"></div>
+      </div>
+      <div class="sync-modal-foot">
+        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="closeRepairModal()">Cancel</button>
+        <button type="button" id="repair-confirm-btn" class="btn btn-sm btn-primary" onclick="commitRepairs()">Repair Selected Items</button>
+      </div>
+    </div>
     <div class="sync-modal-body">
       <div id="sync-modal-items"></div>
       <div id="sync-modal-error" class="sync-error"></div>
@@ -287,6 +309,7 @@
     const studentSel = document.getElementById('student-sel');
     const btnPreview = document.getElementById('btn-preview');
     let syncPreview = null;
+    let repairItems = [];
 
     // ── Helpers ─────────────────────────────────────────────────────────────
     function activeStatuses() {
@@ -343,6 +366,7 @@
     function renderWorkArea(data) {
       const units        = data.units        || [];
       const parkedUnits  = data.parked_units || [];
+      repairItems = data.repair_items || [];
 
       if (!units.length && !parkedUnits.length) {
         workArea.innerHTML = '<div class="state-msg">No work assigned to this student.</div>';
@@ -350,6 +374,13 @@
       }
 
       let html = '';
+      if (repairItems.length) {
+        html += `
+          <div class="repair-alert">
+            <span>${repairItems.length} assigned item${repairItems.length === 1 ? '' : 's'} no longer match${repairItems.length === 1 ? 'es' : ''} their saved unit. Students can continue working while you repair their unit membership.</span>
+            <button type="button" class="btn btn-sm btn-warning" onclick="openRepairModal()">Reload Units</button>
+          </div>`;
+      }
 
       // ── Active units ─────────────────────────────────────────────────────
       html += units.map(unit => `
@@ -581,6 +612,78 @@
       document.getElementById('sync-modal').style.display = 'none';
     }
 
+    function openRepairModal() {
+      const repairableCount = repairItems.filter(item => item.candidates.length > 0).length;
+      document.getElementById('repair-modal-subtitle').textContent =
+        `${repairableCount} item${repairableCount === 1 ? '' : 's'} can be relinked. Items without a current containing unit will remain unchanged.`;
+      document.getElementById('repair-modal-error').style.display = 'none';
+      document.getElementById('repair-modal-items').innerHTML = repairItems.map(item => {
+        const reason = item.reason === 'unit_not_found'
+          ? `Saved unit "${escHtml(item.stored_unit_name)}" no longer exists.`
+          : `This item is no longer in "${escHtml(item.stored_unit_name)}".`;
+        const choices = item.candidates.length
+          ? item.candidates.map(candidate =>
+              `<label class="repair-choice"><input type="radio" name="repair-row-${item.row_id}" value="${candidate.au_id}"> ${escHtml(candidate.au_name)}</label>`
+            ).join('')
+          : '<div class="sync-warning">No current unit contains this item.</div>';
+        return `<div class="sync-item"><div class="sync-item-title">${escHtml(item.item_code)}</div><div class="sync-item-detail">${reason}</div>${choices}</div>`;
+      }).join('');
+      document.getElementById('repair-backdrop').style.display = 'block';
+      document.getElementById('repair-modal').style.display = 'block';
+    }
+
+    function closeRepairModal() {
+      document.getElementById('repair-backdrop').style.display = 'none';
+      document.getElementById('repair-modal').style.display = 'none';
+    }
+
+    async function commitRepairs() {
+      const repairable = repairItems.filter(item => item.candidates.length > 0);
+      const repairs = [];
+      for (const item of repairable) {
+        const selected = document.querySelector(`input[name="repair-row-${item.row_id}"]:checked`);
+        if (!selected) {
+          const errorEl = document.getElementById('repair-modal-error');
+          errorEl.textContent = 'Select one current unit for every repairable item.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        repairs.push({row_id: item.row_id, target_au_id: Number(selected.value)});
+      }
+      if (!repairs.length) {
+        closeRepairModal();
+        return;
+      }
+
+      const errorEl = document.getElementById('repair-modal-error');
+      const confirmBtn = document.getElementById('repair-confirm-btn');
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Repairing...';
+      errorEl.style.display = 'none';
+      try {
+        const res = await fetch('/unit/api/repair-unit-membership', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({student_id: Number(studentSel.value), repairs}),
+        });
+        const data = await res.json();
+        if (!data.ok) {
+          errorEl.textContent = data.error || 'Unit repair failed.';
+          errorEl.style.display = 'block';
+          return;
+        }
+        closeRepairModal();
+        alert(`Repaired ${data.relinked.length} item${data.relinked.length === 1 ? '' : 's'}. ${repairItems.length - data.relinked.length} item${repairItems.length - data.relinked.length === 1 ? '' : 's'} remain unresolved.`);
+        await loadWorkList(Number(studentSel.value));
+      } catch (e) {
+        errorEl.textContent = 'Network error repairing unit membership.';
+        errorEl.style.display = 'block';
+      } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Repair Selected Items';
+      }
+    }
+
     async function commitSyncPreview() {
       if (!syncPreview) return;
       const isActivation = syncPreview.activate_parked === true;
@@ -625,6 +728,7 @@
     }
 
     document.getElementById('sync-backdrop').addEventListener('click', closeSyncModal);
+    document.getElementById('repair-backdrop').addEventListener('click', closeRepairModal);
 
     // ── Load work list ──────────────────────────────────────────────────────
     studentSel.addEventListener('change', async function () {
