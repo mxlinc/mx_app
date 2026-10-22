@@ -9,9 +9,20 @@ const script = template.match(/{% block scripts %}\s*<script>([\s\S]*?)<\/script
 
 function fixture(items) {
     const button = {hidden: true, disabled: true};
+    const moveActions = {hidden: true};
+    const moveTarget = {
+        value: '',
+        disabled: false,
+        options: [],
+        replaceChildren() { this.options = []; },
+        appendChild(option) { this.options.push(option); },
+    };
+    const moveBeforeButton = {disabled: false};
+    const moveAfterButton = {disabled: false};
     const list = {
         children: [],
         querySelectorAll() { return this.children.filter(row => row.dataset); },
+        append(...rows) { this.children = rows; },
     };
     function node(properties = {}) {
         return {
@@ -44,15 +55,20 @@ function fixture(items) {
             getElementById(id) {
                 if (id === 'cu-item-list') return list;
                 if (id === 'cu-sort-btn') return button;
+                if (id === 'cu-move-actions') return moveActions;
+                if (id === 'cu-move-target') return moveTarget;
+                if (id === 'cu-move-before-btn') return moveBeforeButton;
+                if (id === 'cu-move-after-btn') return moveAfterButton;
                 return {style: {}, addEventListener() {}};
             },
             createComment() { return node(); },
+            createElement() { return {dataset: {}}; },
             querySelectorAll() { return list.querySelectorAll(); },
         },
         fetch() { throw new Error('Sorting must not send a request'); },
     });
     vm.runInContext(script, context);
-    return {context, list, button};
+    return {context, list, button, moveActions, moveTarget, moveBeforeButton, moveAfterButton};
 }
 
 test('sorts only selected quiz slots numerically, keeping the same unselected nodes', () => {
@@ -165,4 +181,43 @@ test('sorting twice is idempotent and never calls the server', () => {
     const sorted = [...list.children];
     context.sortSelectedQuizzes();
     assert.deepEqual(list.children, sorted);
+});
+
+test('moves selected quizzes together before an unselected item and preserves their selection', () => {
+    const {context, list, moveTarget} = fixture([
+        {code: 'V-1'}, {code: 'Q-30', checked: true}, {code: 'I-1'},
+        {code: 'Q-10', checked: true}, {code: 'V-2'},
+    ]);
+    context.updateQuizSortButton();
+    moveTarget.value = '0';
+    context.moveSelectedQuizzes('before');
+    assert.deepEqual(list.children.map(row => row.dataset.code), ['Q-30', 'Q-10', 'V-1', 'I-1', 'V-2']);
+    assert.ok(context.selectedQuizRows().every(row => row.checkbox.checked));
+});
+
+test('moves selected quizzes after an unselected destination item', () => {
+    const {context, list, moveTarget} = fixture([
+        {code: 'Q-30', checked: true}, {code: 'V-1'}, {code: 'Q-10', checked: true},
+        {code: 'I-1'}, {code: 'V-2'},
+    ]);
+    context.updateQuizSortButton();
+    moveTarget.value = '1';
+    context.moveSelectedQuizzes('after');
+    assert.deepEqual(list.children.map(row => row.dataset.code), ['V-1', 'I-1', 'Q-30', 'Q-10', 'V-2']);
+});
+
+test('bulk-move controls list only unselected items and disable when none exist', () => {
+    const {context, moveActions, moveTarget, moveBeforeButton, moveAfterButton} = fixture([
+        {code: 'Q-10', checked: true}, {code: 'V-1'}, {code: 'Q-2'},
+    ]);
+    context.updateQuizSortButton();
+    assert.equal(moveActions.hidden, false);
+    assert.deepEqual(moveTarget.options.map(option => option.dataset.code), ['V-1', 'Q-2']);
+    assert.equal(moveTarget.disabled, false);
+
+    const allSelected = fixture([{code: 'Q-10', checked: true}, {code: 'Q-2', checked: true}]);
+    allSelected.context.updateQuizSortButton();
+    assert.equal(allSelected.moveTarget.disabled, true);
+    assert.equal(allSelected.moveBeforeButton.disabled, true);
+    assert.equal(allSelected.moveAfterButton.disabled, true);
 });
