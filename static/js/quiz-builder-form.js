@@ -81,28 +81,34 @@ function handleImagePreview() {
             const preview = document.getElementById('imagePreview');
             preview.src = e.target.result;
             preview.style.display = 'block';
+            document.getElementById('discardImageBtn').style.display = 'block';
 
-            // If OHS type, initialize canvas
-            if (document.getElementById('questionType').value.toLowerCase() === 'ohs') {
-                setTimeout(() => {
-                    initializeOHSCanvas();
-                }, 100);
+            // A hotspot drawn on a previous image does not apply to the new one.
+            const hadHotspot = !!(ohsHotspot || ohsOriginalHotspot);
+            resetOHSHotspot();
+            initializeOHSCanvas();
+            if (hadHotspot && document.getElementById('questionType').value.toLowerCase() === 'ohs') {
+                showMessage('New image loaded. Please draw the hotspot again.', 'error');
             }
         };
         reader.readAsDataURL(file);
         editingQuestionImage = null; // Clear cached server image when new file selected
+        removeImage = false;
     }
 }
 
 // ===== Messaging =====
+let messageHideTimer = null;
+
 function showMessage(text, type) {
     const messageDiv = document.getElementById('message');
     messageDiv.textContent = text;
     messageDiv.className = 'message show ' + type;
 
-    // Auto-hide success messages after 3 seconds
+    // A pending hide from an earlier success message must not hide this one.
+    clearTimeout(messageHideTimer);
     if (type === 'success') {
-        setTimeout(() => {
+        messageHideTimer = setTimeout(() => {
             messageDiv.classList.remove('show');
         }, 3000);
     }
@@ -209,8 +215,15 @@ async function collectData() {
     } else if (questionType === 'algebra') {
         question = collectAlgebraData();
     } else if (questionType === 'ohs') {
-        // Collect OHS data
-        if (!ohsHotspot) {
+        // An untouched hotspot is sent back exactly as stored, so editing other fields
+        // never rewrites it. A newly drawn one is saved in the current format.
+        let storedHotspot = null;
+        if (ohsOriginalHotspot) {
+            storedHotspot = ohsOriginalHotspot;
+        } else if (ohsHotspot && ohsImage) {
+            storedHotspot = OHSHotspot.fromNaturalPixels(ohsHotspot, ohsImage.naturalWidth, ohsImage.naturalHeight, 'hs1');
+        }
+        if (!storedHotspot) {
             throw new Error('OHS questions require a hotspot. Please draw a rectangle on the image.');
         }
 
@@ -219,13 +232,7 @@ async function collectData() {
             input: {},
             image: {
                 alt: '',
-                hotspot: {
-                    id: 'hs1',
-                    x: Math.round(ohsHotspot.x),
-                    y: Math.round(ohsHotspot.y),
-                    width: Math.round(ohsHotspot.width),
-                    height: Math.round(ohsHotspot.height)
-                }
+                hotspot: storedHotspot
             },
             answer: {
                 correct_hotspot_id: 'hs1'
@@ -287,8 +294,8 @@ async function save() {
                 validator = { validate: () => true };
                 break;
             case 'OHS':
-                // OHS questions need image on CREATE, but not on EDIT if image already exists
-                if (!data.image_data_url && !data.id) {
+                // OHS needs an image: a new upload, or (when editing) the existing one not removed
+                if (!data.image_data_url && (!data.id || data.remove_image)) {
                     showMessage('✗ OHS questions require an image. Please upload one.', 'error');
                     return;
                 }
@@ -379,126 +386,149 @@ function updateMRCorrectOptions() {
 }
 
 // ===== OHS (One HotSpot) Handlers =====
-let ohsHotspot = null;  // Stores current hotspot: {x, y, width, height}
-let ohsDrawing = false;
-let ohsStartX, ohsStartY;
+// While drawing, the hotspot is kept in natural image pixels (the canvas is sized to the
+// image's natural size). It is converted to the stored format only on save, via
+// OHSHotspot (ohs-hotspot.js). See that file for the storage/compatibility rules.
+const OHS_MIN_DRAW_PX = 4;      // minimum drawn size, in on-screen pixels
+let ohsHotspot = null;          // {x, y, width, height} in natural image pixels
+let ohsOriginalHotspot = null;  // hotspot as loaded from the server; re-sent verbatim unless redrawn
+let ohsImage = null;            // image currently drawn on the canvas
+
+function getPreviewImageSrc() {
+    const preview = document.getElementById('imagePreview');
+    return preview ? preview.getAttribute('src') : null;
+}
+
+function resetOHSHotspot() {
+    ohsHotspot = null;
+    ohsOriginalHotspot = null;
+    updateOHSDisplay();
+}
 
 function initializeOHSCanvas() {
-    const imagePreview = document.getElementById('imagePreview');
     const canvas = document.getElementById('ohsCanvas');
     const placeholder = document.getElementById('ohsCanvasPlaceholder');
+    if (!canvas || !placeholder) return;
 
-    if (!imagePreview || !imagePreview.src) {
+    const src = getPreviewImageSrc();
+    if (!src) {
+        ohsImage = null;
         canvas.style.display = 'none';
         placeholder.style.display = 'block';
         return;
     }
 
-    // Load image and set up canvas
     const img = new Image();
     img.onload = () => {
-        canvas.width = img.width;
-        canvas.height = img.height;
+        if (getPreviewImageSrc() !== src) return;  // a newer image replaced this one
+
+        ohsImage = img;
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
         canvas.style.display = 'block';
         placeholder.style.display = 'none';
 
-        // Draw image on canvas
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-
-        // Draw existing hotspot if any
-        if (ohsHotspot) {
-            drawHotspotRect(ohsHotspot);
+        if (!ohsHotspot && ohsOriginalHotspot) {
+            ohsHotspot = OHSHotspot.toNaturalPixels(ohsOriginalHotspot, img.naturalWidth, img.naturalHeight);
+            updateOHSDisplay();
         }
 
-        // Re-attach event listeners
+        redrawOHSCanvas();
         attachOHSCanvasListeners();
     };
-    img.src = imagePreview.src;
+    img.src = src;
+}
+
+function redrawOHSCanvas(previewRect) {
+    const canvas = document.getElementById('ohsCanvas');
+    if (!canvas || !ohsImage) return;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(ohsImage, 0, 0);
+
+    if (previewRect) {
+        drawHotspotRect(previewRect, true);
+    } else if (ohsHotspot) {
+        drawHotspotRect(ohsHotspot, false);
+    }
+}
+
+// Mouse position -> natural image pixels, clamped to the image. Accounts for the canvas
+// being scaled down by CSS (max-width: 100%).
+function ohsCanvasPoint(canvas, e) {
+    const r = canvas.getBoundingClientRect();
+    const sx = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+    const sy = canvas.clientHeight ? canvas.height / canvas.clientHeight : 1;
+    const x = (e.clientX - r.left - canvas.clientLeft) * sx;
+    const y = (e.clientY - r.top - canvas.clientTop) * sy;
+    return {
+        x: Math.max(0, Math.min(canvas.width, x)),
+        y: Math.max(0, Math.min(canvas.height, y))
+    };
 }
 
 function attachOHSCanvasListeners() {
     const canvas = document.getElementById('ohsCanvas');
+    if (!canvas || canvas.dataset.ohsBound === '1') return;
+    canvas.dataset.ohsBound = '1';
+
+    let start = null;
+    const rectFrom = (a, b) => ({
+        x: Math.min(a.x, b.x),
+        y: Math.min(a.y, b.y),
+        width: Math.abs(b.x - a.x),
+        height: Math.abs(b.y - a.y)
+    });
 
     canvas.addEventListener('mousedown', (e) => {
-        ohsDrawing = true;
-        const rect = canvas.getBoundingClientRect();
-        ohsStartX = e.clientX - rect.left;
-        ohsStartY = e.clientY - rect.top;
+        if (!ohsImage || e.button !== 0) return;
+        e.preventDefault();
+        start = ohsCanvasPoint(canvas, e);
     });
 
-    canvas.addEventListener('mousemove', (e) => {
-        if (!ohsDrawing) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const currentX = e.clientX - rect.left;
-        const currentY = e.clientY - rect.top;
-
-        // Redraw canvas
-        const imagePreview = document.getElementById('imagePreview');
-        const img = new Image();
-        img.onload = () => {
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.drawImage(img, 0, 0);
-
-            // Draw preview rectangle
-            const width = currentX - ohsStartX;
-            const height = currentY - ohsStartY;
-            drawHotspotRect({
-                x: width < 0 ? currentX : ohsStartX,
-                y: height < 0 ? currentY : ohsStartY,
-                width: Math.abs(width),
-                height: Math.abs(height)
-            }, true);
-        };
-        img.src = imagePreview.src;
+    // Tracked on window so a drag that ends outside the canvas still counts.
+    window.addEventListener('mousemove', (e) => {
+        if (!start) return;
+        redrawOHSCanvas(rectFrom(start, ohsCanvasPoint(canvas, e)));
     });
 
-    canvas.addEventListener('mouseup', (e) => {
-        if (!ohsDrawing) return;
-        ohsDrawing = false;
+    window.addEventListener('mouseup', (e) => {
+        if (!start) return;
+        const rect = rectFrom(start, ohsCanvasPoint(canvas, e));
+        start = null;
 
-        const rect = canvas.getBoundingClientRect();
-        const endX = e.clientX - rect.left;
-        const endY = e.clientY - rect.top;
-
-        // Calculate hotspot coordinates
-        const x = Math.min(ohsStartX, endX);
-        const y = Math.min(ohsStartY, endY);
-        const width = Math.abs(endX - ohsStartX);
-        const height = Math.abs(endY - ohsStartY);
-
-        if (width > 10 && height > 10) {  // Minimum size threshold
-            ohsHotspot = { x, y, width, height };
+        const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
+        if (rect.width / scale >= OHS_MIN_DRAW_PX && rect.height / scale >= OHS_MIN_DRAW_PX) {
+            ohsHotspot = rect;
+            ohsOriginalHotspot = null;
             updateOHSDisplay();
+            redrawOHSCanvas();
+            showMessage('? Hotspot defined!', 'success');
         } else {
+            redrawOHSCanvas();
             showMessage('Hotspot too small. Please draw a larger rectangle.', 'error');
         }
-    });
-
-    canvas.addEventListener('mouseleave', () => {
-        ohsDrawing = false;
     });
 }
 
 function drawHotspotRect(hotspot, isPreview = false) {
     const canvas = document.getElementById('ohsCanvas');
     const ctx = canvas.getContext('2d');
+    const scale = canvas.clientWidth ? canvas.width / canvas.clientWidth : 1;
 
-    // Draw rectangle
-    ctx.strokeStyle = isPreview ? 'rgba(255, 193, 7, 0.7)' : 'rgba(76, 175, 80, 0.7)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = isPreview ? 'rgba(255, 193, 7, 0.9)' : 'rgba(76, 175, 80, 0.9)';
+    ctx.lineWidth = 2 * scale;
     ctx.strokeRect(hotspot.x, hotspot.y, hotspot.width, hotspot.height);
 
-    // Fill with semi-transparent color
-    ctx.fillStyle = isPreview ? 'rgba(255, 193, 7, 0.1)' : 'rgba(76, 175, 80, 0.1)';
+    ctx.fillStyle = isPreview ? 'rgba(255, 193, 7, 0.15)' : 'rgba(76, 175, 80, 0.2)';
     ctx.fillRect(hotspot.x, hotspot.y, hotspot.width, hotspot.height);
 }
 
 function updateOHSDisplay() {
     const coordsDisplay = document.getElementById('ohsCoordinatesDisplay');
     const clearBtn = document.getElementById('ohsClearBtn');
+    if (!coordsDisplay || !clearBtn) return;
 
     if (ohsHotspot) {
         document.getElementById('ohsCoordX').textContent = Math.round(ohsHotspot.x);
@@ -508,7 +538,6 @@ function updateOHSDisplay() {
 
         coordsDisplay.style.display = 'block';
         clearBtn.style.display = 'inline-block';
-        showMessage('✓ Hotspot defined!', 'success');
     } else {
         coordsDisplay.style.display = 'none';
         clearBtn.style.display = 'none';
@@ -524,6 +553,7 @@ function clearForm() {
     document.getElementById('mr-options').value = '';
     document.getElementById('mr-shuffle').checked = true;
     document.getElementById('image').value = '';
+    document.getElementById('imagePreview').removeAttribute('src');
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('discardImageBtn').style.display = 'none';
     document.getElementById('shuffle').checked = true;
@@ -537,24 +567,9 @@ function clearForm() {
         fillBlankContainer.innerHTML = '';
     }
 
-    // Clear OHS hotspot
-    ohsHotspot = null;
-    const ohsCanvas = document.getElementById('ohsCanvas');
-    if (ohsCanvas) {
-        ohsCanvas.style.display = 'none';
-    }
-    const ohsPlaceholder = document.getElementById('ohsCanvasPlaceholder');
-    if (ohsPlaceholder) {
-        ohsPlaceholder.style.display = 'block';
-    }
-    const coordsDisplay = document.getElementById('ohsCoordinatesDisplay');
-    if (coordsDisplay) {
-        coordsDisplay.style.display = 'none';
-    }
-    const clearBtn = document.getElementById('ohsClearBtn');
-    if (clearBtn) {
-        clearBtn.style.display = 'none';
-    }
+    // Clear OHS hotspot and canvas (preview src is already removed above)
+    resetOHSHotspot();
+    initializeOHSCanvas();
 
     // Clear FEVAL variables and rules
     const fevalVarsContainer = document.getElementById('feval-variables-container');
@@ -603,10 +618,13 @@ function discard() {
 // ===== Discard Image =====
 function discardImage() {
     document.getElementById('image').value = '';
+    document.getElementById('imagePreview').removeAttribute('src');
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('discardImageBtn').style.display = 'none';
     editingQuestionImage = null;
     removeImage = true;
+    resetOHSHotspot();
+    initializeOHSCanvas();
     showMessage('✓ Image removed.', 'success');
 }
 
@@ -653,6 +671,8 @@ async function loadQuestionForEdit(questionId) {
 
         // Handle image
         removeImage = false;
+        ohsHotspot = null;
+        ohsOriginalHotspot = null;
         if (question.image?.src) {
             editingQuestionImage = question.image.src;
             const preview = document.getElementById('imagePreview');
@@ -663,7 +683,7 @@ async function loadQuestionForEdit(questionId) {
             editingQuestionImage = null;
             document.getElementById('image').value = '';
             const preview = document.getElementById('imagePreview');
-            preview.src = '';
+            preview.removeAttribute('src');
             preview.style.display = 'none';
             document.getElementById('discardImageBtn').style.display = 'none';
         }
@@ -735,13 +755,10 @@ async function loadQuestionForEdit(questionId) {
                 }
             }
         } else if (questionType === 'ohs') {
-            if (question.image?.hotspot) {
-                ohsHotspot = question.image.hotspot;
-                updateOHSDisplay();
-                setTimeout(() => {
-                    initializeOHSCanvas();
-                }, 100);
-            }
+            // Converted for display once the image loads (initializeOHSCanvas).
+            ohsOriginalHotspot = question.image?.hotspot || null;
+            updateOHSDisplay();
+            initializeOHSCanvas();
         } else if (questionType === 'feval') {
             if (question.input?.blanks && Array.isArray(question.input.blanks)) {
                 const varsContainer = document.getElementById('feval-variables-container');
@@ -952,9 +969,8 @@ function initBuilderForm() {
     // OHS clear button
     document.getElementById('ohsClearBtn')?.addEventListener('click', (e) => {
         e.preventDefault();
-        ohsHotspot = null;
-        updateOHSDisplay();
-        initializeOHSCanvas();
+        resetOHSHotspot();
+        redrawOHSCanvas();
         showMessage('Hotspot cleared', 'success');
     });
 

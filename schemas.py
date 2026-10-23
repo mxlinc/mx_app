@@ -414,6 +414,9 @@ OHS_SCHEMA = {
                 "src": {"type": "string", "minLength": 1},
                 "alt": {"type": "string"},
                 "hotspot": {
+                    # Legacy (no "units"): natural-image pixels.
+                    # units == "fraction": fractions (0-1) of the natural image size.
+                    # Interpretation lives in static/js/ohs-hotspot.js; never change an existing format.
                     "type": "object",
                     "additionalProperties": False,
                     "required": ["id", "x", "y", "width", "height"],
@@ -422,10 +425,29 @@ OHS_SCHEMA = {
                             "type": "string",
                             "pattern": "^hs1$"
                         },
+                        "units": {"enum": ["fraction"]},
                         "x": {"type": "number", "minimum": 0},
                         "y": {"type": "number", "minimum": 0},
-                        "width": {"type": "number", "minimum": 1},
-                        "height": {"type": "number", "minimum": 1}
+                        "width": {"type": "number"},
+                        "height": {"type": "number"}
+                    },
+                    "if": {
+                        "required": ["units"],
+                        "properties": {"units": {"const": "fraction"}}
+                    },
+                    "then": {
+                        "properties": {
+                            "x": {"maximum": 1},
+                            "y": {"maximum": 1},
+                            "width": {"exclusiveMinimum": 0, "maximum": 1},
+                            "height": {"exclusiveMinimum": 0, "maximum": 1}
+                        }
+                    },
+                    "else": {
+                        "properties": {
+                            "width": {"minimum": 1},
+                            "height": {"minimum": 1}
+                        }
                     }
                 }
             }

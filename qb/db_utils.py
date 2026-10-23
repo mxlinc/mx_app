@@ -96,7 +96,12 @@ def save_question_to_db(question_type, topic, subtopic, level, final_json, data)
             if q and q.json and 'image' in q.json:
                 existing_image_path = q.json['image'].get('src')
                 if existing_image_path:
-                    final_json['image'] = q.json['image']
+                    # Keep the stored image, but take a hotspot sent by the client (OHS).
+                    preserved_image = dict(q.json['image'])
+                    new_hotspot = (final_json.get('image') or {}).get('hotspot')
+                    if new_hotspot:
+                        preserved_image['hotspot'] = new_hotspot
+                    final_json['image'] = preserved_image
 
         # For new questions get the ID upfront so the image can be named correctly
         new_question_id = get_next_id() if not question_id else None

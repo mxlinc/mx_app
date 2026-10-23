@@ -470,9 +470,8 @@ class TemplateHandlerOHS extends TemplateHandler {
             const sy = img.naturalHeight ? img.height / img.naturalHeight : 1;
             const nx = dx / sx;
             const ny = dy / sy;
-            const hs  = this._hotspot;
-            const hit = hs && nx >= hs.x && nx <= hs.x + hs.width
-                           && ny >= hs.y && ny <= hs.y + hs.height;
+            const hit = OHSHotspot.containsPoint(this._hotspot, nx, ny,
+                img.naturalWidth || img.width, img.naturalHeight || img.height);
             this._selected = { dx, dy, hit };
             tr(selG, dx, dy);
             selG.style.display = '';
@@ -487,8 +486,9 @@ class TemplateHandlerOHS extends TemplateHandler {
         if (!isCorrect) {
             const img = this.container.querySelector('.template-ohs-image');
             const svg = this.container.querySelector('.template-ohs-overlay');
-            if (img && svg && this._hotspot && this._feedbackEl) {
-                const hs = this._hotspot;
+            const hs = img && OHSHotspot.toNaturalPixels(this._hotspot,
+                img.naturalWidth || img.width, img.naturalHeight || img.height);
+            if (img && svg && hs && this._feedbackEl) {
                 const sx = img.naturalWidth  ? img.width  / img.naturalWidth  : 1;
                 const sy = img.naturalHeight ? img.height / img.naturalHeight : 1;
                 const ns = 'http://www.w3.org/2000/svg';
