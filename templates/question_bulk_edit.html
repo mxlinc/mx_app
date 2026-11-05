@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Unused Questions</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}" />
+
+    <!-- KaTeX -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <!-- FontAwesome & Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500;600&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- Question rendering styles + shared builder form styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/question-templates.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/question-builder-form.css') }}">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f0f4f8;
+            color: #333;
+        }
+
+        body.modal-open { overflow: hidden; }
+
+        /* ── Top bar ── */
+        #topBar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            height: 52px;
+            background: #1b3a6f;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 16px;
+        }
+
+        #topBar a {
+            color: #a8c4e0;
+            text-decoration: none;
+            font-size: 0.88rem;
+            white-space: nowrap;
+        }
+
+        #topBar a:hover { color: white; }
+
+        #pageHeading {
+            font-size: 0.98rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        #pageInfo {
+            font-size: 0.82rem;
+            color: #a8c4e0;
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        .pager-btn {
+            background: #2c5596;
+            color: white;
+            padding: 6px 14px;
+            font-size: 0.82rem;
+        }
+
+        .pager-btn:hover:not(:disabled) { background: #3b6bb5; }
+        .pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* ── Question list ── */
+        #questionList {
+            max-width: 960px;
+            margin: 20px auto;
+            padding: 0 16px;
+        }
+
+        .bq-item {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+            transition: box-shadow 0.3s, background 0.6s;
+        }
+
+        .bq-item.flash { background: #eaf6ee; box-shadow: 0 0 0 3px #3a9e6e55; }
+
+        .bq-head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            border-bottom: 1px solid #eef1f5;
+        }
+
+        .bq-id {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #0077cc;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .bq-id:hover { color: #005fa3; }
+
+        .bq-meta {
+            font-size: 0.78rem;
+            color: #6c8a9e;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+
+        .bq-delete {
+            background: #dc3545;
+            color: white;
+            padding: 5px 12px;
+            font-size: 0.8rem;
+        }
+
+        .bq-delete:hover:not(:disabled) { background: #b02a37; }
+        .bq-delete:disabled { opacity: 0.6; cursor: wait; }
+
+        .bq-render { padding: 20px; min-height: 60px; }
+
+        .bq-status { color: #aaa; font-size: 0.9em; text-align: center; padding: 20px; }
+        .bq-error  { color: #c00; font-size: 0.9em; padding: 20px; }
+
+        .bq-actions {
+            padding: 12px 20px;
+            border-top: 1px solid #e5e5e0;
+            background: #f5f5f3;
+            border-radius: 0 0 10px 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .bq-submit {
+            background: #1b3a6f;
+            color: white;
+            padding: 10px 28px;
+            font-size: 0.95em;
+        }
+
+        .bq-tryagain {
+            background: #6c757d;
+            color: white;
+            padding: 10px 20px;
+            font-size: 0.95em;
+        }
+
+        .bq-separator {
+            border: none;
+            border-top: 3px solid #b0c4d8;
+            margin: 28px 0;
+        }
+
+        #emptyState, #listStatus {
+            text-align: center;
+            color: #888;
+            padding: 60px 20px;
+            font-size: 0.95rem;
+        }
+
+        #bottomPager {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 10px 0 40px;
+        }
+
+        #bottomPager .pager-btn { background: #1b3a6f; padding: 9px 22px; font-size: 0.9rem; }
+        #bottomPager .pager-btn:hover:not(:disabled) { background: #2c5596; }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a2d3d;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            z-index: 2000;
+            display: none;
+        }
+
+        #toast.error { background: #b02a37; }
+
+        /* ── Edit modal ── */
+        #editModalBackdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1000;
+        }
+
+        #editModal {
+            display: none;
+            position: fixed;
+            top: 4vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(780px, 96vw);
+            max-height: 92vh;
+            background: #faf7f5;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+            z-index: 1010;
+            flex-direction: column;
+        }
+
+        #editModal.open, #editModalBackdrop.open { display: flex; }
+        #editModalBackdrop.open { display: block; }
+
+        #editModalHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: #1b3a6f;
+            color: white;
+            border-radius: 12px 12px 0 0;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        #editModalClose {
+            background: transparent;
+            color: white;
+            font-size: 1.2rem;
+            padding: 2px 8px;
+        }
+
+        #editModalClose:hover { background: rgba(255,255,255,0.15); }
+
+        #editModalBody {
+            overflow-y: auto;
+            padding: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div id="topBar">
+    <a href="{{ url_for('lms.admin_home_new') }}"><i class="fas fa-arrow-left"></i> Dashboard</a>
+    <div id="pageHeading">Edit Unused Questions</div>
+    <div id="pageInfo"></div>
+    <button type="button" class="pager-btn" id="prevBtnTop" disabled><i class="fas fa-chevron-left"></i> Previous</button>
+    <button type="button" class="pager-btn" id="nextBtnTop" disabled>Next {{ page_size }} <i class="fas fa-chevron-right"></i></button>
+</div>
+
+<!-- ── Question list ── -->
+<div id="questionList">
+    <div id="listStatus">Loading unused questions…</div>
+</div>
+
+<div id="bottomPager" style="display:none;">
+    <button type="button" class="pager-btn" id="prevBtnBottom" disabled><i class="fas fa-chevron-left"></i> Previous</button>
+    <button type="button" class="pager-btn" id="nextBtnBottom" disabled>Next {{ page_size }} <i class="fas fa-chevron-right"></i></button>
+</div>
+
+<div id="toast"></div>
+
+<!-- ── Edit modal (same form as the quiz question-editor left pane) ── -->
+<div id="editModalBackdrop"></div>
+<div id="editModal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
+    <div id="editModalHeader">
+        <span id="editModalTitle">Edit Question</span>
+        <button type="button" id="editModalClose" title="Close"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="editModalBody">
+        {% include '_question_builder_form.html' %}
+    </div>
+</div>
+
+
+<!-- ── Question-type handler scripts ── -->
+<script src="{{ url_for('static', filename='js/quiz-common.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-mcq.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-mr.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-fill.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-feval.js') }}"></script>
+
+<!-- ── Shared builder logic ── -->
+<script src="{{ url_for('static', filename='js/ohs-hotspot.js') }}"></script>
+<script src="{{ url_for('static', filename='js/quiz-builder-form.js') }}?v=4"></script>
+
+<!-- ── UnifiedQuestionComponent dependencies ── -->
+<script src="{{ url_for('static', filename='js/question-templates.js') }}"></script>
+<script src="{{ url_for('static', filename='js/template-handlers.js') }}"></script>
+<script src="{{ url_for('static', filename='js/unified-question-component.js') }}"></script>
+
+<script>
+    const PAGE_SIZE = {{ page_size }};
+
+    // Keyset cursors: cursorStack[i] is the before_id used to load page i+1 (null = first page).
+    const cursorStack = [null];
+    let nextCursor = null;
+    let totalUnused = 0;
+    let editingQid = null;
+
+    const listEl = document.getElementById('questionList');
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+    let toastTimer = null;
+    function toast(text, isError = false) {
+        const el = document.getElementById('toast');
+        el.textContent = text;
+        el.classList.toggle('error', isError);
+        el.style.display = 'block';
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { el.style.display = 'none'; }, isError ? 5000 : 2200);
+    }
+
+    function escapeHtml(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    // Question templates use fixed ids and radio name="answer"; with many questions on one
+    // page those collide, so namespace them per question. Handlers are container-scoped.
+    function namespaceIds(root, prefix) {
+        const renamed = {};
+        root.querySelectorAll('[id]').forEach(el => {
+            renamed[el.id] = `${prefix}-${el.id}`;
+            el.id = renamed[el.id];
+        });
+        root.querySelectorAll('label[for]').forEach(label => {
+            const target = renamed[label.htmlFor];
+            if (target) label.htmlFor = target;
+        });
+        root.querySelectorAll('input[type="radio"][name]').forEach(radio => {
+            radio.name = `${prefix}-${radio.name}`;
+        });
+        root.querySelectorAll('map[name]').forEach(map => { map.name = `${prefix}-${map.name}`; });
+        root.querySelectorAll('img[usemap]').forEach(img => {
+            img.useMap = `#${prefix}-${img.getAttribute('usemap').replace(/^#/, '')}`;
+        });
+    }
+
+    function updatePagerUi() {
+        const page = cursorStack.length;
+        const shown = listEl.querySelectorAll('.bq-item').length;
+        document.getElementById('pageInfo').textContent =
+            `Page ${page} · ${shown} shown · ${totalUnused} unused question${totalUnused !== 1 ? 's' : ''}`;
+        const hasPrev = page > 1;
+        const hasNext = nextCursor !== null;
+        ['prevBtnTop', 'prevBtnBottom'].forEach(id => document.getElementById(id).disabled = !hasPrev);
+        ['nextBtnTop', 'nextBtnBottom'].forEach(id => document.getElementById(id).disabled = !hasNext);
+        document.getElementById('bottomPager').style.display = shown ? 'flex' : 'none';
+    }
+
+    // ── Single question rendering ────────────────────────────────────────
+    function renderQuestionInto(item, question) {
+        const qid = item.dataset.qid;
+        const renderArea = item.querySelector('.bq-render');
+        const component = new UnifiedQuestionComponent({ question, container: renderArea, readOnly: false });
+        component.render();
+        namespaceIds(renderArea, `q${qid}`);
+        item._component = component;
+        item.querySelector('.bq-submit').style.display = 'inline-flex';
+        item.querySelector('.bq-tryagain').style.display = 'none';
+    }
+
+    async function loadQuestion(item) {
+        const qid = item.dataset.qid;
+        const renderArea = item.querySelector('.bq-render');
+        const submitBtn = item.querySelector('.bq-submit');
+        renderArea.innerHTML = '<div class="bq-status">Loading preview…</div>';
+        submitBtn.style.display = 'none';
+        item.querySelector('.bq-tryagain').style.display = 'none';
+        try {
+            const resp = await fetch(`/question/api/display/${qid}`);
+            const data = await resp.json();
+            if (!resp.ok || !data.ok || !data.question) {
+                throw new Error((data.errors && data.errors.join('; ')) || `HTTP ${resp.status}`);
+            }
+            item._question = data.question;
+            const meta = [ (data.type || '').toUpperCase(), data.topic, data.subtopic, data.level ]
+                .filter(Boolean).map(escapeHtml).join(' · ');
+            item.querySelector('.bq-meta').innerHTML = meta;
+            renderQuestionInto(item, data.question);
+        } catch (err) {
+            item._question = null;
+            renderArea.innerHTML = `<div class="bq-error">Error loading preview: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    function buildItem(qid) {
+        const item = document.createElement('section');
+        item.className = 'bq-item';
+        item.dataset.qid = qid;
+        item.innerHTML = `
+            <div class="bq-head">
+                <a href="#" class="bq-id" title="Edit question ${qid}">Q#${qid}</a>
+                <span class="bq-meta"></span>
+                <button type="button" class="bq-delete" title="Delete question ${qid} immediately"><i class="fas fa-trash"></i> Delete</button>
+            </div>
+            <div class="bq-render"></div>
+            <div class="bq-actions">
+                <button type="button" class="bq-submit">Submit</button>
+                <button type="button" class="bq-tryagain" style="display:none;">Try Again</button>
+            </div>`;
+
+        item.querySelector('.bq-id').addEventListener('click', e => {
+            e.preventDefault();
+            openEditor(qid);
+        });
+
+        item.querySelector('.bq-submit').addEventListener('click', async () => {
+            if (!item._component) return;
+            await item._component.submitAnswer();
+            item.querySelector('.bq-submit').style.display = 'none';
+            item.querySelector('.bq-tryagain').style.display = 'inline-flex';
+        });
+
+        item.querySelector('.bq-tryagain').addEventListener('click', () => {
+            if (item._question) renderQuestionInto(item, item._question);
+            else loadQuestion(item);
+        });
+
+        item.querySelector('.bq-delete').addEventListener('click', () => deleteQuestion(item));
+
+        const separator = document.createElement('hr');
+        separator.className = 'bq-separator';
+        item._separator = separator;
+        return item;
+    }
+
+    // ── Delete (no confirmation, by design) ──────────────────────────────
+    async function deleteQuestion(item) {
+        const qid = item.dataset.qid;
+        const btn = item.querySelector('.bq-delete');
+        btn.disabled = true;
+        try {
+            const resp = await fetch(`/question/api/delete/${qid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}'
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+
+            item._separator.remove();
+            item.remove();
+            totalUnused = Math.max(0, totalUnused - 1);
+            toast(`Deleted Q#${qid}`);
+            if (!listEl.querySelector('.bq-item')) {
+                // Page emptied — reload the same cursor, which now yields the following questions.
+                await loadPage(cursorStack[cursorStack.length - 1]);
+            } else {
+                updatePagerUi();
+            }
+        } catch (err) {
+            btn.disabled = false;
+            toast(`Delete failed for Q#${qid}: ${err.message}`, true);
+        }
+    }
+
+    // ── Page loading ─────────────────────────────────────────────────────
+    async function loadPage(beforeId) {
+        listEl.innerHTML = '<div id="listStatus">Loading unused questions…</div>';
+        nextCursor = null;
+        updatePagerUi();
+        window.scrollTo(0, 0);
+        try {
+            const url = beforeId == null ? '/question/api/unused-ids' : `/question/api/unused-ids?before_id=${beforeId}`;
+            const resp = await fetch(url);
+            const data = await resp.json();
+            if (!resp.ok || !data.ok) throw new Error(data.error || `HTTP ${resp.status}`);
+
+            totalUnused = data.total;
+            nextCursor = data.has_more ? data.next_before_id : null;
+            listEl.innerHTML = '';
+
+            if (!data.ids.length) {
+                listEl.innerHTML = cursorStack.length > 1
+                    ? '<div id="emptyState">No more unused questions on this page. Use Previous to go back.</div>'
+                    : '<div id="emptyState"><i class="fas fa-check-circle" style="font-size:2rem;display:block;margin-bottom:10px;color:#3a9e6e;"></i>No unused questions in the question bank.</div>';
+                updatePagerUi();
+                return;
+            }
+
+            const items = data.ids.map(qid => {
+                const item = buildItem(qid);
+                listEl.appendChild(item);
+                listEl.appendChild(item._separator);
+                return item;
+            });
+            updatePagerUi();
+            await Promise.all(items.map(loadQuestion));
+        } catch (err) {
+            listEl.innerHTML = `<div id="listStatus" style="color:#c00;">Failed to load unused questions: ${escapeHtml(err.message)}</div>`;
+        }
+    }
+
+    function goNext() {
+        if (nextCursor === null) return;
+        cursorStack.push(nextCursor);
+        loadPage(nextCursor);
+    }
+
+    function goPrev() {
+        if (cursorStack.length <= 1) return;
+        cursorStack.pop();
+        loadPage(cursorStack[cursorStack.length - 1]);
+    }
+
+    // ── Edit modal ───────────────────────────────────────────────────────
+    async function openEditor(qid) {
+        editingQid = qid;
+        document.getElementById('editModalTitle').textContent = `Edit Question #${qid}`;
+        document.getElementById('editModalBackdrop').classList.add('open');
+        document.getElementById('editModal').classList.add('open');
+        document.body.classList.add('modal-open');
+        document.getElementById('editModalBody').scrollTop = 0;
+        clearForm();
+        await loadQuestionForEdit(qid);
+    }
+
+    function closeEditor() {
+        editingQid = null;
+        document.getElementById('editModalBackdrop').classList.remove('open');
+        document.getElementById('editModal').classList.remove('open');
+        document.body.classList.remove('modal-open');
+    }
+
+    // After save: close the modal and refresh only that question's section.
+    window.onQuestionSaved = async function(result) {
+        const qid = editingQid || result.question_id;
+        closeEditor();
+        const item = listEl.querySelector(`.bq-item[data-qid="${qid}"]`);
+        if (!item) return;
+        await loadQuestion(item);
+        item.classList.add('flash');
+        setTimeout(() => item.classList.remove('flash'), 1200);
+        toast(`Saved Q#${qid}`);
+    };
+
+    // ── Bootstrap ────────────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+        initBuilderForm();
+
+        ['nextBtnTop', 'nextBtnBottom'].forEach(id => document.getElementById(id).addEventListener('click', goNext));
+        ['prevBtnTop', 'prevBtnBottom'].forEach(id => document.getElementById(id).addEventListener('click', goPrev));
+
+        document.getElementById('editModalClose').addEventListener('click', closeEditor);
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && editingQid !== null) closeEditor();
+        });
+
+        loadPage(null);
+    });
+</script>
+</body>
+</html>

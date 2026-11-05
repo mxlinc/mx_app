@@ -194,6 +194,65 @@ def get_next_question_id(question_id):
         return jsonify({"ok": False, "error": str(e)}), 500
 
 
+# ==================== BULK EDIT (UNUSED QUESTIONS) ==================== #
+
+BULK_EDIT_PAGE_SIZE = 20
+
+
+def _used_question_ids() -> set:
+    """Return the set of question IDs referenced by any quiz."""
+    used_ids = set()
+    for row in Quiz.query.with_entities(Quiz.question_ids).all():
+        if row.question_ids:
+            for qid in row.question_ids.split(','):
+                qid = qid.strip()
+                if qid.isdigit():
+                    used_ids.add(int(qid))
+    return used_ids
+
+
+@question_bp.route("/bulk-edit", methods=["GET"])
+@login_required
+def bulk_edit_page():
+    """Preview, test, edit and delete unused questions 20 at a time."""
+    return render_template("question_bulk_edit.html", page_size=BULK_EDIT_PAGE_SIZE)
+
+
+@question_bp.route("/api/unused-ids", methods=["GET"])
+@login_required
+def get_unused_question_ids():
+    """Keyset-paginated IDs of questions not used in any quiz, newest first.
+
+    Pass ``before_id`` (the last ID of the previous page) to fetch the next page.
+    Keyset paging keeps pages stable when questions are deleted in between.
+    """
+    try:
+        before_id = request.args.get('before_id', type=int)
+        base = QBank.query.with_entities(QBank.id)
+        used_ids = _used_question_ids()
+        if used_ids:
+            base = base.filter(~QBank.id.in_(used_ids))
+
+        total = base.count()
+        page_query = base
+        if before_id is not None:
+            page_query = page_query.filter(QBank.id < before_id)
+        rows = page_query.order_by(QBank.id.desc()).limit(BULK_EDIT_PAGE_SIZE + 1).all()
+        ids = [r.id for r in rows[:BULK_EDIT_PAGE_SIZE]]
+        has_more = len(rows) > BULK_EDIT_PAGE_SIZE
+        return jsonify({
+            "ok": True,
+            "ids": ids,
+            "total": total,
+            "has_more": has_more,
+            "next_before_id": ids[-1] if (ids and has_more) else None,
+            "page_size": BULK_EDIT_PAGE_SIZE,
+        })
+    except Exception as e:
+        logger.exception(e)
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 # ==================== SHEET ==================== #
 
 @question_bp.route("/generate-sheet", methods=["GET"])

@@ -1,0 +1,198 @@
+/*
+ * Shared question builder form styles.
+ * Used by quiz_question_editor.html and question_bulk_edit.html
+ * together with templates/_question_builder_form.html.
+ */
+.builder-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 14px;
+    margin-bottom: 10px;
+}
+
+.form-section {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e8e8e8;
+}
+
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.section-title {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #1b3a6f;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.form-row.three-column { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.form-row.full         { grid-template-columns: 1fr; }
+
+.form-group { display: flex; flex-direction: column; }
+
+label {
+    font-weight: 500;
+    margin-bottom: 3px;
+    color: #333;
+    font-size: 0.82em;
+}
+
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.83em;
+    transition: border-color 0.2s;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: #0077cc;
+    box-shadow: 0 0 0 3px rgba(0,119,204,0.1);
+}
+
+textarea { resize: vertical; min-height: 80px; font-family: 'Poppins', sans-serif; }
+
+input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 5px 0;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.image-upload-box {
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    background: #fafafa;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.image-upload-box:hover { border-color: #0077cc; background: #f0f7ff; }
+.image-upload-box input[type="file"] { display: none; }
+
+.image-preview {
+    margin-top: 8px;
+    max-width: 130px;
+    max-height: 130px;
+    border-radius: 6px;
+}
+
+.message {
+    padding: 7px 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: none;
+    font-size: 0.85em;
+}
+
+.message.show  { display: block; }
+.message.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.message.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+.input-type-label { font-size: 0.78em; color: #666; font-weight: normal; }
+
+button {
+    padding: 8px 12px;
+    font-size: 0.87em;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-family: 'Poppins', sans-serif;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+
+#saveBtn    { background: #0077cc; color: white; }
+#saveBtn:hover { background: #005fa3; }
+
+#deleteBtn { background: #dc3545; color: white; }
+#deleteBtn:hover { background: #b02a37; }
+
+/* toolbar at top of left panel */
+#builderToolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-wrap: wrap;
+}
+
+.question-type-selector,
+.format-helper-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 8px;
+    background: white;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    height: 34px;
+}
+
+.question-type-selector label,
+.format-helper-selector label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.82em;
+    white-space: nowrap;
+}
+
+.question-type-selector select,
+.format-helper-selector select {
+    border: none;
+    background: transparent;
+    font-size: 0.82em;
+    cursor: pointer;
+    padding: 0;
+}
+
+.format-helper-selector select { max-width: 170px; }
+
+/* MR correct options container */
+#mr-correct-options {
+    border: 1px solid #ddd;
+    padding: 8px;
+    border-radius: 6px;
+    background: #f9f9f9;
+    max-height: 180px;
+    overflow-y: auto;
+    min-height: 60px;
+}
+
+/* preview section hidden */
+.preview-section { display: none !important; }

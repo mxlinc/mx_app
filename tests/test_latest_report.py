@@ -36,7 +36,7 @@ class LatestReportTests(unittest.TestCase):
         login.user_loader(lambda user_id: db.session.get(UserTable, int(user_id)))
         self.app.register_blueprint(lms_bp)
         for endpoint in (
-            'question.list_questions_page', 'question.upload_page',
+            'question.list_questions_page', 'question.upload_page', 'question.bulk_edit_page',
             'qb.quiz_list_page', 'qb.assign_page',
         ):
             self.app.add_url_rule(f'/test/{endpoint}', endpoint, lambda: '')
